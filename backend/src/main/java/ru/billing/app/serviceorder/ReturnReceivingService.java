@@ -56,6 +56,27 @@ public class ReturnReceivingService {
         return created;
     }
 
+    public record BulkReturnRequest(@NotEmpty List<@NotNull UUID> shippingOrderIds) {}
+
+    @Transactional
+    public List<CreatedOrderResponse> createBulk(UUID serviceId, BulkReturnRequest request) {
+        var ids = request.shippingOrderIds().stream().distinct().sorted().toList();
+        // Stable lock order protects overlapping selections; the entire selection commits together.
+        for (UUID id : ids) {
+            var rows = jdbc.query("select id from shipping_order where id = ? and service_order_id = ? and transport_type = 'VEHICLE' for update",
+                    (rs, row) -> rs.getObject("id", UUID.class), id, serviceId);
+            if (rows.isEmpty()) throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_SERVICE_SHIPPING", "Вывоз не относится к этой услуге или не является автомобильным");
+        }
+        var result = new java.util.ArrayList<CreatedOrderResponse>();
+        for (UUID id : ids) {
+            var containers = jdbc.query("select container_id from shipping_order_source_container where shipping_order_id = ? order by container_id",
+                    (rs, row) -> rs.getObject("container_id", UUID.class), id);
+            if (containers.isEmpty()) throw new ApiException(HttpStatus.BAD_REQUEST, "RETURN_CONTAINERS_REQUIRED", "В заявке на вывоз отсутствуют КТК");
+            result.add(create(id, new ReturnRequest(containers)));
+        }
+        return result;
+    }
+
     private record Source(UUID serviceId, UUID clientId, UUID contractId, UUID areaId) {}
 }
 
@@ -68,5 +89,16 @@ class ReturnReceivingController {
     @PostMapping
     public CreatedOrderResponse create(@PathVariable UUID shippingId, @Valid @RequestBody ReturnReceivingService.ReturnRequest request) {
         return service.create(shippingId, request);
+    }
+}
+
+@RestController
+@RequestMapping("/api/service-orders/{serviceId}/returns")
+class BulkReturnController {
+    private final ReturnReceivingService service;
+    BulkReturnController(ReturnReceivingService service) { this.service = service; }
+    @PostMapping
+    public List<CreatedOrderResponse> create(@PathVariable UUID serviceId, @Valid @RequestBody ReturnReceivingService.BulkReturnRequest request) {
+        return service.createBulk(serviceId, request);
     }
 }

@@ -167,3 +167,7 @@ export function deleteComplexServiceTariff(id: string, contractId: string) {
 export function getBillingCharges(serviceOrderId?: string, page = 0) {
   return request<import('./billing').BillingChargePage>(`/api/billing-charges?page=${page}&size=20${serviceOrderId ? `&serviceOrderId=${serviceOrderId}` : ''}`)
 }
+
+export function createServiceReturns(serviceId: string, shippingOrderIds: string[]) {
+  return request<CreatedOrder[]>('/api/service-orders/' + serviceId + '/returns', { method: 'POST', body: JSON.stringify({ shippingOrderIds }) })
+}

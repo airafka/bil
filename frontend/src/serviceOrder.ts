@@ -6,5 +6,5 @@ export type ServiceOrderSummary = {
   contractId: string; contractName: string; status: string; shippingOrderCount: number
 }
 export type ServiceOrderDetails = {
-  order: ServiceOrderSummary; receivingOrder: OrderDetails; shippingOrders: Array<CreatedOrder & { containerNames: string[] }>; selectableContainers: Array<{ containerId: string; containerName: string; type: string }>; returnOrders: Array<{ id: string; code: number; status: string; containerNames: string[] }>
+  order: ServiceOrderSummary; receivingOrder: OrderDetails; shippingOrders: Array<CreatedOrder & { containerNames: string[]; returnReceivingOrderId: string | null }>; selectableContainers: Array<{ containerId: string; containerName: string; type: string }>; returnOrders: Array<{ id: string; code: number; status: string; containerNames: string[] }>
 }

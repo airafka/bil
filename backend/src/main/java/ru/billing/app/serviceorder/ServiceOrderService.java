@@ -176,7 +176,7 @@ public class ServiceOrderService {
         UUID deliveryId = jdbc.queryForObject("select id from receiving_order where service_order_id = ? and service_role = 'INITIAL_RECEIVING'",
                 UUID.class, id);
         List<ServiceShippingOrder> removals = jdbc.query("""
-                select sh.id, sh.code, sh.status, array_agg(c.code order by c.code) as container_names
+                select sh.id, sh.code, sh.status, (select r.id from receiving_order r where r.source_shipping_order_id = sh.id) as return_id, array_agg(c.code order by c.code) as container_names
                 from shipping_order sh
                 join shipping_order_source_container link on link.shipping_order_id = sh.id
                 join container c on c.id = link.container_id
@@ -184,7 +184,7 @@ public class ServiceOrderService {
                 group by sh.id, sh.code, sh.status order by sh.code
                 """, (rs, row) -> new ServiceShippingOrder(rs.getObject("id", UUID.class), rs.getInt("code"),
                         rs.getString("status"), Arrays.stream((Object[]) rs.getArray("container_names").getArray())
-                                .map(Object::toString).toList()), id);
+                                .map(Object::toString).toList(), rs.getObject("return_id", UUID.class)), id);
         List<ServiceSelectableContainer> selectable = jdbc.query("""
                 select distinct c.id, c.code, c.type
                 from waybill w
