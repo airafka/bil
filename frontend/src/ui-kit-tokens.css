@@ -1,0 +1,14 @@
+/* Extracted from supplied @alabuga/uikit 17.3.1 tokens/tokens.json. */
+:root {
+  --ui-field-border: #f2f4f7;
+  --ui-field-fill: #ffffff;
+  --ui-field-text: #191a1f;
+  --ui-field-label: #4b4b51;
+  --ui-field-placeholder: #d8dde3;
+  --ui-field-focus: #3472ed;
+  --ui-field-error: #f04438;
+  --ui-field-blocked-fill: #f9fafc;
+  --ui-field-blocked-text: #9ca3b1;
+  --ui-field-table-border: #d8dde3;
+  --ui-field-radius: 5px;
+}

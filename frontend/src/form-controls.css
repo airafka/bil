@@ -1,0 +1,79 @@
+/* Shared field layout from the supplied Figma screenshot; states from Alabuga UI kit. */
+.app-shell .ui-control {
+  display: block; width: 100%; min-width: 0; height: 40px; margin: 0;
+  padding: 0 8px; border: 1px solid var(--ui-field-border); border-radius: var(--ui-field-radius);
+  background-color: var(--ui-field-fill); color: var(--ui-field-text); font-family: inherit;
+  font-size: 14px; font-weight: 400; line-height: 18px;
+  box-shadow: 0 1px 2px #f2f2f2; outline: none;
+  transition: border-color .15s, box-shadow .15s, background-color .15s;
+}
+.app-shell .ui-control::placeholder { color: var(--ui-field-placeholder); opacity: 1; }
+.app-shell .ui-control:hover:not(:disabled):not([readonly]) { border-color: var(--ui-field-focus); }
+.app-shell .ui-control:focus-visible { border-color: var(--ui-field-focus); box-shadow: 0 0 0 3px #397cff26; }
+.app-shell .ui-control:disabled { color: var(--ui-field-placeholder); background-color: var(--ui-field-blocked-fill); border-color: var(--ui-field-border); cursor: not-allowed; opacity: 1; }
+.app-shell .ui-control[readonly] { color: var(--ui-field-blocked-text); background-color: var(--ui-field-blocked-fill); border-color: var(--ui-field-border); cursor: default; }
+.app-shell .ui-control[aria-invalid="true"] { border-color: var(--ui-field-error); }
+.app-shell .ui-control[aria-invalid="true"]:focus-visible { box-shadow: 0 0 0 3px #e8493d26; }
+.app-shell textarea.ui-control { min-height: 80px; padding: 10px 8px; resize: vertical; line-height: 20px; }
+.app-shell .ui-select { appearance: none; padding-right: 32px; background-image: url('/icons/ui-kit-chevron.svg'); background-repeat: no-repeat; background-position: right 10px center; background-size: 16px 16px; text-overflow: ellipsis; }
+.app-shell .ui-select[data-placeholder="true"] { color: var(--ui-field-placeholder); }
+.app-shell .ui-select option { color: var(--ui-field-text); background: #fff; }
+.app-shell .ui-select option:disabled { color: var(--ui-field-blocked-text); }
+.app-shell .ui-select:disabled { background-image: url('/icons/ui-kit-chevron-disabled.svg'); }
+.app-shell .ui-choice { accent-color: var(--ui-field-focus); }
+.app-shell .ui-choice:focus-visible { outline: 2px solid var(--ui-field-focus); outline-offset: 3px; }
+.field { min-width: 0; color: var(--ui-field-label); font-size: 14px; font-weight: 400; line-height: 18px; gap: 8px; }
+.field b { color: var(--ui-field-error); font-weight: 400; }
+.field:has(> .ui-control:disabled) > span:first-child:not(.sr-only), .field:has(> .field-control > .ui-control:disabled) > span:first-child { color: var(--ui-field-placeholder); }
+.field-control { min-width: 0; gap: 6px; }
+.field small { font-size: 12px; line-height: 16px; color: var(--ui-field-error); }
+.horizontal-field, .field:has(> span:first-child:not(.sr-only):not(.service-sr-only)):not(.service-search) {
+  display: grid; grid-template-columns: 180px minmax(0, 1fr); align-items: start; gap: 8px;
+}
+.horizontal-field { margin: 8px 0 0; max-width: 536px; }
+.horizontal-field > span:first-child, .field:has(> span:first-child:not(.sr-only):not(.service-sr-only)) > span:first-child { padding-top: 11px; font-weight: 400; }
+.field > small { grid-column: -2 / -1; }
+.form-fields-grid, .waybill-main-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 536px)); gap: 16px clamp(24px, 5vw, 100px); max-width: 1172px; margin-top: 16px; }
+.form-fields-column { display: grid; align-content: start; gap: 8px; min-width: 0; }
+.form-fields-column .horizontal-field { max-width: none; margin: 0; }
+.form-workspace { border-radius: 5px; }
+.form-section-heading { border-bottom: 0; padding-bottom: 0; }
+.ui-section-divider { margin-top: 20px; padding-top: 20px; border-top: 1px solid #f3f3f3; }
+.ui-form-section { overflow: visible; }
+.ui-readonly-value { display: flex; align-items: center; min-width: 0; min-height: 40px; padding: 8px; border: 1px solid var(--ui-field-border); border-radius: 5px; background: var(--ui-field-blocked-fill); font-size: 14px; }
+.ui-readonly-value .status-badge { padding: 3px 8px; }
+.status-badge[data-status="DRAFT"] { color: #191a1f; background: #f2f4f7; }
+.status-badge[data-status="DRAFT"]::before { content: ''; width: 5px; height: 5px; align-self: center; margin-right: 5px; border-radius: 50%; background: #a6a5a8; }
+.details-grid { max-width: 1172px; grid-template-columns: repeat(2, minmax(0, 536px)); gap: 8px clamp(24px, 5vw, 100px); margin-top: 16px; }
+.details-grid > div { display: grid; grid-template-columns: 180px minmax(0,1fr); align-items: start; gap: 8px; min-height: 40px; padding: 0; border: 0; background: transparent; }
+.details-grid .details-wide { grid-column: auto; }
+.details-grid dt { margin: 0; padding-top: 11px; font-size: 14px; line-height: 18px; color: var(--ui-field-label); }
+.details-grid dd { display: flex; align-items: center; min-width: 0; min-height: 40px; padding: 10px 8px; border: 1px solid var(--ui-field-border); border-radius: 5px; background: var(--ui-field-blocked-fill); font-size: 14px; font-weight: 400; line-height: 18px; overflow-wrap: anywhere; }
+.details-grid dd a { color: var(--blue); }
+.details-grid dd a:hover { text-decoration: underline; }
+.app-shell :is(.ktk-table-row,.cargo-row,.quantity-table-row,.quantity-cargo-row,.shipping-railway-container-row,td) .ui-control { height: 32px; border-color: var(--ui-field-table-border); font-size: 14px; }
+.app-shell :is(.ktk-table-row,.cargo-row,.quantity-table-row,.quantity-cargo-row,.shipping-railway-container-row,td) .ui-control:focus-visible { border-color: var(--ui-field-focus); }
+.app-shell .service-search input.ui-control { padding-left: 32px; }
+.service-search-symbol { top: 9px; }
+.registry-filters { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px 32px; padding: 16px; border-radius: 5px; }
+.registry-filters .field { grid-template-columns: 160px minmax(0,1fr); }
+.registry-filters .filter-actions { justify-content: flex-end; }
+.registry-page > .field { max-width: 536px; margin-bottom: 16px; }
+.waybill-mass-row { position: relative; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px 32px; padding: 16px 48px 16px 16px; }
+.waybill-mass-row .field { grid-template-columns: 150px minmax(0,1fr); }
+.waybill-mass-row > .row-clear-button { position: absolute; top: 20px; right: 10px; }
+.waybill-cargo-mass-row { grid-template-columns: 1fr; gap: 12px; max-width: 800px; }
+.waybill-cargo-mass-row .field { grid-template-columns: 180px minmax(0,1fr); }
+.table-checkbox:has(input:focus-visible) > span:first-of-type { outline: 2px solid var(--ui-field-focus); outline-offset: 3px; }
+@media(max-width:1150px) {
+  .form-fields-grid, .waybill-main-grid, .details-grid { grid-template-columns: 1fr; max-width: 650px; gap: 8px; }
+  .registry-filters { grid-template-columns: 1fr; }
+  .waybill-mass-row { grid-template-columns: 1fr; }
+}
+@media(max-width:640px) {
+  .horizontal-field, .field:has(> span:first-child:not(.sr-only):not(.service-sr-only)):not(.service-search), .details-grid > div, .registry-filters .field { grid-template-columns: 1fr; gap: 6px; }
+  .horizontal-field > span:first-child, .field:has(> span:first-child:not(.sr-only):not(.service-sr-only)) > span:first-child, .details-grid dt { padding-top: 0; }
+  .form-fields-column, .form-fields-grid, .waybill-main-grid, .details-grid { gap: 16px; }
+  .field > small { grid-column: 1; }
+  .waybill-picker-filters { grid-template-columns: 1fr; }
+}

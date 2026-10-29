@@ -1,0 +1,33 @@
+.complex-service-page .form-workspace { min-height: 0; }
+.complex-service-page .form-section { min-height: 0; }
+.complex-service-page .form-fields-grid { margin-bottom: 20px; }
+.complex-service-page .stepper { margin-bottom: 20px; }
+.complex-service-page .complex-service-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 16px; border-top: 1px solid var(--ui-field-border); }
+.complex-service-tariff-form { padding: 4px 0 0; }
+.complex-service-back { margin: 0 0 20px; padding: 0; border: 0; color: var(--ui-field-focus); background: transparent; cursor: pointer; font-size: 13px; }
+.complex-service-back:hover { text-decoration: underline; text-underline-offset: 3px; }
+.complex-service-tariff-form h2 { margin: 0 0 4px; font-size: 16px; font-weight: 500; }
+.complex-service-tariff-form > p { margin: 0 0 16px; color: var(--ui-field-label); font-size: 13px; }
+.complex-service-tariff-form .form-fields-grid { margin-bottom: 0; }
+.complex-service-tariff-form .complex-service-actions { border-top: 0; padding-top: 16px; }
+.complex-service-tariffs .table-toolbar { border-bottom: 0; }
+.complex-service-tariffs table { min-width: 960px; }
+.complex-service-tariffs .table-toolbar .primary-button { min-height: 32px; padding: 0 12px; font-size: 12px; }
+.complex-service-tariffs th:last-child, .complex-service-tariffs td:last-child { width: 180px; text-align: right; }
+.complex-service-tariffs td:last-child { white-space: nowrap; }
+.complex-service-tariffs .secondary-button { min-height: 32px; padding: 0 10px; font-size: 12px; }
+.complex-service-tariffs .secondary-button + .secondary-button { margin-left: 8px; }
+.complex-service-money { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.complex-service-delete-button { color: #b43d49; border-color: #e9c4c9; }
+.complex-service-delete-button:hover:not(:disabled) { background: #fff5f6; }
+.complex-service-dialog { width: min(440px, 100%); padding: 24px; border-radius: 8px; background: #fff; box-shadow: 0 18px 48px rgba(20, 25, 34, .24); }
+.complex-service-dialog h2 { margin: 0 0 12px; font-size: 18px; font-weight: 600; }
+.complex-service-dialog p { margin: 0 0 24px; color: var(--ui-field-label); font-size: 14px; line-height: 1.5; }
+.complex-service-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.complex-service-danger-button { background: #c8404e; }
+.complex-service-danger-button:hover:not(:disabled) { background: #ae3542; }
+@media (max-width: 640px) {
+  .complex-service-page .stepper { width: 100%; flex-wrap: wrap; }
+  .complex-service-page .stepper .step { min-width: 0; flex: 1 1 120px; }
+  .complex-service-page .page-header { align-items: flex-start; flex-direction: column; }
+}

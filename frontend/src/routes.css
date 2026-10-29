@@ -1,0 +1,11 @@
+.route-page .form-workspace { padding-bottom: 20px; }
+.route-page .form-section { min-height: 0; }
+.route-page .form-section-heading { font-size: 16px; font-weight: 500; }
+.route-page .route-comment { max-width: 750px; }
+.route-help { margin: 12px 0 16px; color: var(--ui-field-label); font-size: 13px; }
+.route-orders-picker { border: 1px solid var(--ui-field-border); border-radius: 5px; }
+.route-orders-picker table { min-width: 580px; }
+.route-orders-picker th:first-child, .route-orders-picker td:first-child { width: 90px; text-align: center; }
+.route-form-actions { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-top: 16px; color: var(--ui-field-label); font-size: 13px; }
+.route-assign-section .route-help { padding: 0 16px; margin-top: 0; }
+.route-assign-section .route-form-actions { padding: 0 16px 16px; }

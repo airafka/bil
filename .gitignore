@@ -1,0 +1,20 @@
+.env
+.idea/
+.vscode/
+*.iml
+*.log
+
+backend/target/
+frontend/node_modules/
+frontend/dist/
+
+postgres-data/
+
+
+# Local archives and database backups
+*.7z
+*.dump
+*.backup
+backups/
+.env.*
+!.env.example

@@ -1,0 +1,26 @@
+/* Service order fields and independent order tables use the shared UI kit tokens. */
+.service-main-panel, .service-order-section { min-width: 0; margin-top: 16px; background: var(--ui-field-fill); border: 1px solid var(--ui-field-border); border-radius: var(--ui-field-radius); }
+.service-main-panel { padding: 20px 16px; }
+.service-main-panel h2, .service-order-section h2 { margin: 0; font-size: 16px; font-weight: 500; line-height: 24px; }
+.service-main-panel .details-grid { margin-bottom: 0; }
+.service-order-section { margin-top: 24px; overflow: hidden; }
+.service-order-section h2 { display: flex; align-items: center; gap: 8px; padding: 16px; }
+.service-compact-table { border: 0; border-radius: 0; }
+.service-compact-table table { width: 100%; min-width: 520px; }
+.service-receiving-table table { min-width: 940px; }
+.service-compact-table th { background: #f9fafc; color: var(--ui-field-label); font-weight: 500; border-block: 1px solid var(--ui-field-border); }
+.service-compact-table th, .service-compact-table td { padding: 14px 16px; font-size: 13px; line-height: 20px; vertical-align: middle; }
+.service-compact-table td { border-bottom: 1px solid var(--ui-field-border); }
+.service-compact-table tbody tr:last-child td { border-bottom: 0; }
+.service-compact-table tbody tr:hover { background: #fafbfe; }
+.service-compact-table .order-code { color: var(--ui-field-focus); font-weight: 500; }
+.service-compact-table .order-code:hover { text-decoration: underline; }
+.service-cargo-item { display: block; }
+.service-cargo-item + .service-cargo-item { margin-top: 4px; }
+.service-section-empty { padding: 20px 16px; color: var(--ui-field-blocked-text); font-size: 13px; }
+.service-pending-containers { padding: 16px; border-top: 1px solid var(--ui-field-border); }
+.service-pending-containers h3 { margin: 0; font-size: 14px; font-weight: 500; }
+.service-pending-containers p { margin: 6px 0 14px; color: var(--ui-field-label); font-size: 13px; }
+.service-pending-containers .service-compact-table { border: 1px solid var(--ui-field-border); border-radius: 5px; }
+.service-pending-containers th:first-child, .service-pending-containers td:first-child { width: 90px; text-align: center; }
+.service-pending-containers .notice { margin-top: 12px; }
