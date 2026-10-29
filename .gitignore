@@ -18,3 +18,6 @@ postgres-data/
 backups/
 .env.*
 !.env.example
+
+# Shared database snapshot explicitly requested for device transfer
+!database/billing-snapshot.dump
