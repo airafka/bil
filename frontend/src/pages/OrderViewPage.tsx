@@ -135,6 +135,11 @@ export function OrderViewPage({ config, providedOrderId, embedded = false }: { c
               <div><dt>Статус</dt><dd>{statusLabel(order.status)}</dd></div>
               <div className="details-wide"><dt>Клиент</dt><dd>{order.clientName}</dd></div>
               <div className="details-wide"><dt>Договор</dt><dd>{order.contractName ?? 'Не указан (ранее созданная заявка)'}</dd></div>
+              <div><dt>{config.kind === 'receiving' ? 'Дата и время поступления' : 'Дата и время вывоза'}</dt><dd>{(() => {
+                const value = config.kind === 'receiving' ? order.arrivalAt : order.departureAt
+                return value ? new Date(value).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Не указаны'
+              })()}</dd></div>
+              <div><dt>{config.kind === 'receiving' ? 'Грузоотправитель' : 'Грузополучатель'}</dt><dd>{(config.kind === 'receiving' ? order.consignor : order.consignee) || 'Не указан'}</dd></div>
               {order.serviceOrderId && <div className="details-wide"><dt>Заявка на услугу</dt><dd><Link to={'/service-orders/' + order.serviceOrderId}>Открыть заявку на услугу</Link></dd></div>}
               {order.sourceReceivingOrderId && <div className="details-wide"><dt>Исходная поставка</dt><dd><Link to={'/receiving-orders/' + order.sourceReceivingOrderId}>Открыть поставку КП-ЖД</Link></dd></div>}
               {order.sourceShippingOrderId && <div className="details-wide"><dt>Исходный вывоз</dt><dd><Link to={'/shipping-orders/' + order.sourceShippingOrderId}>Открыть заявку на вывоз</Link></dd></div>}

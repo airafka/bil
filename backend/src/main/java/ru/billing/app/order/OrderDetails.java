@@ -2,6 +2,7 @@ package ru.billing.app.order;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 public record OrderDetails(
         UUID id,
@@ -23,6 +24,10 @@ public record OrderDetails(
         UUID sourceReceivingOrderId,
         UUID routeId,
         UUID sourceShippingOrderId,
-        List<ReturnReceivingOrder> returnOrders
+        List<ReturnReceivingOrder> returnOrders,
+        LocalDateTime arrivalAt,
+        String consignor,
+        LocalDateTime departureAt,
+        String consignee
 ) {
 }

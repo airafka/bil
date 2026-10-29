@@ -58,6 +58,38 @@ function validMainState(transportType: 'VEHICLE' | 'RAILWAY' = 'VEHICLE'): Order
   }
 }
 
+describe('order dates and cargo parties', () => {
+  const metadata = {
+    arrivalAt: '2026-10-29T10:45', consignor: '  ООО Отправитель  ',
+    departureAt: '2026-10-30T15:20', consignee: '  ООО Получатель  ',
+  }
+
+  it('sends receiving fields without shifting the local time or leaking shipping fields', () => {
+    const payload = buildPayload({ ...validMainState(), ...metadata }, 'receiving')
+    expect(payload).toMatchObject({ arrivalAt: '2026-10-29T10:45', consignor: 'ООО Отправитель' })
+    expect(payload).not.toHaveProperty('departureAt')
+    expect(payload).not.toHaveProperty('consignee')
+  })
+
+  it('sends shipping fields for railway as well as vehicle orders', () => {
+    for (const transport of ['VEHICLE', 'RAILWAY'] as const) {
+      const payload = buildPayload({ ...validMainState(transport), ...metadata }, 'shipping')
+      expect(payload).toMatchObject({ departureAt: '2026-10-30T15:20', consignee: 'ООО Получатель' })
+      expect(payload).not.toHaveProperty('arrivalAt')
+      expect(payload).not.toHaveProperty('consignor')
+    }
+  })
+
+  it('keeps the previous payload when optional fields are empty', () => {
+    for (const kind of ['receiving', 'shipping'] as const) {
+      const payload = buildPayload({ ...validMainState(), consignor: '  ', consignee: '  ' }, kind)
+      for (const field of ['arrivalAt', 'consignor', 'departureAt', 'consignee']) {
+        expect(payload).not.toHaveProperty(field)
+      }
+    }
+  })
+})
+
 function withLoadedContainer(state: OrderFormState): OrderFormState {
   let next = toggleContainer(state, container)
   next = setContainerCargo(next, container.id, 'etsngCodeId', 'cargo-1')

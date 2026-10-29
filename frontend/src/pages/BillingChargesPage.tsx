@@ -22,8 +22,18 @@ export function BillingCharges({ serviceOrderId, refreshKey = '' }: { serviceOrd
     {!data && !error && <p>Загружаем начисления…</p>}
     {data && <>
       <dl className="details-grid"><div><dt>Начислено без НДС, ₽</dt><dd>{money(data.totalWithoutVat)}</dd></div><div><dt>Начислено с НДС, ₽</dt><dd>{money(data.totalWithVat)}</dd></div></dl>
-      {data.items.length ? <div className="table-wrap service-compact-table"><table><thead><tr><th>Дата оказания</th><th>Клиент / договор</th><th>Заявка на услугу</th><th>КТК</th><th>Услуга</th><th>Поставка / вывоз</th><th>Без НДС, ₽</th><th>С НДС, ₽</th></tr></thead>
-        <tbody>{data.items.map(item => <tr key={item.id}><td>{new Date(item.performedAt).toLocaleString('ru-RU')}</td><td>{item.clientName}<br />{item.contractName}</td><td><Link to={`/service-orders/${item.serviceOrderId}`}>{item.serviceOrderCode}</Link></td><td>{item.containerName}</td><td>{item.family} · {item.serviceName}</td><td><Link to={`/receiving-orders/${item.receivingOrderId}`}>Поставка {item.receivingOrderCode}</Link><br /><Link to={`/shipping-orders/${item.shippingOrderId}`}>Вывоз {item.shippingOrderCode}</Link></td><td>{money(item.amountWithoutVat)}</td><td>{money(item.amountWithVat)}</td></tr>)}</tbody></table></div> : <div className="service-section-empty">Начислений пока нет</div>}
+      {data.items.length ? <div className="table-wrap service-compact-table"><table>
+        <thead><tr>
+          <th scope="col">Дата оказания</th>
+          {!serviceOrderId && <><th scope="col">Клиент</th><th scope="col">Договор</th><th scope="col">Заявка на услугу</th></>}
+          <th scope="col">КТК</th><th scope="col">Услуга</th><th scope="col">Без НДС, ₽</th><th scope="col">С НДС, ₽</th>
+        </tr></thead>
+        <tbody>{data.items.map(item => <tr key={item.id}>
+          <td>{new Date(item.performedAt).toLocaleDateString('ru-RU')}</td>
+          {!serviceOrderId && <><td>{item.clientName}</td><td>{item.contractName}</td><td><Link to={`/service-orders/${item.serviceOrderId}`}>{item.serviceOrderCode}</Link></td></>}
+          <td>{item.containerName}</td><td>{item.serviceName}</td><td>{money(item.amountWithoutVat)}</td><td>{money(item.amountWithVat)}</td>
+        </tr>)}</tbody>
+      </table></div> : <div className="service-section-empty">Начислений пока нет</div>}
       {data.total > data.size && <div className="route-form-actions"><button className="secondary-button" disabled={page === 0} onClick={() => { setData(null); setError(''); setPage(value => value - 1) }}>Назад</button><span>{page + 1} / {Math.ceil(data.total / data.size)}</span><button className="secondary-button" disabled={(page + 1) * data.size >= data.total} onClick={() => { setData(null); setError(''); setPage(value => value + 1) }}>Далее</button></div>}
     </>}
   </section>

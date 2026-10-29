@@ -6,5 +6,13 @@ export type ServiceOrderSummary = {
   contractId: string; contractName: string; status: string; shippingOrderCount: number
 }
 export type ServiceOrderDetails = {
+  progress: ServiceProgress
   order: ServiceOrderSummary; receivingOrder: OrderDetails; shippingOrders: Array<CreatedOrder & { containerNames: string[]; returnReceivingOrderId: string | null }>; selectableContainers: Array<{ containerId: string; containerName: string; type: string }>; returnOrders: Array<{ id: string; code: number; status: string; containerNames: string[] }>
+}
+
+export type ServiceProgress = {
+  initialServiceName: string | null; returnServiceName: string | null
+  accepted: number; shippingCreated: number; shippingCompleted: number
+  returnCreated: number; returnCompleted: number
+  total: number; shippingMissing: number
 }

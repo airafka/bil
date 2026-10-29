@@ -2,6 +2,7 @@ package ru.billing.app.order;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -141,7 +142,7 @@ public class ReceivingOrderStore {
                 select o.id, o.code, o.client_id, c.code as client_name,
                        a.id as area_id, a.code as area_code, a.name as area_name,
                        o.transport_type, o.status, o.contract_id, ct.name as contract_name, o.service_order_id, o.route_id,
-                       null::uuid as source_receiving_order_id
+                       null::uuid as source_receiving_order_id, o.arrival_at, o.consignor
                 from receiving_order o
                 join client c on c.id = o.client_id
                 left join contract ct on ct.id = o.contract_id
@@ -159,7 +160,9 @@ public class ReceivingOrderStore {
                         resultSet.getObject("contract_id", UUID.class),
                         resultSet.getString("contract_name"),
                         resultSet.getObject("service_order_id", UUID.class),
-                        resultSet.getObject("route_id", UUID.class)
+                        resultSet.getObject("route_id", UUID.class),
+                        resultSet.getObject("arrival_at", LocalDateTime.class),
+                        resultSet.getString("consignor")
                 ),
                 id
         );
@@ -190,7 +193,8 @@ public class ReceivingOrderStore {
                 FillingType.ALL, header.status(),
                 containers, waybills, List.of(), List.of(), List.of(),
                 header.contractId(), header.contractName(), header.serviceOrderId(), null, header.routeId(),
-                jdbcTemplate.queryForObject("select source_shipping_order_id from receiving_order where id = ?", UUID.class, id), List.of()
+                jdbcTemplate.queryForObject("select source_shipping_order_id from receiving_order where id = ?", UUID.class, id), List.of(),
+                header.arrivalAt(), header.consignor(), null, null
         );
     }
 
@@ -215,14 +219,16 @@ public class ReceivingOrderStore {
         return jdbcTemplate.queryForObject(
                 "insert into receiving_order "
                         + "(id, client_id, terminal_area_catalog_id, transport_type, contract_id, "
-                        + "status) "
-                        + "values (?, ?, ?, ?, ?, 'DRAFT') returning code",
+                        + "status, arrival_at, consignor) "
+                        + "values (?, ?, ?, ?, ?, 'DRAFT', ?, ?) returning code",
                 Integer.class,
                 orderId,
                 request.clientId(),
                 request.terminalAreaId(),
                 request.transportType().name(),
-                request.contractId()
+                request.contractId(),
+                request.arrivalAt(),
+                request.consignor()
         );
     }
 
@@ -379,7 +385,9 @@ public class ReceivingOrderStore {
             UUID contractId,
             String contractName,
             UUID serviceOrderId,
-            UUID routeId
+            UUID routeId,
+            LocalDateTime arrivalAt,
+            String consignor
     ) {
     }
 

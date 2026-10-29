@@ -8,6 +8,7 @@ const navigation = [
   { path: '/waybills', title: 'Накладные', icon: 'list' },
   { path: '/routes', title: 'Рейсы', icon: 'list' },
   { path: '/billing-charges', title: 'Оказанные услуги', icon: 'billing' },
+  { path: '/payment-invoices', title: 'Счета на оплату', icon: 'paper' },
   { path: '/complex-services', title: 'Комплексные услуги', icon: 'billing' },
   { path: '/containers', title: 'Справочник КТК', icon: 'list' },
 ]
@@ -27,7 +28,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <button type="button" className="menu-toggle" aria-label={expanded ? 'Свернуть меню' : 'Развернуть меню'} aria-expanded={expanded} aria-controls="main-navigation" onClick={() => setExpanded(value => !value)}>{expanded ? '‹' : '›'}</button>
       <nav id="main-navigation" className="main-nav" aria-label="Основная навигация">
         {navigation.map((item, index) => <div className="nav-entry" key={item.path}>
-          {[0, 5, 6].includes(index) && <span className="nav-group">{index === 0 ? 'Операции' : index === 5 ? 'Учёт' : 'Справочники'}</span>}
+          {[0, 5, 7].includes(index) && <span className="nav-group">{index === 0 ? 'Операции' : index === 5 ? 'Учёт' : 'Справочники'}</span>}
           <NavLink key={item.path} to={item.path} className={({ isActive }) => isActive ? 'active' : ''} title={item.title} aria-label={item.title}>
           <span className="nav-icon" aria-hidden="true"><img src={`/icons/figma/${item.icon}.svg`} alt="" /></span><span className="nav-label">{item.title}</span>
         </NavLink></div>)}

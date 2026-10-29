@@ -1,4 +1,5 @@
 import { OrderRouteCell } from '../components/OrderRouteCell'
+import { ServiceProgressCards } from '../components/ServiceProgressCards'
 import { StatusBadge } from '../components/StatusBadge'
 import { BillingCharges } from './BillingChargesPage'
 import { OrderStatusAction } from '../components/OrderStatusAction'
@@ -14,12 +15,22 @@ function cargoLabel(value: string) {
   return match ? `${match[2]} (${match[1]})` : value
 }
 
+const serviceTabs = [
+  { id: 'main', label: 'Основное' },
+  { id: 'receiving', label: 'Заявки на поставку' },
+  { id: 'shipping', label: 'Заявки на вывоз' },
+  { id: 'returns', label: 'Возвратные заявки' },
+] as const
+type ServiceTab = typeof serviceTabs[number]['id']
+
 export function ServiceOrderViewPage() {
   const { serviceOrderId = '' } = useParams()
   return <ServiceOrderDashboard key={serviceOrderId} serviceOrderId={serviceOrderId} />
 }
 
 function ServiceOrderDashboard({ serviceOrderId }: { serviceOrderId: string }) {
+  const [activeTab, setActiveTab] = useState<ServiceTab>('main')
+  const tabButtons = useRef<(HTMLButtonElement | null)[]>([])
   const [data, setData] = useState<ServiceOrderDetails | null>(null)
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
@@ -82,7 +93,32 @@ function ServiceOrderDashboard({ serviceOrderId }: { serviceOrderId: string }) {
     {error && <div className="service-error"><div className="notice error" role="alert">{error}</div><button className="secondary-button" onClick={() => { setError(''); setAttempt(value => value + 1) }}>Попробовать снова</button></div>}
     {!data && !error && <div className="service-loading" role="status" aria-label="Загружаем заявку"><span>Загружаем заявку…</span><div /><div /><div /></div>}
     {data && receiving && <>
-      <nav className="section-shortcuts" aria-label="Разделы заявки на услугу"><a href="#service-main-title">Основное</a><a href="#service-receiving-title">Поставка</a><a href="#service-shipping-title">Вывозы · {removals.length}</a><a href="#service-returns-title">Возвраты · {data.returnOrders.length}</a><a href="#service-charges">Начисления</a></nav>
+      <div className="stepper view-tabs service-tabs" role="tablist" aria-label="Разделы заявки на услугу">
+        {serviceTabs.map((tab, index) => <button
+          key={tab.id}
+          ref={element => { tabButtons.current[index] = element }}
+          type="button"
+          role="tab"
+          id={`service-tab-${tab.id}`}
+          aria-controls={`service-panel-${tab.id}`}
+          aria-selected={activeTab === tab.id}
+          tabIndex={activeTab === tab.id ? 0 : -1}
+          className={`step ${activeTab === tab.id ? 'current' : ''}`}
+          onClick={() => setActiveTab(tab.id)}
+          onKeyDown={event => {
+            let nextIndex: number
+            if (event.key === 'ArrowRight') nextIndex = (index + 1) % serviceTabs.length
+            else if (event.key === 'ArrowLeft') nextIndex = (index + serviceTabs.length - 1) % serviceTabs.length
+            else if (event.key === 'Home') nextIndex = 0
+            else if (event.key === 'End') nextIndex = serviceTabs.length - 1
+            else return
+            event.preventDefault()
+            setActiveTab(serviceTabs[nextIndex].id)
+            tabButtons.current[nextIndex]?.focus()
+          }}
+        >{tab.label}</button>)}
+      </div>
+      <div id="service-panel-main" role="tabpanel" aria-labelledby="service-tab-main" tabIndex={0} hidden={activeTab !== 'main'}>
       <section className="service-main-panel" aria-labelledby="service-main-title">
         <h2 id="service-main-title">Основная информация</h2>
         <dl className="details-grid">
@@ -91,6 +127,9 @@ function ServiceOrderDashboard({ serviceOrderId }: { serviceOrderId: string }) {
           <div><dt>Статус</dt><dd><StatusBadge status={data.order.status} /></dd></div>
         </dl>
       </section>
+      {data.progress && <ServiceProgressCards progress={data.progress} />}
+      </div>
+      <div id="service-panel-receiving" role="tabpanel" aria-labelledby="service-tab-receiving" tabIndex={0} hidden={activeTab !== 'receiving'}>
       <section className="service-order-section" aria-labelledby="service-receiving-title">
         <h2 id="service-receiving-title">Заявки на поставку</h2>
         <div className="table-wrap service-compact-table service-receiving-table"><table>
@@ -106,6 +145,8 @@ function ServiceOrderDashboard({ serviceOrderId }: { serviceOrderId: string }) {
           </tr></tbody>
         </table></div>
       </section>
+      </div>
+      <div id="service-panel-shipping" role="tabpanel" aria-labelledby="service-tab-shipping" tabIndex={0} hidden={activeTab !== 'shipping'}>
       <section className="service-order-section" aria-labelledby="service-shipping-title">
         <div className="bulk-return-heading"><h2 id="service-shipping-title">Заявки на вывоз</h2>
           {!selectingReturns && <button type="button" className="secondary-button" disabled={!removals.some(order => !order.returnReceivingOrderId)} onClick={() => { setSelectingReturns(true); setReturnError(''); setReturnNotice('') }}>Создать возвратные заявки</button>}
@@ -138,10 +179,13 @@ function ServiceOrderDashboard({ serviceOrderId }: { serviceOrderId: string }) {
           <div className="route-form-actions"><span>{selectedContainerIds.length} из 2 выбрано</span><button type="button" className="primary-button" disabled={creatingShipping || selectedContainerIds.length === 0 || data.order.status === 'COMPLETED'} onClick={createSelectedShippingOrder}>{creatingShipping ? 'Создаём…' : 'Создать заявку на вывоз'}</button></div>
         </div>}
       </section>
+      </div>
+      <div id="service-panel-returns" role="tabpanel" aria-labelledby="service-tab-returns" tabIndex={0} hidden={activeTab !== 'returns'}>
       <section className="service-order-section" aria-labelledby="service-returns-title">
-        <h2 id="service-returns-title">Возвратные поставки</h2>
+        <h2 id="service-returns-title">Возвратные заявки</h2>
         {data.returnOrders.length ? <div className="table-wrap service-compact-table"><table><thead><tr><th>Номер заявки</th><th>КТК</th><th>Рейс</th><th>Статус</th></tr></thead><tbody>{data.returnOrders.map(item => <tr key={item.id}><td><Link className="order-code" to={`/receiving-orders/${item.id}`}>{item.code}</Link></td><td>{item.containerNames.join(', ')}</td><td><OrderRouteCell id={item.id} kind="RECEIVING" /></td><td><StatusBadge status={item.status} /></td></tr>)}</tbody></table></div> : <div className="service-section-empty">Возвратных поставок пока нет</div>}
       </section>
+      </div>
       <div id="service-charges"><BillingCharges serviceOrderId={serviceOrderId} refreshKey={data.order.status} /></div>
     </>}
   </section>

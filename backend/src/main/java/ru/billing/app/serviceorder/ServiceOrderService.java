@@ -204,7 +204,50 @@ public class ServiceOrderService {
                 where r.service_order_id = ? and r.service_role = 'RETURN_RECEIVING' group by r.id order by r.code
                 """, (rs, row) -> new ReturnReceivingOrder(rs.getObject("id", UUID.class), rs.getInt("code"),
                         rs.getString("status"), java.util.Arrays.stream((Object[]) rs.getArray("container_names").getArray()).map(Object::toString).toList()), id);
-        return new ServiceOrderDetails(rows.getFirst(), receiving.findById(deliveryId), removals, selectable, returns);
+        return new ServiceOrderDetails(rows.getFirst(), receiving.findById(deliveryId), removals, selectable, returns, progress(id, deliveryId));
+    }
+
+    private ServiceProgress progress(UUID serviceId, UUID deliveryId) {
+        return jdbc.queryForObject("""
+                with initial_containers as (
+                    select distinct wc.container_id from waybill w
+                    join waybill_railway_carriage rc on rc.waybill_id = w.id
+                    join waybill_container wc on wc.waybill_railway_carriage_id = rc.id
+                    where w.receiving_order_id = ?
+                ), shipping as (
+                    select link.container_id, sh.status, sh.id from shipping_order sh
+                    join shipping_order_source_container link on link.shipping_order_id = sh.id
+                    join initial_containers ic on ic.container_id = link.container_id
+                    where sh.service_order_id = ?
+                ), returns as (
+                    select rc.container_id, r.status from receiving_order r
+                    join receiving_order_container rc on rc.receiving_order_id = r.id
+                    join shipping sh on sh.id = r.source_shipping_order_id and sh.container_id = rc.container_id
+                    where r.service_order_id = ? and r.service_role = 'RETURN_RECEIVING'
+                )
+                select a.name as initial_name, b.name as return_name,
+                    case when initial.status = 'COMPLETED'
+                        then coalesce(initial.accepted_container_count, (select count(*) from initial_containers))
+                        else 0 end as accepted,
+                    (select count(distinct container_id) from shipping) as shipping_created,
+                    (select count(distinct container_id) from shipping where status = 'COMPLETED') as shipping_completed,
+                    (select count(distinct container_id) from returns) as return_created,
+                    (select count(distinct container_id) from returns where status = 'COMPLETED') as return_completed,
+                    coalesce(initial.accepted_container_count, (select count(*) from initial_containers)) as total,
+                    (select count(*) from initial_containers ic where not exists
+                        (select 1 from shipping sh where sh.container_id = ic.container_id)) as shipping_missing
+                from receiving_order initial
+                left join complex_service_catalog a on
+                    (initial.a_complex_service_id is not null and a.id = initial.a_complex_service_id)
+                    or (initial.a_complex_service_id is null and a.purpose =
+                        case when (select count(*) from initial_containers) >= 40 then 'A_TRAIN' else 'A_WAGON' end)
+                left join complex_service_catalog b on b.purpose = 'B_AUTO_RETURN'
+                where initial.id = ?
+                """, (rs, row) -> new ServiceProgress(rs.getString("initial_name"), rs.getString("return_name"),
+                        rs.getInt("accepted"), rs.getInt("shipping_created"), rs.getInt("shipping_completed"),
+                        rs.getInt("return_created"), rs.getInt("return_completed"),
+                        rs.getInt("total"), rs.getInt("shipping_missing")),
+                deliveryId, serviceId, serviceId, deliveryId);
     }
 
     private static ServiceOrderSummary summary(java.sql.ResultSet rs) throws java.sql.SQLException {

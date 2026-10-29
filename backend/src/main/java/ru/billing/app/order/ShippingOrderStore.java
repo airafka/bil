@@ -2,6 +2,7 @@ package ru.billing.app.order;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,15 +30,17 @@ public class ShippingOrderStore {
         Integer code = jdbcTemplate.queryForObject(
                 "insert into shipping_order "
                         + "(id, client_id, terminal_area_catalog_id, transport_type, contract_id, "
-                        + "filling_type, status) "
-                        + "values (?, ?, ?, ?, ?, ?, 'DRAFT') returning code",
+                        + "filling_type, status, departure_at, consignee) "
+                        + "values (?, ?, ?, ?, ?, ?, 'DRAFT', ?, ?) returning code",
                 Integer.class,
                 orderId,
                 request.clientId(),
                 request.terminalAreaId(),
                 request.transportType().name(),
                 request.contractId(),
-                fillingType.name()
+                fillingType.name(),
+                request.departureAt(),
+                request.consignee()
         );
 
         if (fillingType == FillingType.VEHICLE_UNNUMBERED) {
@@ -111,7 +114,7 @@ public class ShippingOrderStore {
                 select o.id, o.code, o.client_id, c.code as client_name,
                        a.id as area_id, a.code as area_code, a.name as area_name,
                        o.transport_type, o.filling_type, o.status, o.contract_id, ct.name as contract_name, o.service_order_id, o.route_id,
-                       o.source_receiving_order_id as source_receiving_order_id
+                       o.source_receiving_order_id as source_receiving_order_id, o.departure_at, o.consignee
                 from shipping_order o
                 join client c on c.id = o.client_id
                 left join contract ct on ct.id = o.contract_id
@@ -131,7 +134,9 @@ public class ShippingOrderStore {
                         resultSet.getString("contract_name"),
                         resultSet.getObject("service_order_id", UUID.class),
                         resultSet.getObject("source_receiving_order_id", UUID.class),
-                        resultSet.getObject("route_id", UUID.class)
+                        resultSet.getObject("route_id", UUID.class),
+                        resultSet.getObject("departure_at", LocalDateTime.class),
+                        resultSet.getString("consignee")
                 ),
                 id
         );
@@ -175,7 +180,8 @@ public class ShippingOrderStore {
                 header.terminalArea(), header.transportType(),
                 header.fillingType(), header.status(),
                 containers, List.of(), railwayCarriages, carriageQuantities, containerQuantities,
-                header.contractId(), header.contractName(), header.serviceOrderId(), header.sourceReceivingOrderId(), header.routeId(), null, returns
+                header.contractId(), header.contractName(), header.serviceOrderId(), header.sourceReceivingOrderId(), header.routeId(), null, returns,
+                null, null, header.departureAt(), header.consignee()
         );
     }
 
@@ -417,7 +423,9 @@ public class ShippingOrderStore {
             String contractName,
             UUID serviceOrderId,
             UUID sourceReceivingOrderId,
-            UUID routeId
+            UUID routeId,
+            LocalDateTime departureAt,
+            String consignee
     ) {
     }
 

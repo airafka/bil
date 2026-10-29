@@ -72,6 +72,10 @@ export type SelectedContainerQuantity = {
 }
 
 export type OrderFormState = {
+  arrivalAt: string
+  consignor: string
+  departureAt: string
+  consignee: string
   contractId: string
   routeId: string
   clientId: string
@@ -86,6 +90,10 @@ export type OrderFormState = {
 }
 
 export type CreateOrderPayload = {
+  arrivalAt?: string
+  consignor?: string
+  departureAt?: string
+  consignee?: string
   routeId?: string
   contractId: string
   clientId: string
@@ -122,6 +130,10 @@ export type CreateOrderPayload = {
 }
 
 export const initialOrderFormState: OrderFormState = {
+  arrivalAt: '',
+  consignor: '',
+  departureAt: '',
+  consignee: '',
   clientId: '',
   contractId: '',
   routeId: '',
@@ -232,6 +244,13 @@ export function buildPayload(
   return {
     clientId: state.clientId,
     contractId: state.contractId,
+    ...(kind === 'receiving' ? {
+      ...(state.arrivalAt ? { arrivalAt: state.arrivalAt } : {}),
+      ...(state.consignor.trim() ? { consignor: state.consignor.trim() } : {}),
+    } : {
+      ...(state.departureAt ? { departureAt: state.departureAt } : {}),
+      ...(state.consignee.trim() ? { consignee: state.consignee.trim() } : {}),
+    }),
     ...(state.routeId ? { routeId: state.routeId } : {}),
     terminalAreaId: state.terminalAreaId,
     transportType: state.transportType,

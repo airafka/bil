@@ -200,6 +200,10 @@ export type ContainerQuantityDetails = {
 }
 
 export type OrderDetails = {
+  arrivalAt: string | null
+  consignor: string | null
+  departureAt: string | null
+  consignee: string | null
   sourceShippingOrderId?: string | null
   returnOrders?: Array<{ id: string; code: number; status: string; containerNames: string[] }>
   routeId?: string | null

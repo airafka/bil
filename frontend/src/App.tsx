@@ -1,4 +1,7 @@
 import { lazy, Suspense } from 'react'
+const InvoiceRegistryPage = lazy(() => import('./pages/PaymentInvoicePages').then(module => ({ default: module.InvoiceRegistryPage })))
+const InvoiceCreatePage = lazy(() => import('./pages/PaymentInvoicePages').then(module => ({ default: module.InvoiceCreatePage })))
+const InvoiceViewPage = lazy(() => import('./pages/PaymentInvoicePages').then(module => ({ default: module.InvoiceViewPage })))
 const BillingChargesPage = lazy(() => import('./pages/BillingChargesPage').then(module => ({ default: module.BillingChargesPage })))
 const RouteRegistryPage = lazy(() => import('./pages/RoutePages').then(module => ({ default: module.RouteRegistryPage })))
 const RouteCreatePage = lazy(() => import('./pages/RoutePages').then(module => ({ default: module.RouteCreatePage })))
@@ -25,6 +28,9 @@ function App() {
         <Suspense fallback={<div className="view-loading" role="status">Загружаем раздел…</div>}><Routes>
           <Route path="/" element={<Navigate to="/receiving-orders" replace />} />
           <Route path="/billing-charges" element={<BillingChargesPage />} />
+          <Route path="/payment-invoices" element={<InvoiceRegistryPage />} />
+          <Route path="/payment-invoices/new" element={<InvoiceCreatePage />} />
+          <Route path="/payment-invoices/:invoiceId" element={<InvoiceViewPage />} />
           <Route path="/service-orders" element={<ServiceOrderRegistryPage />} />
           <Route path="/service-orders/new" element={<CreateOrderPage key="service" config={orderConfigs.receiving} serviceMode />} />
           <Route path="/service-orders/:serviceOrderId" element={<ServiceOrderViewPage />} />

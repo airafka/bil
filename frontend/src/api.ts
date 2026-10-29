@@ -15,6 +15,23 @@ import type { CreateOrderPayload } from './orderForm'
 import type { RouteType, RouteSummary, RouteOrder, RouteDetails, CreateRoutePayload } from './routes'
 import type { CreateWaybillPayload } from './waybillForm'
 import type { ComplexService, ComplexServiceDetails, ComplexServicePayload, ComplexServiceTariffPayload } from './complexService'
+import type { InvoiceCandidates, InvoiceDetails, InvoiceFilters, PaymentInvoice } from './invoices'
+
+export function getPaymentInvoices(page = 0) {
+  return request<PagedResponse<PaymentInvoice>>(`/api/payment-invoices?page=${page}`)
+}
+export function getInvoiceCandidates(filters: InvoiceFilters) {
+  return request<InvoiceCandidates>(`/api/payment-invoices/available-charges?${new URLSearchParams(filters)}`)
+}
+export function createPaymentInvoice(filters: InvoiceFilters, chargeIds: string[], requestKey: string) {
+  return request<InvoiceDetails>('/api/payment-invoices', { method: 'POST', body: JSON.stringify({ ...filters, chargeIds, requestKey }) })
+}
+export function getPaymentInvoice(id: string) {
+  return request<InvoiceDetails>(`/api/payment-invoices/${id}`)
+}
+export function deletePaymentInvoice(id: string) {
+  return request<void>(`/api/payment-invoices/${id}`, { method: 'DELETE' })
+}
 
 type ApiProblem = {
   detail?: string

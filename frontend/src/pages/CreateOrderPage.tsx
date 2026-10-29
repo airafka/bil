@@ -353,7 +353,16 @@ export function CreateOrderPage({ config, serviceMode = false }: { config: Order
                   </span>
                 </label>
               </div>
-              <div className="form-fields-column"><div className="field horizontal-field"><span>Статус:</span><div className="ui-readonly-value"><StatusBadge status="DRAFT" /></div></div></div>
+              <div className="form-fields-column">
+                <div className="field horizontal-field"><span>Статус:</span><div className="ui-readonly-value"><StatusBadge status="DRAFT" /></div></div>
+                {!serviceMode && (config.kind === 'receiving' ? <>
+                  <label className="field horizontal-field"><span>Дата и время поступления:</span><UiInput type="datetime-local" step={60} value={form.arrivalAt} onChange={event => setForm(state => ({ ...state, arrivalAt: event.target.value }))} /></label>
+                  <label className="field horizontal-field"><span>Грузоотправитель:</span><UiInput maxLength={255} value={form.consignor} onChange={event => setForm(state => ({ ...state, consignor: event.target.value }))} placeholder="Наименование грузоотправителя" /></label>
+                </> : <>
+                  <label className="field horizontal-field"><span>Дата и время вывоза:</span><UiInput type="datetime-local" step={60} value={form.departureAt} onChange={event => setForm(state => ({ ...state, departureAt: event.target.value }))} /></label>
+                  <label className="field horizontal-field"><span>Грузополучатель:</span><UiInput maxLength={255} value={form.consignee} onChange={event => setForm(state => ({ ...state, consignee: event.target.value }))} placeholder="Наименование грузополучателя" /></label>
+                </>)}
+              </div>
             </div>
             {!serviceMode && <>
               <div className="form-section-heading ui-section-divider"><h2>Параметры заявки</h2></div>
