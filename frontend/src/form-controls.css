@@ -33,7 +33,7 @@
 .horizontal-field { margin: 8px 0 0; max-width: 536px; }
 .horizontal-field > span:first-child, .field:has(> span:first-child:not(.sr-only):not(.service-sr-only)) > span:first-child { padding-top: 11px; font-weight: 400; }
 .field > small { grid-column: -2 / -1; }
-.form-fields-grid, .waybill-main-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 536px)); gap: 16px clamp(24px, 5vw, 100px); max-width: 1172px; margin-top: 16px; }
+.form-fields-grid, .waybill-main-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 536px)); gap: 12px 48px; max-width: 1172px; margin-top: 12px; }
 .form-fields-column { display: grid; align-content: start; gap: 8px; min-width: 0; }
 .form-fields-column .horizontal-field { max-width: none; margin: 0; }
 .form-workspace { border-radius: 5px; }

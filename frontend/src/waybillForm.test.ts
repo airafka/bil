@@ -15,20 +15,27 @@ describe('waybill masses', () => {
     }
   })
   it('requires cargo only on the cargo step and only for loaded containers', () => {
-    const withoutCargo = { ...state, etsngCodeId: '', railwayCarriages: [{ ...state.railwayCarriages[0], containers: [{ ...row, etsngCodeId: '' }] }] }
+    const withoutCargo = { ...state, etsngCodeId: '', railwayCarriages: [{ ...state.railwayCarriages[0], containers: [row] }] }
     expect(validateWaybillStep(withoutCargo, 3)).toEqual([])
     expect(validateWaybillStep(withoutCargo, 4).join()).toContain('выберите груз')
-    expect(validateWaybillStep({ ...state, railwayCarriages: [{ ...state.railwayCarriages[0], containers: [{ ...row, grossWeight: '3200', etsngCodeId: '' }] }] }, 4)).toEqual([])
+    expect(validateWaybillStep({ ...state, railwayCarriages: [{ ...state.railwayCarriages[0], containers: [{ ...row, grossWeight: '3200' }] }] }, 4)).toEqual([])
   })
   it('sends gross as an exact decimal and omits client-supplied tare/net and manual product weights', () => {
     const payload = buildWaybillPayload(state)
-    expect(payload.railwayCarriages[0].containers[0]).toEqual({ containerId: 'container-1', grossWeight: '25000.125', etsngCodeId: 'cargo-1' })
+    expect(payload.railwayCarriages[0].containers[0]).toEqual({ containerId: 'container-1', grossWeight: '25000.125' })
     expect(payload).not.toHaveProperty('products')
     expect(payload.payer).toBe('P')
   })
-  it('applies the waybill cargo to every loaded KTK regardless of previous row cargo', () => {
-    const payload = buildWaybillPayload({ ...state, railwayCarriages: [{ ...state.railwayCarriages[0], containers: [row, { ...row, containerId: 'container-2', etsngCodeId: 'old-cargo' }] }] })
-    expect(payload.railwayCarriages[0].containers.map(item => item.etsngCodeId)).toEqual(['cargo-1', 'cargo-1'])
+  it('sends one waybill cargo and preserves individual gross weights', () => {
+    const payload = buildWaybillPayload({ ...state, railwayCarriages: [{ ...state.railwayCarriages[0], containers: [row, { ...row, containerId: 'container-2', grossWeight: '7000' }] }] })
+    expect(payload.railwayCarriages[0].containers.map(item => item.grossWeight)).toEqual(['25000.125', '7000'])
+    expect(payload.etsngCodeId).toBe('cargo-1')
+    expect(payload.railwayCarriages[0].containers.every(item => !('etsngCodeId' in item))).toBe(true)
+  })
+  it('omits a previous cargo selection after every KTK becomes empty', () => {
+    const empty = { ...state, railwayCarriages: [{ ...state.railwayCarriages[0], containers: [{ ...row, grossWeight: '3200' }] }] }
+    expect(buildWaybillPayload(empty).etsngCodeId).toBeNull()
+    expect(validateWaybillStep(empty, 4)).toEqual([])
   })
   it('loads tare from the selected reference', () => {
     expect(selectWaybillContainer(row, { id: 'other', name: 'Other', tareWeight: 3400 }).tareWeight).toBe(3400)

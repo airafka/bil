@@ -39,6 +39,11 @@ public class ReceivingOrderController {
         return service.findById(id);
     }
 
+    @org.springframework.web.bind.annotation.PatchMapping("/{id}/containers")
+    public OrderDetails updateContainers(@PathVariable UUID id, @Valid @RequestBody UpdateOrderContainersRequest request) {
+        return service.updateContainerAttributes(id, request);
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CreatedOrderResponse create(@Valid @RequestBody CreateOrderRequest request) {

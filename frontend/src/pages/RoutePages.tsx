@@ -1,3 +1,6 @@
+import { RowActions } from '../components/RowActions'
+import { ActionIcon } from '../components/ActionIcon'
+import { RouteInformation } from '../components/RouteInformation'
 import { StatusBadge } from '../components/StatusBadge'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -10,18 +13,17 @@ import type { RouteDetails, RouteOrder, RouteSummary, RouteType } from '../route
 import { routeDateLabel, routeTypeLabel } from '../routes'
 
 export function RouteRegistryPage() {
-  const [query, setQuery] = useState('')
   const [routes, setRoutes] = useState<RouteSummary[] | null>(null)
   const [error, setError] = useState('')
   useEffect(() => { getRoutes().then(setRoutes).catch(e => setError(e instanceof Error ? e.message : 'Не удалось загрузить рейсы')) }, [])
   return <section className="registry-page">
-    <div className="page-header"><h1>Рейсы</h1><Link className="primary-button" to="/routes/new"><span>+</span> Создать рейс</Link></div>
+    <div className="page-header"><h1>Рейсы</h1><Link className="primary-button" to="/routes/new"><ActionIcon name="plus" /> Создать</Link></div>
     {error && <div className="notice error" role="alert">{error}</div>}
-    <div className="table-card"><div className="registry-tools"><label>Поиск по номеру рейса<UiInput type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Номер рейса" /></label></div><div className="table-toolbar"><strong>Реестр рейсов</strong><span>{routes?.length ?? 0} записей</span></div>
-      <div className="table-wrap"><table><thead><tr><th>Номер</th><th>Тип рейса</th><th>Дата и время</th><th>Транспорт</th><th>Заявок</th><th>Статус</th></tr></thead><tbody>
-        {!routes && !error && <tr><td className="table-message" colSpan={6}>Загружаем рейсы…</td></tr>}
-        {routes && !routes.some(route => String(route.code).includes(query.trim())) && <tr><td className="table-message" colSpan={6}>{query ? 'Рейсы не найдены' : 'Рейсов пока нет'}</td></tr>}
-        {routes?.filter(route => String(route.code).includes(query.trim())).map(route => <tr key={route.id}><td><Link className="order-code" to={`/routes/${route.id}`}>{route.code}</Link></td><td>{routeTypeLabel(route.routeType)}</td><td>{routeDateLabel(route.departureAt)}</td><td>{transportTypeLabel(route.transportType)}</td><td>{route.orderCount}</td><td><StatusBadge status={route.status} /></td></tr>)}
+    <div className="table-card">
+      <div className="table-wrap"><table><thead><tr><th className="registry-index" scope="col">№</th><th>Номер рейса</th><th>Тип рейса</th><th>Дата и время</th><th>Вид транспорта</th><th>Заявок</th><th>Статус</th><th className="registry-actions" scope="col" aria-label="Действия" /></tr></thead><tbody>
+        {!routes && !error && <tr><td className="table-message" colSpan={8}>Загружаем рейсы…</td></tr>}
+        {routes && routes.length === 0 && <tr><td className="table-message" colSpan={8}>Рейсов пока нет</td></tr>}
+        {routes?.map((route, index) => <tr key={route.id}><td className="registry-index">{index + 1}</td><td><Link className="order-code" to={`/routes/${route.id}`}>{route.code}</Link></td><td>{routeTypeLabel(route.routeType)}</td><td>{routeDateLabel(route.departureAt)}</td><td>{transportTypeLabel(route.transportType)}</td><td>{route.orderCount}</td><td><StatusBadge status={route.status} /></td><td className="registry-actions"><RowActions label={'Действия с рейсом ' + route.code} actions={[{ label: 'Открыть', to: '/routes/' + route.id }]} /></td></tr>)}
       </tbody></table></div>
     </div>
   </section>
@@ -93,7 +95,7 @@ export function RouteCreatePage() {
       <section className="form-section ui-form-section ui-section-divider"><h2 className="form-section-heading">Комментарий</h2><label className="field horizontal-field route-comment"><span>Комментарий</span><UiTextarea maxLength={200} value={comment} onChange={e => setComment(e.target.value)} placeholder="Необязательно" /></label></section>
       </div>
       {tab === 'main' && <div className="route-form-actions"><button type="button" className="primary-button" onClick={nextTab}>Далее →</button></div>}
-      {tab === 'orders' && <section className="form-section ui-form-section ui-section-divider"><h2 className="form-section-heading">Заявки в рейсе</h2><p className="route-help">Можно создать рейс без заявок и добавить их позднее. Доступны свободные черновики выбранного транспорта и площадки.</p>
+      {tab === 'orders' && <section className="form-section ui-form-section ui-section-divider"><p className="route-help">Можно создать рейс без заявок и добавить их позднее. Доступны свободные черновики выбранного транспорта и площадки.</p>
         <div className="table-wrap route-orders-picker"><table><thead><tr><th scope="col">Выбрать</th><th scope="col">Номер заявки</th><th scope="col">Клиент</th><th scope="col">Статус</th></tr></thead><tbody>
           {loading && <tr><td colSpan={4} className="table-message">Загружаем заявки…</td></tr>}
           {!loading && options.length === 0 && <tr><td colSpan={4} className="table-message">Подходящих заявок пока нет</td></tr>}
@@ -113,16 +115,19 @@ export function RouteViewPage() {
   const [available, setAvailable] = useState<RouteOrder[]>([])
   const [selected, setSelected] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [loadingAvailable, setLoadingAvailable] = useState(false)
   useEffect(() => { getRoute(routeId).then(setDetails).catch(e => setError(e instanceof Error ? e.message : 'Не удалось загрузить рейс')) }, [routeId])
   const route = details?.route
   useEffect(() => {
-    if (!route || route.status !== 'DRAFT') return
+    if (!route || route.status !== 'DRAFT' || !editing) return
     let active = true
     getAvailableRouteOrders(route.routeType, route.transportType, route.terminalAreaId)
       .then(value => { if (active) setAvailable(value) })
       .catch(e => { if (active) setError(e instanceof Error ? e.message : 'Не удалось загрузить свободные заявки') })
+      .finally(() => { if (active) setLoadingAvailable(false) })
     return () => { active = false }
-  }, [route])
+  }, [route, editing])
   async function addOrders() {
     if (!selected.length) return
     setSaving(true)
@@ -131,21 +136,17 @@ export function RouteViewPage() {
       const updated = await assignRouteOrders(routeId, selected)
       setDetails(updated)
       setSelected([])
+      setEditing(false)
     } catch (e) { setError(e instanceof Error ? e.message : 'Не удалось добавить заявки') }
     finally { setSaving(false) }
   }
   return <section className="form-page route-page">
     <Link className="service-back" to="/routes">← Рейсы</Link>
-    <div className="page-header"><h1>Рейс {route?.code ?? ''}</h1>{route && <StatusBadge status={route.status} />}</div>
+    <div className="page-header"><h1>Рейс {route?.code ?? ''}</h1>{route && <div className="view-header-actions"><StatusBadge status={route.status} />{route.status === 'DRAFT' && !editing && <button type="button" className="secondary-button icon-button" aria-label="Редактировать" title="Редактировать" onClick={() => { setSelected([]); setAvailable([]); setLoadingAvailable(true); setError(''); setEditing(true) }}><ActionIcon name="edit" /></button>}</div>}</div>
     {error && <div className="notice error" role="alert">{error}</div>}
     {!details && !error && <div className="service-loading" role="status">Загружаем рейс…</div>}
-    {route && <><section className="service-main-panel"><h2>Основная информация</h2><dl className="details-grid">
-      <div><dt>Тип рейса</dt><dd>{routeTypeLabel(route.routeType)}</dd></div><div><dt>Дата и время</dt><dd>{routeDateLabel(route.departureAt)}</dd></div>
-      <div><dt>Площадка</dt><dd>{route.terminalAreaName}</dd></div><div><dt>Транспорт</dt><dd>{transportTypeLabel(route.transportType)}</dd></div>
-      {route.transportType === 'VEHICLE' && <><div><dt>Перевозчик</dt><dd>{route.carrier}</dd></div><div><dt>Водитель</dt><dd>{route.driverName}</dd></div><div><dt>Номер машины</dt><dd>{route.vehicleNumber}</dd></div></>}
-      {route.comment && <div><dt>Комментарий</dt><dd>{route.comment}</dd></div>}
-    </dl></section><section className="service-order-section"><h2>Заявки в рейсе <span className="service-count">{details.orders.length}</span></h2><div className="table-wrap service-compact-table"><table><thead><tr><th>Номер заявки</th><th>Клиент</th><th>Статус</th></tr></thead><tbody>{details.orders.map(order => <tr key={order.id}><td><Link className="order-code" to={`/${route.routeType === 'RECEIVING' ? 'receiving' : 'shipping'}-orders/${order.id}`}>{order.code}</Link></td><td>{order.clientName}</td><td><StatusBadge status={order.status} /></td></tr>)}</tbody></table></div>{details.orders.length === 0 && <div className="service-section-empty">В рейсе пока нет заявок</div>}</section>
-    {route.status === 'DRAFT' && <section className="service-order-section route-assign-section"><h2>Добавить заявки</h2><p className="route-help">Доступны свободные черновики того же транспорта и площадки.</p><div className="table-wrap service-compact-table"><table><thead><tr><th>Выбрать</th><th>Номер заявки</th><th>Клиент</th></tr></thead><tbody>{available.map(order => <tr key={order.id}><td><UiInput type="checkbox" checked={selected.includes(order.id)} onChange={() => setSelected(current => current.includes(order.id) ? current.filter(id => id !== order.id) : [...current, order.id])} aria-label={`Выбрать заявку ${order.code}`} /></td><td>{order.code}</td><td>{order.clientName}</td></tr>)}</tbody></table></div>{available.length === 0 && <div className="service-section-empty">Свободных заявок пока нет</div>}<div className="route-form-actions"><span>{selected.length} выбрано</span><button type="button" className="primary-button" disabled={!selected.length || saving} onClick={addOrders}>{saving ? 'Добавляем…' : 'Добавить в рейс'}</button></div></section>}</>}
+    {route && <><section className="service-main-panel"><RouteInformation route={route} /></section><section className="service-order-section"><h2>Заявки в рейсе <span className="service-count">{details.orders.length}</span></h2><div className="table-wrap service-compact-table"><table><thead><tr><th>Номер заявки</th><th>Клиент</th><th>Статус</th></tr></thead><tbody>{details.orders.map(order => <tr key={order.id}><td><Link className="order-code" to={`/${route.routeType === 'RECEIVING' ? 'receiving' : 'shipping'}-orders/${order.id}`}>{order.code}</Link></td><td>{order.clientName}</td><td><StatusBadge status={order.status} /></td></tr>)}</tbody></table></div>{details.orders.length === 0 && <div className="service-section-empty">В рейсе пока нет заявок</div>}</section>
+    {route.status === 'DRAFT' && editing && <section className="service-order-section route-assign-section"><h2>Добавить заявки</h2><p className="route-help">Доступны свободные черновики того же транспорта и площадки.</p><div className="table-wrap service-compact-table"><table><thead><tr><th>Выбрать</th><th>Номер заявки</th><th>Клиент</th></tr></thead><tbody>{available.map(order => <tr key={order.id}><td><UiInput type="checkbox" disabled={saving} checked={selected.includes(order.id)} onChange={() => setSelected(current => current.includes(order.id) ? current.filter(id => id !== order.id) : [...current, order.id])} aria-label={`Выбрать заявку ${order.code}`} /></td><td>{order.code}</td><td>{order.clientName}</td></tr>)}</tbody></table></div>{loadingAvailable && <p role="status">Загружаем заявки…</p>}{!loadingAvailable && available.length === 0 && <div className="service-section-empty">Свободных заявок пока нет</div>}<div className="route-form-actions"><span>{selected.length} выбрано</span><button type="button" className="secondary-button" disabled={saving} onClick={() => { setEditing(false); setSelected([]); setError('') }}>Отмена</button><button type="button" className="primary-button" disabled={!selected.length || saving || loadingAvailable} onClick={addOrders}>{saving ? 'Сохраняем…' : 'Сохранить'}</button></div></section>}</>}
   </section>
 }
 

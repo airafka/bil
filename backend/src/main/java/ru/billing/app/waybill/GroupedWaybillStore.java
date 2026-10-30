@@ -124,7 +124,8 @@ public class GroupedWaybillStore {
             Map<UUID, List<WaybillProductSummary>> productsByWaybill
     ) {
         Map<GroupKey, List<WaybillLink>> result = new LinkedHashMap<>();
-        Map<UUID, List<WaybillContainerSummary>> containersByWaybill = loadContainers(batchFilter);
+        ContainerIndex containers = loadContainers(batchFilter);
+        Map<UUID, List<WaybillCarriageSummary>> carriages = loadCarriages(batchFilter, containers.byCarriage());
         jdbcTemplate.query(
                 "select w.id, w.number, w.departure_station, w.destination_station, w.payer, "
                         + "(select count(*) from waybill_railway_carriage wrc where wrc.waybill_id = w.id) "
@@ -146,7 +147,8 @@ public class GroupedWaybillStore {
                             resultSet.getLong("railway_carriage_count"),
                             resultSet.getLong("container_count"),
                             productsByWaybill.getOrDefault(resultSet.getObject("id", UUID.class), List.of()),
-                            containersByWaybill.getOrDefault(resultSet.getObject("id", UUID.class), List.of())
+                            containers.byWaybill().getOrDefault(resultSet.getObject("id", UUID.class), List.of()),
+                            carriages.getOrDefault(resultSet.getObject("id", UUID.class), List.of())
                     ));
                 },
                 batchFilter.parameters().toArray()
@@ -159,12 +161,14 @@ public class GroupedWaybillStore {
         Map<UUID, List<WaybillProductSummary>> byWaybill = new LinkedHashMap<>();
         jdbcTemplate.query(
                 """
-                select p.id, p.etsng_code_id, e.code as etsng_display, (wc.gross_weight - c.tare_weight) as weight, w.id as waybill_id,
+                select (select coalesce(sum(wc.gross_weight), 0) from waybill_railway_carriage rc join waybill_container wc on wc.waybill_railway_carriage_id = rc.id join container c on c.id = wc.container_id where rc.waybill_id = p.waybill_id and wc.gross_weight > c.tare_weight) as product_gross_weight, p.hazard_class_id, (select h.code from hazard_class h where h.id = p.hazard_class_id) as hazard_class_name, p.id, p.etsng_code_id, e.code as etsng_display, (select coalesce(sum(wc.gross_weight - c.tare_weight), 0)
+                          from waybill_railway_carriage rc
+                          join waybill_container wc on wc.waybill_railway_carriage_id = rc.id
+                          join container c on c.id = wc.container_id
+                         where rc.waybill_id = p.waybill_id) as weight, w.id as waybill_id,
                        w.departure_station, w.destination_station, w.payer
                   from waybill_product p
                   join waybill w on w.id = p.waybill_id
-                  join waybill_container wc on wc.id = p.waybill_container_id
-                  join container c on c.id = wc.container_id
                   join etsng_code e on e.id = p.etsng_code_id
                  where 
                 """ + batchFilter.sql() + " order by p.id",
@@ -180,7 +184,7 @@ public class GroupedWaybillStore {
                             resultSet.getObject("etsng_code_id", UUID.class),
                             display[0],
                             display[1],
-                            resultSet.getBigDecimal("weight")
+                            resultSet.getBigDecimal("weight"), resultSet.getBigDecimal("product_gross_weight"), resultSet.getObject("hazard_class_id", UUID.class), resultSet.getString("hazard_class_name")
                     );
                     byGroup.computeIfAbsent(key, ignored -> new ArrayList<>()).add(product);
                     byWaybill.computeIfAbsent(
@@ -193,25 +197,55 @@ public class GroupedWaybillStore {
         return new ProductIndex(byGroup, byWaybill);
     }
 
-    private Map<UUID, List<WaybillContainerSummary>> loadContainers(BatchFilter filter) {
-        Map<UUID, List<WaybillContainerSummary>> result = new LinkedHashMap<>();
+    private ContainerIndex loadContainers(BatchFilter filter) {
+        Map<UUID, List<WaybillContainerSummary>> byWaybill = new LinkedHashMap<>();
+        Map<UUID, List<WaybillContainerSummary>> byCarriage = new LinkedHashMap<>();
         jdbcTemplate.query("""
-                select w.id as waybill_id, wc.container_id, c.code as container_number,
-                       wc.gross_weight, c.tare_weight as tare_weight, (wc.gross_weight - c.tare_weight) as net_weight, p.etsng_code_id, e.code as etsng_name
+                select w.id as waybill_id, rc.id as carriage_id, wc.container_id, c.code as container_number, c.type as container_type, c.load_capacity,
+                       wc.gross_weight, c.tare_weight as tare_weight, (wc.gross_weight - c.tare_weight) as net_weight, p.etsng_code_id, e.code as etsng_name, wc.owner_client_id, owner.code as owner_client_name,
+                       wc.seal_numbers, wc.seal_type_id, st.code as seal_type_name
                 from waybill_container wc
                 join container c on c.id = wc.container_id
+                  left join client owner on owner.id = wc.owner_client_id
+                  left join seal_type st on st.id = wc.seal_type_id
                 join waybill_railway_carriage rc on rc.id = wc.waybill_railway_carriage_id
                 join waybill w on w.id = rc.waybill_id
-                left join waybill_product p on p.waybill_container_id = wc.id
+                left join waybill_product p on p.waybill_id = w.id and wc.gross_weight > c.tare_weight
                 left join etsng_code e on e.id = p.etsng_code_id
                 where
                 """ + filter.sql() + " order by w.number, c.code",
-                (org.springframework.jdbc.core.RowCallbackHandler) rs -> result.computeIfAbsent(rs.getObject("waybill_id", UUID.class), key -> new ArrayList<>())
-                        .add(new WaybillContainerSummary(rs.getObject("container_id", UUID.class), rs.getString("container_number"),
+                (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
+                    WaybillContainerSummary container = new WaybillContainerSummary(rs.getObject("container_id", UUID.class), rs.getString("container_number"),
                                 rs.getBigDecimal("gross_weight"), rs.getBigDecimal("tare_weight"), rs.getBigDecimal("net_weight"),
-                                rs.getObject("etsng_code_id", UUID.class), rs.getString("etsng_name"))), filter.parameters().toArray());
+                                rs.getObject("etsng_code_id", UUID.class), rs.getString("etsng_name"),
+                                rs.getObject("owner_client_id", UUID.class), rs.getString("owner_client_name"),
+                                rs.getString("seal_numbers"), rs.getObject("seal_type_id", UUID.class), rs.getString("seal_type_name"), rs.getString("container_type"), rs.getBigDecimal("load_capacity"));
+                    byWaybill.computeIfAbsent(rs.getObject("waybill_id", UUID.class), key -> new ArrayList<>()).add(container);
+                    byCarriage.computeIfAbsent(rs.getObject("carriage_id", UUID.class), key -> new ArrayList<>()).add(container);
+                }, filter.parameters().toArray());
+        return new ContainerIndex(byWaybill, byCarriage);
+    }
+
+    private Map<UUID, List<WaybillCarriageSummary>> loadCarriages(BatchFilter filter,
+            Map<UUID, List<WaybillContainerSummary>> containers) {
+        Map<UUID, List<WaybillCarriageSummary>> result = new LinkedHashMap<>();
+        jdbcTemplate.query("""
+                select w.id as waybill_id, rc.id, c.code as number
+                  from waybill_railway_carriage rc
+                  join railway_carriage c on c.id = rc.railway_carriage_id
+                  join waybill w on w.id = rc.waybill_id
+                 where
+                """ + filter.sql() + " order by w.number, c.code, rc.id",
+                (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
+                    UUID id = rs.getObject("id", UUID.class);
+                    result.computeIfAbsent(rs.getObject("waybill_id", UUID.class), key -> new ArrayList<>())
+                            .add(new WaybillCarriageSummary(id, rs.getString("number"), containers.getOrDefault(id, List.of())));
+                }, filter.parameters().toArray());
         return result;
     }
+
+    private record ContainerIndex(Map<UUID, List<WaybillContainerSummary>> byWaybill,
+                                  Map<UUID, List<WaybillContainerSummary>> byCarriage) {}
 
     private SqlFilter filter(WaybillFilter filter, boolean availableOnly) {
         StringBuilder sql = new StringBuilder("where 1 = 1");

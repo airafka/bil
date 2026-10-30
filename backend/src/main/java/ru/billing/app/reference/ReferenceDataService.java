@@ -30,6 +30,15 @@ public class ReferenceDataService {
         this.orderScenarioPolicy = orderScenarioPolicy;
     }
 
+    public List<ReferenceOption> findSealTypes(String query, Integer limit) { return find("seal_type", query, limit); }
+    public List<ReferenceOption> findHazardClasses(String query, Integer limit) { return find("hazard_class", query, limit); }
+
+    public void validateContainerAttributes(UUID ownerClientId, UUID sealTypeId, UUID hazardClassId) {
+        if (ownerClientId != null) ensureExists("client", ownerClientId, "OWNER_CLIENT_NOT_FOUND", "Собственник КТК не найден");
+        if (sealTypeId != null) ensureExists("seal_type", sealTypeId, "SEAL_TYPE_NOT_FOUND", "Тип ЗПУ не найден");
+        if (hazardClassId != null) ensureExists("hazard_class", hazardClassId, "HAZARD_CLASS_NOT_FOUND", "Класс опасности не найден");
+    }
+
     public List<ReferenceOption> findClients(String query, Integer limit) {
         return find("client", query, limit);
     }
@@ -38,13 +47,13 @@ public class ReferenceDataService {
         int limit = normalizedLimit(requestedLimit);
         String search = query == null ? "" : query.trim();
         return jdbcTemplate.query(
-                "select id, code, type, tare_weight from container "
+                "select id, code, type, tare_weight, load_capacity from container "
                         + "where lower(code) like lower(?) order by code limit ?",
                 (resultSet, rowNumber) -> new ContainerReferenceOption(
                         resultSet.getObject("id", UUID.class),
                         resultSet.getString("code"),
                         resultSet.getString("type"),
-                        resultSet.getBigDecimal("tare_weight")
+                        resultSet.getBigDecimal("tare_weight"), resultSet.getBigDecimal("load_capacity")
                 ),
                 "%" + search + "%",
                 limit
@@ -59,16 +68,66 @@ public class ReferenceDataService {
         if (Boolean.TRUE.equals(invalid)) throw new ApiException(HttpStatus.BAD_REQUEST, "TARE_EXCEEDS_GROSS", "Тара превышает брутто КТК в существующей накладной");
         int updated = jdbcTemplate.update("update container set tare_weight = ? where id = ?", tareWeight, id);
         if (updated == 0) throw new ApiException(HttpStatus.NOT_FOUND, "CONTAINER_NOT_FOUND", "КТК не найден");
-        return jdbcTemplate.queryForObject("select id, code, type, tare_weight from container where id = ?",
-                (rs, row) -> new ContainerReferenceOption(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("type"), rs.getBigDecimal("tare_weight")), id);
+        return jdbcTemplate.queryForObject("select id, code, type, tare_weight, load_capacity from container where id = ?",
+                (rs, row) -> new ContainerReferenceOption(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("type"), rs.getBigDecimal("tare_weight"), rs.getBigDecimal("load_capacity")), id);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public ContainerReferenceOption updateContainerAttributes(UUID id, UpdateContainerAttributesRequest request) {
+        ContainerReferenceOption current = updateContainerTare(id, request.tareWeight());
+        jdbcTemplate.update("update container set load_capacity = ? where id = ?", request.loadCapacity(), id);
+        return new ContainerReferenceOption(current.id(), current.name(), current.type(), current.tareWeight(), request.loadCapacity());
     }
 
     public List<ReferenceOption> findEtsngCodes(String query, Integer limit) {
         return find("etsng_code", query, limit);
     }
 
-    public List<ReferenceOption> findRailwayCarriages(String query, Integer limit) {
-        return find("railway_carriage", query, limit);
+    private static final String CARRIAGE_SELECT = """
+        select c.id, c.code, c.model_id, m.code as model_name, c.load_capacity, c.next_depot_repair_date,
+               c.carriage_type_id, case t.code when 'PLATFORM_40' then 'Платформа 40 - футов'
+                   when 'PLATFORM_80' then 'Платформа 80 - футов' else t.name end as type_name
+        from railway_carriage c left join railway_carriage_model m on m.id = c.model_id
+        left join railway_carriage_type t on t.id = c.carriage_type_id
+        """;
+
+    private RailwayCarriageReferenceOption carriage(java.sql.ResultSet rs) throws java.sql.SQLException {
+        return new RailwayCarriageReferenceOption(rs.getObject("id", UUID.class), rs.getString("code"),
+                rs.getObject("model_id", UUID.class), rs.getString("model_name"), rs.getBigDecimal("load_capacity"),
+                rs.getObject("next_depot_repair_date", java.time.LocalDate.class),
+                rs.getObject("carriage_type_id", UUID.class), rs.getString("type_name"));
+    }
+
+    public List<RailwayCarriageReferenceOption> findRailwayCarriages(String query, Integer limit) {
+        return jdbcTemplate.query(CARRIAGE_SELECT + " where lower(c.code) like lower(?) order by c.code limit ?",
+                (rs, row) -> carriage(rs), "%" + (query == null ? "" : query.trim()) + "%", normalizedLimit(limit));
+    }
+
+    public ru.billing.app.order.PagedResponse<RailwayCarriageReferenceOption> findRailwayCarriagePage(int requestedPage, int requestedSize) {
+        int page = Math.max(0, requestedPage), size = Math.max(1, Math.min(100, requestedSize));
+        long total = jdbcTemplate.queryForObject("select count(*) from railway_carriage", Long.class);
+        var rows = jdbcTemplate.query(CARRIAGE_SELECT + " order by c.code, c.id limit ? offset ?", (rs, row) -> carriage(rs), size, page * size);
+        return ru.billing.app.order.PagedResponse.of(rows, page, size, total);
+    }
+
+    public List<ReferenceOption> findRailwayCarriageModels(String query, Integer limit) { return find("railway_carriage_model", query, limit); }
+
+    public List<ReferenceOption> findRailwayCarriageKinds() {
+        return jdbcTemplate.query("select id, case code when 'PLATFORM_40' then 'Платформа 40 - футов' else 'Платформа 80 - футов' end as name from railway_carriage_type where code in ('PLATFORM_40', 'PLATFORM_80') order by code",
+                (rs, row) -> new ReferenceOption(rs.getObject("id", UUID.class), rs.getString("name")));
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public RailwayCarriageReferenceOption updateRailwayCarriage(UUID id, UpdateRailwayCarriageRequest request) {
+        ensureExists("railway_carriage", id, "RAILWAY_CARRIAGE_NOT_FOUND", "Вагон не найден");
+        if (request.modelId() != null) ensureExists("railway_carriage_model", request.modelId(), "CARRIAGE_MODEL_NOT_FOUND", "Модель вагона не найдена");
+        if (request.carriageTypeId() != null && findRailwayCarriageKinds().stream().noneMatch(t -> t.id().equals(request.carriageTypeId()))) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_CARRIAGE_TYPE", "Выберите платформу 40 или 80 футов");
+        }
+        int updated = jdbcTemplate.update("update railway_carriage set model_id = ?, load_capacity = ?, next_depot_repair_date = ?, carriage_type_id = ? where id = ?",
+                request.modelId(), request.loadCapacity(), request.nextDepotRepairDate(), request.carriageTypeId(), id);
+        if (updated != 1) throw new ApiException(HttpStatus.NOT_FOUND, "RAILWAY_CARRIAGE_NOT_FOUND", "Вагон не найден");
+        return jdbcTemplate.queryForObject(CARRIAGE_SELECT + " where c.id = ?", (rs, row) -> carriage(rs), id);
     }
 
     public List<ReferenceOption> findRailwayCarriageTypes(String query, Integer requestedLimit) {

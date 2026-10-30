@@ -17,6 +17,16 @@ public class ReferenceDataController {
         this.referenceDataService = referenceDataService;
     }
 
+    @GetMapping("/seal-types")
+    public List<ReferenceOption> sealTypes(@RequestParam(required = false) String q, @RequestParam(required = false) Integer limit) {
+        return referenceDataService.findSealTypes(q, limit);
+    }
+
+    @GetMapping("/hazard-classes")
+    public List<ReferenceOption> hazardClasses(@RequestParam(required = false) String q, @RequestParam(required = false) Integer limit) {
+        return referenceDataService.findHazardClasses(q, limit);
+    }
+
     @GetMapping("/clients")
     public List<ReferenceOption> clients(
             @RequestParam(required = false) String q,
@@ -44,6 +54,12 @@ public class ReferenceDataController {
         return referenceDataService.updateContainerTare(id, request.tareWeight());
     }
 
+    @org.springframework.web.bind.annotation.PatchMapping("/containers/{id}/attributes")
+    public ContainerReferenceOption updateContainerAttributes(@org.springframework.web.bind.annotation.PathVariable java.util.UUID id,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody UpdateContainerAttributesRequest request) {
+        return referenceDataService.updateContainerAttributes(id, request);
+    }
+
     @GetMapping("/etsng-codes")
     public List<ReferenceOption> etsngCodes(
             @RequestParam(required = false) String q,
@@ -53,11 +69,31 @@ public class ReferenceDataController {
     }
 
     @GetMapping("/railway-carriages")
-    public List<ReferenceOption> railwayCarriages(
+    public List<RailwayCarriageReferenceOption> railwayCarriages(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) Integer limit
     ) {
         return referenceDataService.findRailwayCarriages(q, limit);
+    }
+
+    @GetMapping("/railway-carriages/page")
+    public ru.billing.app.order.PagedResponse<RailwayCarriageReferenceOption> railwayCarriagePage(
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        return referenceDataService.findRailwayCarriagePage(page, size);
+    }
+
+    @GetMapping("/railway-carriage-models")
+    public List<ReferenceOption> railwayCarriageModels(@RequestParam(required = false) String q, @RequestParam(required = false) Integer limit) {
+        return referenceDataService.findRailwayCarriageModels(q, limit);
+    }
+
+    @GetMapping("/railway-carriage-kinds")
+    public List<ReferenceOption> railwayCarriageKinds() { return referenceDataService.findRailwayCarriageKinds(); }
+
+    @org.springframework.web.bind.annotation.PatchMapping("/railway-carriages/{id}")
+    public RailwayCarriageReferenceOption updateRailwayCarriage(@org.springframework.web.bind.annotation.PathVariable java.util.UUID id,
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.RequestBody UpdateRailwayCarriageRequest request) {
+        return referenceDataService.updateRailwayCarriage(id, request);
     }
 
     @GetMapping("/railway-carriage-types")

@@ -4,6 +4,7 @@ export type ReferenceOption = {
   id: string
   name: string
   type?: ContainerType | null
+  loadCapacity?: number | null
   tareWeight?: number
 }
 
@@ -57,6 +58,9 @@ export type CreatedWaybill = {
 }
 
 export type WaybillProductSummary = {
+  grossWeight?: number | null
+  hazardClassId?: string | null
+  hazardClassName?: string | null
   id: string
   etsngCodeId: string
   code: string
@@ -64,18 +68,30 @@ export type WaybillProductSummary = {
   weight: number | null
 }
 
-export type WaybillContainerSummary = {
+export type WaybillContainerSummary = Omit<ReceivingContainerAttributes, 'hazardClassId' | 'hazardClassName'> & {
+  type?: ContainerType | null; loadCapacity?: number | null
   containerId: string; number: string; grossWeight: number; tareWeight: number; netWeight: number
   etsngCodeId?: string | null; etsngCodeName?: string | null
 }
 
 export type WaybillLink = {
   containers?: WaybillContainerSummary[]
+  railwayCarriages?: WaybillCarriageSummary[]
   id: string
   number: string
   railwayCarriageCount: number
   containerCount: number
   products: WaybillProductSummary[]
+}
+
+export type WaybillCarriageSummary = {
+  typeName?: string | null
+  modelName?: string | null
+  loadCapacity?: number | null
+  nextDepotRepairDate?: string | null
+  id: string
+  number: string
+  containers: WaybillContainerSummary[]
 }
 
 export type GroupedWaybill = {
@@ -139,7 +155,17 @@ export type OrderCargoDetails = {
   weight: number
 }
 
-export type OrderContainerDetails = {
+export type ReceivingContainerAttributes = {
+  ownerClientId?: string | null
+  ownerClientName?: string | null
+  sealNumbers?: string | null
+  sealTypeId?: string | null
+  sealTypeName?: string | null
+  hazardClassId?: string | null
+  hazardClassName?: string | null
+}
+
+export type OrderContainerDetails = ReceivingContainerAttributes & {
   containerId: string
   containerName: string
   empty: boolean
@@ -149,6 +175,10 @@ export type OrderContainerDetails = {
 export type OrderWaybillContainerDetails = WaybillContainerSummary
 
 export type OrderWaybillCarriageDetails = {
+  typeName?: string | null
+  modelName?: string | null
+  loadCapacity?: number | null
+  nextDepotRepairDate?: string | null
   id: string
   railwayCarriageId: string
   number: string
@@ -156,6 +186,9 @@ export type OrderWaybillCarriageDetails = {
 }
 
 export type OrderWaybillProductDetails = {
+  grossWeight?: number | null
+  hazardClassId?: string | null
+  hazardClassName?: string | null
   id: string
   etsngCodeId: string
   etsngCode: string

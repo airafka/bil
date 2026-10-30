@@ -15,4 +15,6 @@ export type ServiceProgress = {
   accepted: number; shippingCreated: number; shippingCompleted: number
   returnCreated: number; returnCompleted: number
   total: number; shippingMissing: number
+  shippingOrderCount: number; shippingOrdersCompleted: number
+  returnOrderCount: number; returnOrdersCompleted: number
 }

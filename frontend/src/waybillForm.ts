@@ -1,20 +1,22 @@
 import type { ReferenceOption } from './domain'
 
-export type WaybillContainerRow = {
+export type WaybillContainerRow = Pick<import('./domain').ReceivingContainerAttributes, 'ownerClientId' | 'sealNumbers' | 'sealTypeId'> & {
   containerId: string
   grossWeight: string
   tareWeight: number
-  etsngCodeId: string
 }
 export type WaybillCarriageRow = { key: number; railwayCarriageId: string; containers: WaybillContainerRow[] }
 export type WaybillFormState = {
+  hazardClassId?: string
   etsngCodeId: string
   receivingOrderId: string; departureStation: string; destinationStation: string; payer: string
   railwayCarriages: WaybillCarriageRow[]
 }
 export type CreateWaybillPayload = {
+  hazardClassId?: string | null
+  etsngCodeId: string | null
   receivingOrderId: string | null; departureStation: number; destinationStation: number; payer: string
-  railwayCarriages: Array<{ railwayCarriageId: string; containers: Array<{ containerId: string; grossWeight: string; etsngCodeId: string | null }> }>
+  railwayCarriages: Array<{ railwayCarriageId: string; containers: Array<{ containerId: string; grossWeight: string }> }>
 }
 export const initialWaybillFormState: WaybillFormState = {
   etsngCodeId: '', receivingOrderId: '', departureStation: '', destinationStation: '', payer: '', railwayCarriages: [],
@@ -70,12 +72,25 @@ export function validateWaybillStep(state: WaybillFormState, step: number): stri
 export const validateWaybillForm = (state: WaybillFormState) => validateWaybillStep(state, 4)
 export function buildWaybillPayload(state: WaybillFormState): CreateWaybillPayload {
   return {
+    ...(hasLoadedContainers(state) && state.hazardClassId ? { hazardClassId: state.hazardClassId } : {}),
+    etsngCodeId: hasLoadedContainers(state) ? state.etsngCodeId || null : null,
     receivingOrderId: state.receivingOrderId || null,
     departureStation: Number(state.departureStation), destinationStation: Number(state.destinationStation), payer: state.payer.trim(),
     railwayCarriages: state.railwayCarriages.map(carriage => ({
       railwayCarriageId: carriage.railwayCarriageId,
       containers: carriage.containers.map(row => ({ containerId: row.containerId,
-        grossWeight: row.grossWeight.trim().replace(',', '.'), etsngCodeId: netWeight(row) === '0.000' ? null : state.etsngCodeId || null })),
+        grossWeight: row.grossWeight.trim().replace(',', '.'),
+        ...(row.ownerClientId ? { ownerClientId: row.ownerClientId } : {}),
+        ...(row.sealNumbers?.trim() ? { sealNumbers: row.sealNumbers.trim() } : {}),
+        ...(row.sealTypeId ? { sealTypeId: row.sealTypeId } : {}),
+      })),
     })),
   }
+}
+
+export function hasLoadedContainers(state: WaybillFormState): boolean {
+  return state.railwayCarriages.some(carriage => carriage.containers.some(row => {
+    const net = netWeight(row)
+    return net !== null && net !== '0.000'
+  }))
 }

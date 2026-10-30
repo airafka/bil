@@ -9,9 +9,11 @@ import type {
   TransportTypeOption,
   WaybillLink,
   WaybillProductSummary,
+  WaybillContainerSummary,
+  WaybillCarriageSummary,
 } from './domain'
 
-export type SelectedContainer = {
+export type SelectedContainer = import('./domain').ReceivingContainerAttributes & {
   id: string
   name: string
   empty: boolean
@@ -20,6 +22,8 @@ export type SelectedContainer = {
 }
 
 export type SelectedWaybill = {
+  containers?: WaybillContainerSummary[]
+  railwayCarriages?: WaybillCarriageSummary[]
   id: string
   number: string
   groupKey: string
@@ -42,6 +46,8 @@ export function toSelectedWaybill(group: GroupedWaybill, waybill: WaybillLink): 
     railwayCarriageCount: waybill.railwayCarriageCount,
     containerCount: waybill.containerCount,
     products: waybill.products,
+    containers: waybill.containers,
+    railwayCarriages: waybill.railwayCarriages,
   }
 }
 
@@ -99,7 +105,7 @@ export type CreateOrderPayload = {
   clientId: string
   terminalAreaId: string
   transportType: TransportType
-  containers: Array<{
+  containers: Array<import('./domain').ReceivingContainerAttributes & {
     containerId: string
     empty: boolean
     cargo: null | {
@@ -327,6 +333,10 @@ export function setVehicleShippingMode(
 function containerPayload(container: SelectedContainer) {
   return {
     containerId: container.id,
+    ...(container.ownerClientId ? { ownerClientId: container.ownerClientId } : {}),
+    ...(container.sealNumbers?.trim() ? { sealNumbers: container.sealNumbers.trim() } : {}),
+    ...(container.sealTypeId ? { sealTypeId: container.sealTypeId } : {}),
+    ...(container.hazardClassId ? { hazardClassId: container.hazardClassId } : {}),
     empty: container.empty,
     cargo: container.empty
       ? null

@@ -185,6 +185,22 @@ public class ShippingOrderStore {
         );
     }
 
+    public void updateContainerAttributes(UUID id, UpdateOrderContainersRequest request) {
+        var headers = jdbcTemplate.query("select status, transport_type from shipping_order where id = ? for update",
+                (rs, row) -> List.of(rs.getString("status"), rs.getString("transport_type")), id);
+        if (headers.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", "Заявка не найдена");
+        if (!"DRAFT".equals(headers.getFirst().getFirst())) {
+            throw new ApiException(HttpStatus.CONFLICT, "CONTAINER_ATTRIBUTES_NOT_EDITABLE", "Реквизиты КТК можно менять только в черновике вывоза");
+        }
+        var seen = new java.util.HashSet<UUID>();
+        for (var c : request.containers()) {
+            if (!seen.add(c.containerId())) throw new ApiException(HttpStatus.BAD_REQUEST, "DUPLICATE_CONTAINER", "КТК указан дважды");
+            int count = jdbcTemplate.update("update shipping_order_container set owner_client_id = ?, seal_numbers = ?, seal_type_id = ?, hazard_class_id = ? where shipping_order_id = ? and container_id = ?",
+                    c.ownerClientId(), c.sealNumbers(), c.sealTypeId(), c.hazardClassId(), id, c.containerId());
+            if (count != 1) throw new ApiException(HttpStatus.NOT_FOUND, "ORDER_CONTAINER_NOT_FOUND", "КТК отсутствует в этой заявке");
+        }
+    }
+
     private void insertAllComposition(UUID orderId, CreateOrderRequest request) {
         insertNumberedCarriages(orderId, request, true);
     }
@@ -238,13 +254,13 @@ public class ShippingOrderStore {
         UUID orderContainerId = UUID.randomUUID();
         jdbcTemplate.update(
                 "insert into shipping_order_container "
-                        + "(id, shipping_order_id, shipping_order_railway_carriage_id, container_id, empty) "
-                        + "values (?, ?, ?, ?, ?)",
+                        + "(id, shipping_order_id, shipping_order_railway_carriage_id, container_id, empty, owner_client_id, seal_numbers, seal_type_id, hazard_class_id) "
+                        + "values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 orderContainerId,
                 orderId,
                 carriageRowId,
                 container.containerId(),
-                container.empty()
+                container.empty(), container.ownerClientId(), container.sealNumbers(), container.sealTypeId(), container.hazardClassId()
         );
         insertCargo(orderContainerId, container.cargo());
         return orderContainerId;
@@ -263,9 +279,14 @@ public class ShippingOrderStore {
         return jdbcTemplate.query(
                 """
                 select oc.container_id, c.code as container_name, oc.empty,
+                       oc.owner_client_id, owner.code as owner_client_name, oc.seal_numbers,
+                       oc.seal_type_id, st.code as seal_type_name, oc.hazard_class_id, hc.code as hazard_class_name,
                        item.etsng_code_id, e.code as etsng_code_name, item.weight
                   from shipping_order_container oc
                   join container c on c.id = oc.container_id
+                  left join client owner on owner.id = oc.owner_client_id
+                  left join seal_type st on st.id = oc.seal_type_id
+                  left join hazard_class hc on hc.id = oc.hazard_class_id
                   left join shipping_order_container_item item on item.shipping_order_container_id = oc.id
                   left join etsng_code e on e.id = item.etsng_code_id
                  where oc.shipping_order_id = ?
@@ -282,6 +303,8 @@ public class ShippingOrderStore {
                 select sorc.id as carriage_row_id, sorc.railway_carriage_id,
                        rc.code as railway_carriage_code,
                        oc.container_id, c.code as container_name, oc.empty,
+                       oc.owner_client_id, owner.code as owner_client_name, oc.seal_numbers,
+                       oc.seal_type_id, st.code as seal_type_name, oc.hazard_class_id, hc.code as hazard_class_name,
                        item.etsng_code_id, e.code as etsng_code_name, item.weight
                   from shipping_order_railway_carriage sorc
                   join railway_carriage rc on rc.id = sorc.railway_carriage_id
@@ -289,6 +312,9 @@ public class ShippingOrderStore {
                     on oc.shipping_order_railway_carriage_id = sorc.id
                    and oc.shipping_order_id = sorc.shipping_order_id
                   left join container c on c.id = oc.container_id
+                  left join client owner on owner.id = oc.owner_client_id
+                  left join seal_type st on st.id = oc.seal_type_id
+                  left join hazard_class hc on hc.id = oc.hazard_class_id
                   left join shipping_order_container_item item on item.shipping_order_container_id = oc.id
                   left join etsng_code e on e.id = item.etsng_code_id
                  where sorc.shipping_order_id = ?
@@ -390,7 +416,11 @@ public class ShippingOrderStore {
                 resultSet.getObject("container_id", UUID.class),
                 resultSet.getString("container_name"),
                 resultSet.getBoolean("empty"),
-                cargo
+                cargo,
+                resultSet.getObject("owner_client_id", UUID.class), resultSet.getString("owner_client_name"),
+                resultSet.getString("seal_numbers"),
+                resultSet.getObject("seal_type_id", UUID.class), resultSet.getString("seal_type_name"),
+                resultSet.getObject("hazard_class_id", UUID.class), resultSet.getString("hazard_class_name")
         );
     }
 

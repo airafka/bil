@@ -1,3 +1,4 @@
+import { ReceivingContainerAttributes } from '../components/ReceivingContainerAttributes'
 import { UiInput, UiSelect } from '../components/FormControls'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -5,6 +6,7 @@ import { createWaybill, getReferenceOptions } from '../api'
 import type { ReferenceOption } from '../domain'
 import {
   buildWaybillPayload,
+  hasLoadedContainers,
   initialWaybillFormState,
   validateWaybillForm,
   validateWaybillStep,
@@ -26,6 +28,7 @@ export function WaybillCreatePage() {
   const [form, setForm] = useState(initialWaybillFormState)
   const [carriages, setCarriages] = useState<ReferenceOption[]>([])
   const [containers, setContainers] = useState<ReferenceOption[]>([])
+  const [hazards, setHazards] = useState<ReferenceOption[]>([])
   const [cargoOptions, setCargoOptions] = useState<ReferenceOption[]>([])
   const [loadingReferences, setLoadingReferences] = useState(true)
   const [errors, setErrors] = useState<string[]>([])
@@ -39,12 +42,12 @@ export function WaybillCreatePage() {
     Promise.all([
       getReferenceOptions('railway-carriages'),
       getReferenceOptions('containers'),
-      getReferenceOptions('etsng-codes'),
+      getReferenceOptions('etsng-codes'), getReferenceOptions('hazard-classes'),
     ])
-      .then(([carriageOptions, containerOptions, etsngOptions]) => {
+      .then(([carriageOptions, containerOptions, etsngOptions, hazardOptions]) => {
         setCarriages(carriageOptions)
         setContainers(containerOptions)
-        setCargoOptions(etsngOptions)
+        setCargoOptions(etsngOptions); setHazards(hazardOptions)
       })
       .catch((error: unknown) => setRequestError(
         error instanceof Error ? error.message : 'Не удалось загрузить справочники',
@@ -72,13 +75,13 @@ export function WaybillCreatePage() {
   }
 
   const addContainer = (carriage: WaybillCarriageRow) => {
-    updateCarriage(carriage.key, { containers: [...carriage.containers, { containerId: '', grossWeight: '', tareWeight: 0, etsngCodeId: '' }] })
+    updateCarriage(carriage.key, { containers: [...carriage.containers, { containerId: '', grossWeight: '', tareWeight: 0 }] })
   }
   const updateContainer = (carriage: WaybillCarriageRow, index: number, change: Partial<WaybillContainerRow>) => {
     updateCarriage(carriage.key, { containers: carriage.containers.map((row, i) => {
       if (i !== index) return row
       const next = { ...row, ...change }
-      return netWeight(next) === '0.000' ? { ...next, etsngCodeId: '' } : next
+      return next
     }) })
   }
   const setContainer = (carriage: WaybillCarriageRow, index: number, containerId: string) => {
@@ -179,7 +182,7 @@ export function WaybillCreatePage() {
 
         {step === 2 && <section className="waybill-section">
           <div className="waybill-section-title">
-            <div><h2>Вагоны</h2><p>Добавьте существующие вагоны.</p></div>
+
             <button type="button" className="outline-action-button" onClick={addCarriage}>⊕ Добавить вагон</button>
           </div>
           {form.railwayCarriages.length === 0 && <div className="inline-empty">Вагоны не добавлены</div>}
@@ -197,9 +200,6 @@ export function WaybillCreatePage() {
         </section>}
 
         {step === 3 && <section className="waybill-section">
-          <div className="waybill-section-title">
-            <div><h2>КТК</h2><p>Распределите контейнеры по ранее выбранным вагонам.</p></div>
-          </div>
           {form.railwayCarriages.length === 0 && <div className="inline-empty">Вагоны не добавлены</div>}
           <div className="waybill-carriage-list">
             {form.railwayCarriages.map((carriage, carriageIndex) => {
@@ -221,6 +221,9 @@ export function WaybillCreatePage() {
                       </div>
                     ))}
                   </div>
+                  <ReceivingContainerAttributes includeHazardClass={false}
+                    containers={carriage.containers.filter(row => row.containerId).map(row => ({ ...row, id: row.containerId, name: containers.find(option => option.id === row.containerId)?.name ?? row.containerId }))}
+                    onChange={(id, change) => updateCarriage(carriage.key, { containers: carriage.containers.map(row => row.containerId === id ? { ...row, ...change } : row) })} />
                   <button type="button" className="text-action-button" onClick={() => addContainer(carriage)}>+ Добавить КТК</button>
                 </article>
               )
@@ -229,8 +232,8 @@ export function WaybillCreatePage() {
         </section>}
 
         {step === 4 && <section className="waybill-section">
-          <div className="waybill-section-title"><div><h2>Груз накладной</h2><p>Один груз применяется ко всем гружёным КТК накладной. Масса рассчитывается отдельно для каждого КТК: брутто минус тара.</p></div></div>
-          <label className="field horizontal-field"><span>Груз по ЕТСНГ <b>*</b></span><UiSelect aria-label="Груз накладной по ЕТСНГ" value={form.etsngCodeId} onChange={event => setForm(current => ({ ...current, etsngCodeId: event.target.value }))}><option value="">Выберите груз</option>{cargoOptions.map(cargo => <option key={cargo.id} value={cargo.id}>{cargo.name}</option>)}</UiSelect></label>
+          {hasLoadedContainers(form) && <label className="field horizontal-field"><span>Класс опасности груза</span><UiSelect aria-label="Класс опасности груза" value={form.hazardClassId ?? ''} onChange={event => setForm(current => ({ ...current, hazardClassId: event.target.value }))}><option value="">Не указан</option>{hazards.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</UiSelect></label>}
+          {hasLoadedContainers(form) ? <label className="field horizontal-field"><span>Груз по ЕТСНГ <b>*</b></span><UiSelect aria-label="Груз накладной по ЕТСНГ" value={form.etsngCodeId} onChange={event => setForm(current => ({ ...current, etsngCodeId: event.target.value }))}><option value="">Выберите груз</option>{cargoOptions.map(cargo => <option key={cargo.id} value={cargo.id}>{cargo.name}</option>)}</UiSelect></label> : <p className="composition-hint">Для порожних КТК груз не указывается.</p>}
           {form.railwayCarriages.flatMap(carriage => carriage.containers.map((container, index) => {
             const option = containers.find(item => item.id === container.containerId)
             const net = netWeight(container)

@@ -120,16 +120,16 @@ public class ServiceOrderService {
                 ) order by c.id for share
                 """, (rs, row) -> rs.getObject("id", UUID.class), deliveryId);
         return jdbc.query("""
-                select wc.container_id, wc.gross_weight, c.tare_weight, c.type, p.etsng_code_id
+                select wc.container_id, wc.gross_weight, c.tare_weight, c.type, p.etsng_code_id, p.hazard_class_id, wc.owner_client_id, wc.seal_numbers, wc.seal_type_id
                 from waybill w
                 join waybill_railway_carriage rc on rc.waybill_id = w.id
                 join waybill_container wc on wc.waybill_railway_carriage_id = rc.id
                 join container c on c.id = wc.container_id
-                left join waybill_product p on p.waybill_container_id = wc.id
+                left join waybill_product p on p.waybill_id = w.id and wc.gross_weight > c.tare_weight
                 where w.receiving_order_id = ? order by wc.container_id, wc.id
                 """, (rs, row) -> new SourceRow(new ServiceOrderCargoPlanner.SourceContainer(
                         rs.getObject("container_id", UUID.class), rs.getObject("etsng_code_id", UUID.class),
-                        rs.getBigDecimal("gross_weight"), rs.getBigDecimal("tare_weight")), rs.getString("type")), deliveryId);
+                        rs.getBigDecimal("gross_weight"), rs.getBigDecimal("tare_weight"), rs.getObject("owner_client_id", UUID.class), rs.getString("seal_numbers"), rs.getObject("seal_type_id", UUID.class), rs.getObject("hazard_class_id", UUID.class)), rs.getString("type")), deliveryId);
     }
 
     private static Map<UUID, String> typesByContainer(List<SourceRow> sources) {
@@ -220,7 +220,7 @@ public class ServiceOrderService {
                     join initial_containers ic on ic.container_id = link.container_id
                     where sh.service_order_id = ?
                 ), returns as (
-                    select rc.container_id, r.status from receiving_order r
+                    select rc.container_id, r.status, r.id from receiving_order r
                     join receiving_order_container rc on rc.receiving_order_id = r.id
                     join shipping sh on sh.id = r.source_shipping_order_id and sh.container_id = rc.container_id
                     where r.service_order_id = ? and r.service_role = 'RETURN_RECEIVING'
@@ -235,7 +235,11 @@ public class ServiceOrderService {
                     (select count(distinct container_id) from returns where status = 'COMPLETED') as return_completed,
                     coalesce(initial.accepted_container_count, (select count(*) from initial_containers)) as total,
                     (select count(*) from initial_containers ic where not exists
-                        (select 1 from shipping sh where sh.container_id = ic.container_id)) as shipping_missing
+                        (select 1 from shipping sh where sh.container_id = ic.container_id)) as shipping_missing,
+                    (select count(distinct id) from shipping) as shipping_order_count,
+                    (select count(distinct id) from shipping where status = 'COMPLETED') as shipping_orders_completed,
+                    (select count(distinct id) from returns) as return_order_count,
+                    (select count(distinct id) from returns where status = 'COMPLETED') as return_orders_completed
                 from receiving_order initial
                 left join complex_service_catalog a on
                     (initial.a_complex_service_id is not null and a.id = initial.a_complex_service_id)
@@ -246,7 +250,9 @@ public class ServiceOrderService {
                 """, (rs, row) -> new ServiceProgress(rs.getString("initial_name"), rs.getString("return_name"),
                         rs.getInt("accepted"), rs.getInt("shipping_created"), rs.getInt("shipping_completed"),
                         rs.getInt("return_created"), rs.getInt("return_completed"),
-                        rs.getInt("total"), rs.getInt("shipping_missing")),
+                        rs.getInt("total"), rs.getInt("shipping_missing"),
+                        rs.getInt("shipping_order_count"), rs.getInt("shipping_orders_completed"),
+                        rs.getInt("return_order_count"), rs.getInt("return_orders_completed")),
                 deliveryId, serviceId, serviceId, deliveryId);
     }
 

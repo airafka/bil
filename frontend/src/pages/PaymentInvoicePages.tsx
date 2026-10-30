@@ -1,3 +1,6 @@
+import { ActionIcon } from '../components/ActionIcon'
+import { RowActions } from '../components/RowActions'
+import { StatusBadge } from '../components/StatusBadge'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createPaymentInvoice, deletePaymentInvoice, getContracts, getInvoiceCandidates, getPaymentInvoice, getPaymentInvoices, getReferenceOptions } from '../api'
@@ -43,13 +46,13 @@ export function InvoiceRegistryPage() {
     return () => { active = false }
   }, [page, attempt])
   return <section className="registry-page">
-    <div className="page-header"><h1>Счета на оплату</h1><Link className="primary-button" to="/payment-invoices/new">+ Создать счёт</Link></div>
+    <div className="page-header"><h1>Счета на оплату</h1><Link className="primary-button" to="/payment-invoices/new"><ActionIcon name="plus" /> Создать</Link></div>
     {error && <div className="notice error" role="alert">{error}<button className="secondary-button" onClick={() => { setError(''); setAttempt(value => value + 1) }}>Повторить</button></div>}
-    <div className="table-card"><div className="table-toolbar"><strong>Черновики счетов</strong><span>{data?.totalElements ?? '…'} записей</span></div>
+    <div className="table-card">
       {!data && !error && <p className="table-message" role="status">Загружаем счета…</p>}
       {data?.items.length === 0 && <div className="empty-state"><strong>Счетов пока нет</strong><p>Создайте счёт из оказанных услуг выбранного клиента за месяц.</p></div>}
-      {!!data?.items.length && <div className="table-wrap"><table><thead><tr><th scope="col">Номер</th><th scope="col">Дата создания</th><th scope="col">Клиент</th><th scope="col">Договор</th><th scope="col">Период оказания</th><th scope="col">Сумма с НДС, ₽</th><th scope="col">Статус</th></tr></thead>
-        <tbody>{data.items.map(item => <tr key={item.id}><td><Link className="order-code" to={`/payment-invoices/${item.id}`}>{item.code}</Link></td><td>{invoiceDate(item.createdAt, item.timeZone)}</td><td>{item.clientName}</td><td>{item.contractName}</td><td>{invoicePeriod(item.period)}</td><td>{invoiceMoney(item.amountWithVat)}</td><td>Черновик</td></tr>)}</tbody>
+      {!!data?.items.length && <div className="table-wrap"><table><thead><tr><th className="registry-index" scope="col">№</th><th scope="col">Номер счёта</th><th scope="col">Дата создания</th><th scope="col">Клиент</th><th scope="col">Договор</th><th scope="col">Период оказания</th><th scope="col">Сумма с НДС, ₽</th><th scope="col">Статус</th><th className="registry-actions" scope="col" aria-label="Действия" /></tr></thead>
+        <tbody>{data.items.map((item, index) => <tr key={item.id}><td className="registry-index">{page * PAGE_SIZE + index + 1}</td><td><Link className="order-code" to={`/payment-invoices/${item.id}`}>{item.code}</Link></td><td>{invoiceDate(item.createdAt, item.timeZone)}</td><td>{item.clientName}</td><td>{item.contractName}</td><td>{invoicePeriod(item.period)}</td><td>{invoiceMoney(item.amountWithVat)}</td><td><StatusBadge status="DRAFT" /></td><td className="registry-actions"><RowActions label={'Действия со счётом ' + item.code} actions={[{ label: 'Открыть', to: '/payment-invoices/' + item.id }]} /></td></tr>)}</tbody>
       </table></div>}
       {data && <Pages page={page} totalPages={data.totalPages} onChange={next => { setData(null); setError(''); setPage(next) }} />}
     </div>

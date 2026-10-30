@@ -33,11 +33,11 @@ public class ReceivingOrderStore {
             UUID orderContainerId = UUID.randomUUID();
             jdbcTemplate.update(
                     "insert into receiving_order_container "
-                            + "(id, receiving_order_id, container_id, empty) values (?, ?, ?, ?)",
+                            + "(id, receiving_order_id, container_id, empty, owner_client_id, seal_numbers, seal_type_id, hazard_class_id) values (?, ?, ?, ?, ?, ?, ?, ?)",
                     orderContainerId,
                     orderId,
                     container.containerId(),
-                    container.empty()
+                    container.empty(), container.ownerClientId(), container.sealNumbers(), container.sealTypeId(), container.hazardClassId()
             );
             insertCargo(orderContainerId, container.cargo());
         }
@@ -173,9 +173,14 @@ public class ReceivingOrderStore {
         List<OrderContainerDetails> containers = jdbcTemplate.query(
                 """
                 select oc.container_id, c.code as container_name, oc.empty,
+                       oc.owner_client_id, owner.code as owner_client_name, oc.seal_numbers,
+                       oc.seal_type_id, st.code as seal_type_name, oc.hazard_class_id, hc.code as hazard_class_name,
                        item.etsng_code_id, e.code as etsng_code_name, item.weight
                 from receiving_order_container oc
                 join container c on c.id = oc.container_id
+                left join client owner on owner.id = oc.owner_client_id
+                left join seal_type st on st.id = oc.seal_type_id
+                left join hazard_class hc on hc.id = oc.hazard_class_id
                 left join receiving_order_container_item item on item.receiving_order_container_id = oc.id
                 left join etsng_code e on e.id = item.etsng_code_id
                 where oc.receiving_order_id = ?
@@ -196,6 +201,22 @@ public class ReceivingOrderStore {
                 jdbcTemplate.queryForObject("select source_shipping_order_id from receiving_order where id = ?", UUID.class, id), List.of(),
                 header.arrivalAt(), header.consignor(), null, null
         );
+    }
+
+    public void updateContainerAttributes(UUID id, UpdateOrderContainersRequest request) {
+        var headers = jdbcTemplate.query("select status, transport_type from receiving_order where id = ? for update",
+                (rs, row) -> List.of(rs.getString("status"), rs.getString("transport_type")), id);
+        if (headers.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", "Заявка не найдена");
+        if (!headers.getFirst().equals(List.of("DRAFT", "VEHICLE"))) {
+            throw new ApiException(HttpStatus.CONFLICT, "CONTAINER_ATTRIBUTES_NOT_EDITABLE", "Реквизиты КТК можно менять только в черновике автопоставки");
+        }
+        var seen = new java.util.HashSet<UUID>();
+        for (var c : request.containers()) {
+            if (!seen.add(c.containerId())) throw new ApiException(HttpStatus.BAD_REQUEST, "DUPLICATE_CONTAINER", "КТК указан дважды");
+            int count = jdbcTemplate.update("update receiving_order_container set owner_client_id = ?, seal_numbers = ?, seal_type_id = ?, hazard_class_id = ? where receiving_order_id = ? and container_id = ?",
+                    c.ownerClientId(), c.sealNumbers(), c.sealTypeId(), c.hazardClassId(), id, c.containerId());
+            if (count != 1) throw new ApiException(HttpStatus.NOT_FOUND, "ORDER_CONTAINER_NOT_FOUND", "КТК отсутствует в этой заявке");
+        }
     }
 
     private List<LockedWaybill> lockWaybills(List<UUID> waybillIds) {
@@ -249,9 +270,12 @@ public class ReceivingOrderStore {
 
         List<CarriageRow> carriageRows = jdbcTemplate.query(
                 """
-                select wrc.id, wrc.waybill_id, wrc.railway_carriage_id, rc.code as carriage_number
+                select wrc.id, wrc.waybill_id, wrc.railway_carriage_id, rc.code as carriage_number, m.code as model_name, rc.load_capacity, rc.next_depot_repair_date,
+                       case t.code when 'PLATFORM_40' then 'Платформа 40 - футов' when 'PLATFORM_80' then 'Платформа 80 - футов' else t.name end as type_name
                   from waybill_railway_carriage wrc
                   join railway_carriage rc on rc.id = wrc.railway_carriage_id
+                  left join railway_carriage_model m on m.id = rc.model_id
+                  left join railway_carriage_type t on t.id = rc.carriage_type_id
                   join waybill w on w.id = wrc.waybill_id
                  where w.receiving_order_id = ?
                  order by wrc.waybill_id, rc.code, wrc.id
@@ -260,7 +284,8 @@ public class ReceivingOrderStore {
                         resultSet.getObject("id", UUID.class),
                         resultSet.getObject("waybill_id", UUID.class),
                         resultSet.getObject("railway_carriage_id", UUID.class),
-                        resultSet.getString("carriage_number")
+                        resultSet.getString("carriage_number"), resultSet.getString("type_name"), resultSet.getString("model_name"),
+                        resultSet.getBigDecimal("load_capacity"), resultSet.getObject("next_depot_repair_date", java.time.LocalDate.class)
                 ),
                 orderId
         );
@@ -268,13 +293,16 @@ public class ReceivingOrderStore {
         Map<UUID, List<OrderWaybillContainerDetails>> containersByCarriage = new LinkedHashMap<>();
         jdbcTemplate.query(
                 """
-                select wc.waybill_railway_carriage_id, wc.container_id, c.code as container_number, wc.gross_weight, c.tare_weight as tare_weight, (wc.gross_weight - c.tare_weight) as net_weight, p.etsng_code_id, e.code as etsng_name
+                select wc.waybill_railway_carriage_id, wc.container_id, c.code as container_number, c.type as container_type, c.load_capacity, wc.gross_weight, c.tare_weight as tare_weight, (wc.gross_weight - c.tare_weight) as net_weight, p.etsng_code_id, e.code as etsng_name, wc.owner_client_id, owner.code as owner_client_name,
+                       wc.seal_numbers, wc.seal_type_id, st.code as seal_type_name
                   from waybill_container wc
                   join container c on c.id = wc.container_id
-                  left join waybill_product p on p.waybill_container_id = wc.id
-                  left join etsng_code e on e.id = p.etsng_code_id
+                  left join client owner on owner.id = wc.owner_client_id
+                  left join seal_type st on st.id = wc.seal_type_id
                   join waybill_railway_carriage wrc on wrc.id = wc.waybill_railway_carriage_id
                   join waybill w on w.id = wrc.waybill_id
+                  left join waybill_product p on p.waybill_id = w.id and wc.gross_weight > c.tare_weight
+                  left join etsng_code e on e.id = p.etsng_code_id
                  where w.receiving_order_id = ?
                  order by wc.waybill_railway_carriage_id, c.code, wc.id
                 """,
@@ -287,7 +315,9 @@ public class ReceivingOrderStore {
                                 resultSet.getObject("container_id", UUID.class),
                                 resultSet.getString("container_number"),
                                 resultSet.getBigDecimal("gross_weight"), resultSet.getBigDecimal("tare_weight"), resultSet.getBigDecimal("net_weight"),
-                                resultSet.getObject("etsng_code_id", UUID.class), resultSet.getString("etsng_name")
+                                resultSet.getObject("etsng_code_id", UUID.class), resultSet.getString("etsng_name"),
+                                resultSet.getObject("owner_client_id", UUID.class), resultSet.getString("owner_client_name"),
+                                resultSet.getString("seal_numbers"), resultSet.getObject("seal_type_id", UUID.class), resultSet.getString("seal_type_name"), resultSet.getString("container_type"), resultSet.getBigDecimal("load_capacity")
                         )),
                 orderId
         );
@@ -298,18 +328,20 @@ public class ReceivingOrderStore {
                 .add(new OrderWaybillCarriageDetails(
                         row.id(),
                         row.railwayCarriageId(),
-                        row.number(),
+                        row.number(), row.typeName(), row.modelName(), row.loadCapacity(), row.nextDepotRepairDate(),
                         containersByCarriage.getOrDefault(row.id(), List.of())
                 )));
 
         Map<UUID, List<OrderWaybillProductDetails>> productsByWaybill = new LinkedHashMap<>();
         jdbcTemplate.query(
                 """
-                select p.id, p.waybill_id, p.etsng_code_id, e.code as etsng_code, (wc.gross_weight - c.tare_weight) as weight
+                select (select coalesce(sum(wc.gross_weight), 0) from waybill_railway_carriage rc join waybill_container wc on wc.waybill_railway_carriage_id = rc.id join container c on c.id = wc.container_id where rc.waybill_id = p.waybill_id and wc.gross_weight > c.tare_weight) as product_gross_weight, p.hazard_class_id, (select h.code from hazard_class h where h.id = p.hazard_class_id) as hazard_class_name, p.id, p.waybill_id, p.etsng_code_id, e.code as etsng_code, (select coalesce(sum(wc.gross_weight - c.tare_weight), 0)
+                          from waybill_railway_carriage rc
+                          join waybill_container wc on wc.waybill_railway_carriage_id = rc.id
+                          join container c on c.id = wc.container_id
+                         where rc.waybill_id = p.waybill_id) as weight
                   from waybill_product p
                   join etsng_code e on e.id = p.etsng_code_id
-                  join waybill_container wc on wc.id = p.waybill_container_id
-                  join container c on c.id = wc.container_id
                   join waybill w on w.id = p.waybill_id
                  where w.receiving_order_id = ?
                  order by p.waybill_id, p.id
@@ -320,7 +352,7 @@ public class ReceivingOrderStore {
                                 resultSet.getObject("id", UUID.class),
                                 resultSet.getObject("etsng_code_id", UUID.class),
                                 resultSet.getString("etsng_code"),
-                                resultSet.getBigDecimal("weight")
+                                resultSet.getBigDecimal("weight"), resultSet.getBigDecimal("product_gross_weight"), resultSet.getObject("hazard_class_id", UUID.class), resultSet.getString("hazard_class_name")
                         )),
                 orderId
         );
@@ -349,7 +381,11 @@ public class ReceivingOrderStore {
                 resultSet.getObject("container_id", UUID.class),
                 resultSet.getString("container_name"),
                 resultSet.getBoolean("empty"),
-                cargo
+                cargo,
+                resultSet.getObject("owner_client_id", UUID.class), resultSet.getString("owner_client_name"),
+                resultSet.getString("seal_numbers"),
+                resultSet.getObject("seal_type_id", UUID.class), resultSet.getString("seal_type_name"),
+                resultSet.getObject("hazard_class_id", UUID.class), resultSet.getString("hazard_class_name")
         );
     }
 
@@ -414,7 +450,7 @@ public class ReceivingOrderStore {
             UUID id,
             UUID waybillId,
             UUID railwayCarriageId,
-            String number
+            String number, String typeName, String modelName, java.math.BigDecimal loadCapacity, java.time.LocalDate nextDepotRepairDate
     ) {
     }
 }

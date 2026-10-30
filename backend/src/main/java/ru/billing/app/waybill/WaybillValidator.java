@@ -29,11 +29,12 @@ public class WaybillValidator {
             }
         }
         var cargos = new HashSet<UUID>();
+        if (request.etsngCodeId() != null) cargos.add(request.etsngCodeId());
         for (var carriage : carriages) for (var container : carriage.containers() == null ? List.<WaybillContainerRequest>of() : carriage.containers()) {
             if (container.etsngCodeId() != null) cargos.add(container.etsngCodeId());
         }
         if (cargos.size() > 1) throw error("SINGLE_WAYBILL_CARGO", "В накладной может быть только один груз для всех КТК");
-        return new CreateWaybillRequest(request.receivingOrderId(), request.departureStation(), request.destinationStation(), payer,
+        return new CreateWaybillRequest(request.receivingOrderId(), request.departureStation(), request.destinationStation(), payer, cargos.stream().findFirst().orElse(null), request.hazardClassId(),
                 carriages.stream().map(c -> new WaybillRailwayCarriageRequest(c.railwayCarriageId(),
                         c.containers() == null ? List.of() : List.copyOf(c.containers()))).toList());
     }

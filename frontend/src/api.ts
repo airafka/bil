@@ -74,7 +74,7 @@ function request<T>(url: string, options?: RequestInit): Promise<T> {
   return pending
 }
 
-export function getReferenceOptions(resource: 'clients' | 'containers' | 'etsng-codes' | 'railway-carriages' | 'railway-carriage-types', query = '') {
+export function getReferenceOptions(resource: 'clients' | 'containers' | 'etsng-codes' | 'railway-carriages' | 'railway-carriage-types' | 'seal-types' | 'hazard-classes' | 'railway-carriage-models' | 'railway-carriage-kinds', query = '') {
   return request<ReferenceOption[]>(`/api/references/${resource}?limit=100&q=${encodeURIComponent(query)}`)
 }
 
@@ -88,6 +88,10 @@ export function getTransportTypes() {
 
 export function getOrders(apiPath: string, page: number, size = 20, query = '', status = '') {
   return request<PagedResponse<OrderSummary>>(`${apiPath}?page=${page}&size=${size}&query=${encodeURIComponent(query)}&status=${encodeURIComponent(status)}`)
+}
+
+export function updateOrderContainerAttributes(apiPath: string, id: string, containers: Array<import('./domain').ReceivingContainerAttributes & { containerId: string }>) {
+  return request<OrderDetails>(`${apiPath}/${id}/containers`, { method: 'PATCH', body: JSON.stringify({ containers }) })
 }
 
 export function getOrder(apiPath: string, id: string) {
@@ -187,4 +191,15 @@ export function getBillingCharges(serviceOrderId?: string, page = 0) {
 
 export function createServiceReturns(serviceId: string, shippingOrderIds: string[]) {
   return request<CreatedOrder[]>('/api/service-orders/' + serviceId + '/returns', { method: 'POST', body: JSON.stringify({ shippingOrderIds }) })
+}
+
+export function getRailwayCarriagePage(page: number) {
+  return request<PagedResponse<import('./railwayCarriages').RailwayCarriage>>(`/api/references/railway-carriages/page?page=${page}&size=20`)
+}
+export function updateRailwayCarriage(id: string, value: import('./railwayCarriages').RailwayCarriagePatch) {
+  return request<import('./railwayCarriages').RailwayCarriage>(`/api/references/railway-carriages/${id}`, { method: 'PATCH', body: JSON.stringify(value) })
+}
+
+export function updateContainerAttributes(id: string, tareWeight: string, loadCapacity: string | null) {
+  return request<ReferenceOption>('/api/references/containers/' + id + '/attributes', { method: 'PATCH', body: JSON.stringify({ tareWeight, loadCapacity }) })
 }

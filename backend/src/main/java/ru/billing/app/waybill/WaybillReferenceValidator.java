@@ -26,13 +26,22 @@ public class WaybillReferenceValidator {
             validateReceivingOrder(request.receivingOrderId());
         }
 
+        if (request.hazardClassId() != null) ensureAllExist("hazard_class", List.of(request.hazardClassId()), "HAZARD_CLASS_NOT_FOUND", "Класс опасности не найден");
         Set<UUID> carriageIds = new LinkedHashSet<>();
         Set<UUID> containerIds = new LinkedHashSet<>();
         request.railwayCarriages().forEach(carriage -> {
             carriageIds.add(carriage.railwayCarriageId());
             carriage.containers().forEach(container -> containerIds.add(container.containerId()));
         });
+        Set<UUID> ownerIds = new LinkedHashSet<>(), sealTypeIds = new LinkedHashSet<>();
+        request.railwayCarriages().forEach(carriage -> carriage.containers().forEach(c -> {
+            if (c.ownerClientId() != null) ownerIds.add(c.ownerClientId());
+            if (c.sealTypeId() != null) sealTypeIds.add(c.sealTypeId());
+        }));
+        ensureAllExist("client", ownerIds, "OWNER_CLIENT_NOT_FOUND", "Собственник КТК не найден");
+        ensureAllExist("seal_type", sealTypeIds, "SEAL_TYPE_NOT_FOUND", "Тип ЗПУ не найден");
         Set<UUID> etsngCodeIds = new LinkedHashSet<>();
+        if (request.etsngCodeId() != null) etsngCodeIds.add(request.etsngCodeId());
         request.railwayCarriages().forEach(carriage -> carriage.containers().forEach(container -> {
             if (container.etsngCodeId() != null) etsngCodeIds.add(container.etsngCodeId());
         }));

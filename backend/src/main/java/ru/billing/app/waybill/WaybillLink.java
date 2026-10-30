@@ -9,6 +9,7 @@ public record WaybillLink(
         long railwayCarriageCount,
         long containerCount,
         List<WaybillProductSummary> products,
-        List<WaybillContainerSummary> containers
+        List<WaybillContainerSummary> containers,
+        List<WaybillCarriageSummary> railwayCarriages
 ) {
 }

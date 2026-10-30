@@ -7,6 +7,6 @@ public record OrderWaybillProductDetails(
         UUID id,
         UUID etsngCodeId,
         String etsngCode,
-        BigDecimal weight
+        BigDecimal weight, BigDecimal grossWeight, UUID hazardClassId, String hazardClassName
 ) {
 }

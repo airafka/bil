@@ -8,6 +8,6 @@ public record WaybillProductSummary(
         UUID etsngCodeId,
         String code,
         String name,
-        BigDecimal weight
+        BigDecimal weight, BigDecimal grossWeight, UUID hazardClassId, String hazardClassName
 ) {
 }

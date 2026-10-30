@@ -1,3 +1,5 @@
+import { ReceivingContainerAttributes } from '../components/ReceivingContainerAttributes'
+import { WaybillCompositionTable } from '../components/WaybillCompositionTable'
 import { StatusBadge } from '../components/StatusBadge'
 import { UiInput, UiSelect } from '../components/FormControls'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -378,7 +380,6 @@ export function CreateOrderPage({ config, serviceMode = false }: { config: Order
         )}
 
         {!serviceMode && step === 2 && <div className="form-section ui-form-section">
-          <div className="form-section-heading"><h2>Рейс</h2></div>
           <div className="form-fields-grid"><div className="form-fields-column"><label className="field horizontal-field"><span>Рейс:</span><UiSelect value={form.routeId} onChange={event => setForm(state => ({ ...state, routeId: event.target.value }))}><option value="">Без рейса</option>{compatibleRoutes.map(route => <option value={route.id} key={route.id}>Рейс {route.code} · {routeDateLabel(route.departureAt)}</option>)}</UiSelect></label></div></div>
           <p className="route-help">Доступны черновые рейсы выбранного транспорта и площадки. Можно добавить заявку в рейс позднее.</p>
           {routeLoadError && <div className="notice error" role="alert">{routeLoadError}</div>}
@@ -453,15 +454,13 @@ export function CreateOrderPage({ config, serviceMode = false }: { config: Order
                 )
               })}
             </div>
+            {<ReceivingContainerAttributes containers={form.containers}
+              onChange={(id, change) => setForm(state => ({ ...state, containers: state.containers.map(row => row.id === id ? { ...row, ...change } : row) }))} />}
           </div>
         )}
 
         {contentStep === 2 && isUnnumberedVehicleShipping && (
           <div className="form-section unnumbered-vehicle-section">
-            <div className="form-section-heading">
-              <h2>КТК</h2>
-              <p>Укажите количество и типоразмер КТК. Конкретные номера будут определены при выполнении операции.</p>
-            </div>
             <div className="unnumbered-vehicle-fields">
               <label className="field horizontal-field">
                 <span>Количество КТК <b>*</b></span>
@@ -511,7 +510,7 @@ export function CreateOrderPage({ config, serviceMode = false }: { config: Order
         {contentStep === 2 && isRailwayReceiving && (
           <div className="form-section railway-order-section">
             <div className="waybill-section-title">
-              <div><h2>Накладные</h2><p>Выберите одну или несколько свободных накладных одной группы.</p></div>
+
               <button type="button" className="outline-action-button" onClick={() => setWaybillPickerOpen(true)}>⊕ Выбрать накладные</button>
             </div>
 
@@ -536,72 +535,14 @@ export function CreateOrderPage({ config, serviceMode = false }: { config: Order
           </div>
         )}
 
-        {contentStep === 3 && isRailwayReceiving && (
-          <div className="form-section railway-order-section">
-            <div className="form-section-heading"><h2>Вагоны</h2><p>Состав выбранных накладных доступен только для просмотра.</p></div>
-            {form.waybills.length === 0 ? <div className="inline-empty">Накладные не выбраны</div> : (
-              <div className="selected-waybill-table">
-                <div className="selected-waybill-header selected-waybill-summary-grid"><span>Накладная</span><span>Маршрут</span><span>Количество вагонов</span></div>
-                {form.waybills.map((waybill) => (
-                  <div className="selected-waybill-row selected-waybill-summary-grid" key={waybill.id}>
-                    <strong>{waybill.number}</strong>
-                    <span>{getWaybillStationName(waybill.departureStation)} → {getWaybillStationName(waybill.destinationStation)}</span>
-                    <span>{waybill.railwayCarriageCount}</span>
-                  </div>
-                ))}
-                <div className="waybill-selection-total">Итого вагонов: {waybillTotals.railwayCarriages}</div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {contentStep === 4 && isRailwayReceiving && (
-          <div className="form-section railway-order-section">
-            <div className="form-section-heading"><h2>КТК</h2><p>Количество КТК получено из выбранных накладных.</p></div>
-            {form.waybills.length === 0 ? <div className="inline-empty">Накладные не выбраны</div> : (
-              <div className="selected-waybill-table">
-                <div className="selected-waybill-header selected-waybill-summary-grid"><span>Накладная</span><span>Маршрут</span><span>Количество КТК</span></div>
-                {form.waybills.map((waybill) => (
-                  <div className="selected-waybill-row selected-waybill-summary-grid" key={waybill.id}>
-                    <strong>{waybill.number}</strong>
-                    <span>{getWaybillStationName(waybill.departureStation)} → {getWaybillStationName(waybill.destinationStation)}</span>
-                    <span>{waybill.containerCount}</span>
-                  </div>
-                ))}
-                <div className="waybill-selection-total">Итого КТК: {waybillTotals.containers}</div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {contentStep === 5 && isRailwayReceiving && (
-          <div className="form-section railway-order-section">
-            <div className="form-section-heading"><h2>Груз</h2><p>Грузы выбранной совместимой группы накладных.</p></div>
-            {form.waybills.length === 0 ? <div className="inline-empty">Накладные не выбраны</div> : (
-              <div className="selected-waybill-table">
-                <div className="selected-waybill-header selected-waybill-cargo-grid"><span>Накладная</span><span>Груз по ЕТСНГ</span><span>Масса</span></div>
-                {form.waybills.flatMap((waybill) => waybill.products.length > 0
-                  ? waybill.products.map((product) => (
-                    <div className="selected-waybill-row selected-waybill-cargo-grid" key={`${waybill.id}-${product.id}`}>
-                      <strong>{waybill.number}</strong>
-                      <span>{product.code} — {product.name}</span>
-                      <span>{product.weight == null ? 'Не указана' : `${product.weight.toLocaleString('ru-RU', { maximumFractionDigits: 3 })} кг`}</span>
-                    </div>
-                  ))
-                  : [(
-                    <div className="selected-waybill-row selected-waybill-cargo-grid" key={`${waybill.id}-empty`}>
-                      <strong>{waybill.number}</strong><span>Грузы не указаны</span><span>—</span>
-                    </div>
-                  )])}
-              </div>
-            )}
-          </div>
+        {isRailwayReceiving && contentStep >= 3 && contentStep <= 5 && (
+          <WaybillCompositionTable key={contentStep} waybills={form.waybills} tab={contentStep === 3 ? 'wagons' : contentStep === 4 ? 'containers' : 'cargo'} draft />
         )}
 
         {contentStep === 2 && isRailwayShipping && (
           <div className="form-section shipping-railway-section">
             <div className="waybill-section-title">
-              <div><h2>Вагоны</h2><p>Укажите только номерной или количественный состав вагонов.</p></div>
+
               {(form.fillingType === 'ALL' || form.fillingType === 'RAILWAY_CARRIAGE') && (
                 <button type="button" className="outline-action-button" onClick={() => setForm((state) => ({
                   ...state,
@@ -670,7 +611,7 @@ export function CreateOrderPage({ config, serviceMode = false }: { config: Order
         {contentStep === 3 && isRailwayShipping && (
           <div className="form-section shipping-railway-section">
             <div className="waybill-section-title">
-              <div><h2>КТК</h2><p>Укажите КТК и признак «Порожний» без данных груза.</p></div>
+
               {form.fillingType === 'CONTAINER' && <button type="button" className="outline-action-button" onClick={() => setContainerRows((rows) => [...rows, ''])}>⊕ Добавить КТК</button>}
             </div>
 
@@ -741,9 +682,15 @@ export function CreateOrderPage({ config, serviceMode = false }: { config: Order
           </div>
         )}
 
+        {contentStep === 3 && isRailwayShipping && <ReceivingContainerAttributes
+          containers={[...form.containers, ...form.railwayCarriages.flatMap(w => w.containers)].filter(c => c.id)}
+          onChange={(id, change) => setForm(state => ({ ...state,
+            containers: state.containers.map(row => row.id === id ? { ...row, ...change } : row),
+            railwayCarriages: state.railwayCarriages.map(w => ({ ...w, containers: w.containers.map(row => row.id === id ? { ...row, ...change } : row) })),
+          }))} />}
+
         {contentStep === 4 && isRailwayShipping && (
           <div className="form-section shipping-railway-section">
-            <div className="form-section-heading"><h2>Груз</h2><p>Заполните ЕТСНГ и массу только для гружёных КТК или групп.</p></div>
 
             {form.fillingType === 'ALL' && (loadedRailwayContainers.length === 0 ? (
               <div className="all-empty-message"><span>✓</span><div><strong>Все выбранные КТК порожние</strong><p>Данные о грузе заполнять не требуется.</p></div></div>
@@ -795,10 +742,6 @@ export function CreateOrderPage({ config, serviceMode = false }: { config: Order
 
         {contentStep === 3 && !isRailway && (
           <div className="form-section">
-            <div className="form-section-heading">
-              <h2>Груз</h2>
-              <p>Заполните данные для каждого гружёного КТК.</p>
-            </div>
 
             {loadedContainers.length === 0 ? (
               <div className="all-empty-message">

@@ -6,6 +6,7 @@ const BillingChargesPage = lazy(() => import('./pages/BillingChargesPage').then(
 const RouteRegistryPage = lazy(() => import('./pages/RoutePages').then(module => ({ default: module.RouteRegistryPage })))
 const RouteCreatePage = lazy(() => import('./pages/RoutePages').then(module => ({ default: module.RouteCreatePage })))
 const RouteViewPage = lazy(() => import('./pages/RoutePages').then(module => ({ default: module.RouteViewPage })))
+const RailwayCarriageRegistryPage = lazy(() => import('./pages/RailwayCarriageRegistryPage').then(module => ({ default: module.RailwayCarriageRegistryPage })))
 const ContainerRegistryPage = lazy(() => import('./pages/ContainerRegistryPage').then(module => ({ default: module.ContainerRegistryPage })))
 const ServiceOrderRegistryPage = lazy(() => import('./pages/ServiceOrderRegistryPage').then(module => ({ default: module.ServiceOrderRegistryPage })))
 const ServiceOrderViewPage = lazy(() => import('./pages/ServiceOrderViewPage').then(module => ({ default: module.ServiceOrderViewPage })))
@@ -46,6 +47,7 @@ function App() {
           <Route path="/routes" element={<RouteRegistryPage />} />
           <Route path="/routes/new" element={<RouteCreatePage />} />
           <Route path="/routes/:routeId" element={<RouteViewPage />} />
+          <Route path="/railway-carriages" element={<RailwayCarriageRegistryPage />} />
           <Route path="/containers" element={<ContainerRegistryPage />} />
           <Route path="/waybills" element={<WaybillRegistryPage />} />
           <Route path="/waybills/create" element={<WaybillCreatePage />} />

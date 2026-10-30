@@ -89,7 +89,7 @@ function ServiceOrderDashboard({ serviceOrderId }: { serviceOrderId: string }) {
 
   return <section className="form-page service-dashboard">
     <Link className="service-back" to="/service-orders"><span aria-hidden="true">←</span> Заявки на услугу</Link>
-    <header className="service-header"><div className="view-title"><h1>Заявка на услугу{data ? ` ${data.order.code}` : ''}</h1></div><div className="service-header-actions"><span className="service-terminal">Контейнерная площадка</span>{data && <OrderStatusAction apiPath="/api/service-orders" id={data.order.id} status={data.order.status} onChanged={status => setData(value => value ? { ...value, order: { ...value.order, status } } : value)} />}</div></header>
+    <header className="service-header"><div className="view-title"><h1>Заявка на услугу{data ? ` ${data.order.code}` : ''}</h1></div><div className="service-header-actions">{data && <OrderStatusAction apiPath="/api/service-orders" id={data.order.id} status={data.order.status} onChanged={status => setData(value => value ? { ...value, order: { ...value.order, status } } : value)} />}</div></header>
     {error && <div className="service-error"><div className="notice error" role="alert">{error}</div><button className="secondary-button" onClick={() => { setError(''); setAttempt(value => value + 1) }}>Попробовать снова</button></div>}
     {!data && !error && <div className="service-loading" role="status" aria-label="Загружаем заявку"><span>Загружаем заявку…</span><div /><div /><div /></div>}
     {data && receiving && <>
@@ -128,10 +128,11 @@ function ServiceOrderDashboard({ serviceOrderId }: { serviceOrderId: string }) {
         </dl>
       </section>
       {data.progress && <ServiceProgressCards progress={data.progress} />}
+      <div id="service-charges"><BillingCharges serviceOrderId={serviceOrderId} refreshKey={data.order.status} /></div>
       </div>
       <div id="service-panel-receiving" role="tabpanel" aria-labelledby="service-tab-receiving" tabIndex={0} hidden={activeTab !== 'receiving'}>
-      <section className="service-order-section" aria-labelledby="service-receiving-title">
-        <h2 id="service-receiving-title">Заявки на поставку</h2>
+      <section className="service-order-section" aria-label="Заявки на поставку">
+
         <div className="table-wrap service-compact-table service-receiving-table"><table>
           <thead><tr><th scope="col">Номер заявки</th><th scope="col">Количество КТК</th><th scope="col">Груз</th><th scope="col">Площадка</th><th scope="col">Вид транспорта</th><th scope="col">Рейс</th><th scope="col">Статус</th></tr></thead>
           <tbody><tr>
@@ -147,8 +148,8 @@ function ServiceOrderDashboard({ serviceOrderId }: { serviceOrderId: string }) {
       </section>
       </div>
       <div id="service-panel-shipping" role="tabpanel" aria-labelledby="service-tab-shipping" tabIndex={0} hidden={activeTab !== 'shipping'}>
-      <section className="service-order-section" aria-labelledby="service-shipping-title">
-        <div className="bulk-return-heading"><h2 id="service-shipping-title">Заявки на вывоз</h2>
+      <section className="service-order-section" aria-label="Заявки на вывоз">
+        <div className="bulk-return-heading">
           {!selectingReturns && <button type="button" className="secondary-button" disabled={!removals.some(order => !order.returnReceivingOrderId)} onClick={() => { setSelectingReturns(true); setReturnError(''); setReturnNotice('') }}>Создать возвратные заявки</button>}
         </div>
         {selectingReturns && <div className="bulk-return-actions">
@@ -181,12 +182,11 @@ function ServiceOrderDashboard({ serviceOrderId }: { serviceOrderId: string }) {
       </section>
       </div>
       <div id="service-panel-returns" role="tabpanel" aria-labelledby="service-tab-returns" tabIndex={0} hidden={activeTab !== 'returns'}>
-      <section className="service-order-section" aria-labelledby="service-returns-title">
-        <h2 id="service-returns-title">Возвратные заявки</h2>
+      <section className="service-order-section" aria-label="Возвратные заявки">
+
         {data.returnOrders.length ? <div className="table-wrap service-compact-table"><table><thead><tr><th>Номер заявки</th><th>КТК</th><th>Рейс</th><th>Статус</th></tr></thead><tbody>{data.returnOrders.map(item => <tr key={item.id}><td><Link className="order-code" to={`/receiving-orders/${item.id}`}>{item.code}</Link></td><td>{item.containerNames.join(', ')}</td><td><OrderRouteCell id={item.id} kind="RECEIVING" /></td><td><StatusBadge status={item.status} /></td></tr>)}</tbody></table></div> : <div className="service-section-empty">Возвратных поставок пока нет</div>}
       </section>
       </div>
-      <div id="service-charges"><BillingCharges serviceOrderId={serviceOrderId} refreshKey={data.order.status} /></div>
     </>}
   </section>
 }

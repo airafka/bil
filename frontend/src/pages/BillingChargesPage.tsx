@@ -17,7 +17,7 @@ export function BillingCharges({ serviceOrderId, refreshKey = '' }: { serviceOrd
     return () => { active = false }
   }, [serviceOrderId, page, refreshKey, attempt])
   return <section className="service-order-section billing-charges-panel">
-    {serviceOrderId && <h2>Начисления по КТК</h2>}
+    {serviceOrderId && <h2>Начисления</h2>}
     {error && <div className="notice error" role="alert">{error}<button className="secondary-button" onClick={() => { setError(''); setAttempt(value => value + 1) }}>Повторить</button></div>}
     {!data && !error && <p>Загружаем начисления…</p>}
     {data && <>

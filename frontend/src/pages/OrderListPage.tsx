@@ -1,4 +1,5 @@
-import { RegistryTools } from '../components/RegistryTools'
+import { ActionIcon } from '../components/ActionIcon'
+import { RowActions } from '../components/RowActions'
 import { StatusBadge } from '../components/StatusBadge'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -11,7 +12,6 @@ type NavigationState = { createdCode?: number }
 export function OrderListPage({ config }: { config: OrderConfig }) {
   const [data, setData] = useState<PagedResponse<OrderSummary> | null>(null)
   const [page, setPage] = useState(0)
-  const [filter, setFilter] = useState({ query: '', status: '' })
   const [attempt, setAttempt] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -22,14 +22,14 @@ export function OrderListPage({ config }: { config: OrderConfig }) {
 
   useEffect(() => {
     let active = true
-    getOrders(config.apiPath, page, 20, filter.query, filter.status)
+    getOrders(config.apiPath, page, 20)
       .then((response) => active && setData(response))
       .catch((requestError: unknown) => {
         if (active) setError(requestError instanceof Error ? requestError.message : 'Не удалось загрузить заявки')
       })
       .finally(() => active && setLoading(false))
     return () => { active = false }
-  }, [config.apiPath, page, filter, attempt])
+  }, [config.apiPath, page, attempt])
 
   const changePage = (nextPage: number) => {
     setLoading(true)
@@ -47,7 +47,7 @@ export function OrderListPage({ config }: { config: OrderConfig }) {
     <section className="registry-page">
       <div className="page-header">
         <h1>{config.title}</h1>
-        <Link className="primary-button" to={config.createPath}><span>+</span> Создать заявку</Link>
+        <Link className="primary-button" to={config.createPath}><ActionIcon name="plus" /> Создать</Link>
       </div>
 
       {successCode && (
@@ -60,40 +60,37 @@ export function OrderListPage({ config }: { config: OrderConfig }) {
       {error && <div className="notice error" role="alert">{error}<button type="button" className="secondary-button" onClick={() => { setError(''); setLoading(true); setAttempt(value => value + 1) }}>Повторить</button></div>}
 
       <div className="table-card" aria-busy={loading}>
-        <RegistryTools busy={loading} onApply={(query, status) => { setPage(0); setLoading(true); setError(''); setFilter({ query, status }) }} />
-        <div className="table-toolbar">
-          <strong>Реестр заявок</strong>
-          <span>{loading ? '…' : data?.totalElements ?? 0} записей</span>
-        </div>
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Номер</th>
+                <th className="registry-index" scope="col">№</th>
+                <th>Номер заявки</th>
                 <th>Клиент</th>
                 <th>Договор</th>
                 <th>Заявка на услугу</th>
                 <th>Площадка</th>
-                <th>Транспорт</th>
+                <th>Вид транспорта</th>
                 {config.kind === 'shipping' && <th>Тип вывоза / наличие данных</th>}
-                <th>Статус</th>
+                <th>Статус</th><th className="registry-actions" scope="col" aria-label="Действия" />
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={config.kind === 'shipping' ? 8 : 7} className="table-message">Загружаем заявки…</td></tr>
+                <tr><td colSpan={config.kind === 'shipping' ? 10 : 9} className="table-message">Загружаем заявки…</td></tr>
               )}
               {!loading && !error && data?.items.length === 0 && (
                 <tr>
-                  <td colSpan={config.kind === 'shipping' ? 8 : 7} className="empty-state">
+                  <td colSpan={config.kind === 'shipping' ? 10 : 9} className="empty-state">
                     <span className="empty-icon">◇</span>
-                    <strong>{filter.query || filter.status ? 'Заявки не найдены' : 'Заявок пока нет'}</strong>
-                    <p>{filter.query || filter.status ? 'Измените запрос или сбросьте фильтры.' : 'Создайте первую заявку с помощью кнопки «Создать заявку».'}</p>
+                    <strong>Заявок пока нет</strong>
+                    <p>Создайте первую заявку с помощью кнопки «Создать».</p>
                   </td>
                 </tr>
               )}
-              {!loading && data?.items.map((order) => (
+              {!loading && data?.items.map((order, index) => (
                 <tr key={order.id}>
+                  <td className="registry-index">{page * (data?.size ?? 20) + index + 1}</td>
                   <td>
                     <Link className="order-code" to={`${config.listPath}/${order.id}`}>
                       {order.code}
@@ -105,7 +102,7 @@ export function OrderListPage({ config }: { config: OrderConfig }) {
                   {config.kind === 'shipping' && <td>{order.transportType === 'RAILWAY'
                     ? fillingTypeLabel(order.fillingType)
                     : '—'}</td>}
-                  <td><StatusBadge status={order.status} /></td>
+                  <td><StatusBadge status={order.status} /></td><td className="registry-actions"><RowActions label={'Действия с заявкой ' + order.code} actions={[{ label: 'Открыть', to: config.listPath + '/' + order.id }]} /></td>
                 </tr>
               ))}
             </tbody>

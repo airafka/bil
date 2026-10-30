@@ -27,7 +27,7 @@
 .complex-service-danger-button { background: #c8404e; }
 .complex-service-danger-button:hover:not(:disabled) { background: #ae3542; }
 @media (max-width: 640px) {
-  .complex-service-page .stepper { width: 100%; flex-wrap: wrap; }
-  .complex-service-page .stepper .step { min-width: 0; flex: 1 1 120px; }
+  .complex-service-page .stepper { width: fit-content; flex-wrap: nowrap; }
+  .complex-service-page .stepper .step { min-width: 0; flex: 0 0 auto; }
   .complex-service-page .page-header { align-items: flex-start; flex-direction: column; }
 }

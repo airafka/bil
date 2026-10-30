@@ -47,8 +47,17 @@ public class ReturnReceivingService {
                 Integer.class, shippingId, containerId);
         if (linked == null || linked == 0) throw new ApiException(HttpStatus.BAD_REQUEST, "CONTAINER_NOT_IN_SHIPPING", "КТК не относится к этому вывозу");
         }
+        var returnContainers = new java.util.ArrayList<OrderContainerRequest>();
+        for (UUID containerId : request.containerIds()) {
+            var rows = jdbc.query("select owner_client_id, seal_numbers, seal_type_id, hazard_class_id from shipping_order_container where shipping_order_id = ? and container_id = ?",
+                    (rs, row) -> new OrderContainerRequest(containerId, true, null,
+                            rs.getObject("owner_client_id", UUID.class), rs.getString("seal_numbers"),
+                            rs.getObject("seal_type_id", UUID.class), rs.getObject("hazard_class_id", UUID.class)), shippingId, containerId);
+            if (rows.size() != 1) throw new ApiException(HttpStatus.BAD_REQUEST, "CONTAINER_NOT_IN_SHIPPING", "КТК отсутствует в составе вывоза");
+            returnContainers.add(rows.getFirst());
+        }
         CreatedOrderResponse created = receiving.create(new CreateOrderRequest(source.clientId(), source.contractId(), source.areaId(),
-                TransportType.VEHICLE, request.containerIds().stream().map(id -> new OrderContainerRequest(id, true, null)).toList(), List.of(), List.of(), FillingType.ALL, List.of(), List.of()));
+                TransportType.VEHICLE, returnContainers, List.of(), List.of(), FillingType.ALL, List.of(), List.of()));
         jdbc.update("""
                 update receiving_order set service_order_id = ?, service_role = 'RETURN_RECEIVING',
                     source_shipping_order_id = ? where id = ?

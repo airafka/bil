@@ -1,3 +1,5 @@
+import { ActionIcon } from '../components/ActionIcon'
+import { RowActions } from '../components/RowActions'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -28,18 +30,17 @@ function priceError(value: ComplexServicePayload) {
 }
 
 export function ComplexServiceRegistryPage() {
-  const [query, setQuery] = useState('')
   const [services, setServices] = useState<ComplexService[] | null>(null)
   const [error, setError] = useState('')
   useEffect(() => { getComplexServices().then(setServices).catch(cause => setError(cause instanceof Error ? cause.message : 'Не удалось загрузить услуги')) }, [])
   return <section className="registry-page complex-service-page">
-    <div className="page-header"><h1>Комплексные услуги</h1><Link className="primary-button" to="/complex-services/new"><span>+</span> Создать услугу</Link></div>
+    <div className="page-header"><h1>Комплексные услуги</h1><Link className="primary-button" to="/complex-services/new"><ActionIcon name="plus" /> Создать</Link></div>
     {error && <div className="notice error" role="alert">{error}</div>}
-    <div className="table-card"><div className="registry-tools"><label>Поиск по наименованию<UiInput type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Название услуги" /></label></div><div className="table-toolbar"><strong>Справочник услуг</strong><span>{services?.length ?? 0} записей</span></div>
-      <div className="table-wrap"><table><thead><tr><th>Наименование</th><th>Цена без НДС, ₽</th><th>Цена с НДС, ₽</th><th>Тарифов</th></tr></thead><tbody>
-        {!services && !error && <tr><td colSpan={4} className="table-message">Загружаем услуги…</td></tr>}
-        {services && !services.some(service => service.name.toLocaleLowerCase('ru').includes(query.trim().toLocaleLowerCase('ru'))) && <tr><td colSpan={4} className="empty-state"><strong>{query ? 'Услуги не найдены' : 'Комплексных услуг пока нет'}</strong><p>Создайте услугу, затем настройте коэффициенты для клиентов и договоров.</p></td></tr>}
-        {services?.filter(service => service.name.toLocaleLowerCase('ru').includes(query.trim().toLocaleLowerCase('ru'))).map(service => <tr key={service.id}><td><Link className="order-code" to={`/complex-services/${service.id}`}>{service.name}</Link></td><td className="complex-service-money">{priceLabel(service.priceWithoutVat)}</td><td className="complex-service-money">{priceLabel(service.priceWithVat)}</td><td>{service.tariffCount}</td></tr>)}
+    <div className="table-card">
+      <div className="table-wrap"><table><thead><tr><th className="registry-index" scope="col">№</th><th>Наименование</th><th>Цена без НДС, ₽</th><th>Цена с НДС, ₽</th><th>Тарифов</th><th className="registry-actions" scope="col" aria-label="Действия" /></tr></thead><tbody>
+        {!services && !error && <tr><td colSpan={6} className="table-message">Загружаем услуги…</td></tr>}
+        {services && services.length === 0 && <tr><td colSpan={6} className="empty-state"><strong>Комплексных услуг пока нет</strong><p>Создайте услугу, затем настройте коэффициенты для клиентов и договоров.</p></td></tr>}
+        {services?.map((service, index) => <tr key={service.id}><td className="registry-index">{index + 1}</td><td><Link className="order-code" to={`/complex-services/${service.id}`}>{service.name}</Link></td><td className="complex-service-money">{priceLabel(service.priceWithoutVat)}</td><td className="complex-service-money">{priceLabel(service.priceWithVat)}</td><td>{service.tariffCount}</td><td className="registry-actions"><RowActions label={'Действия с услугой ' + service.name} actions={[{ label: 'Открыть', to: '/complex-services/' + service.id }]} /></td></tr>)}
       </tbody></table></div>
     </div>
   </section>
@@ -92,6 +93,7 @@ function ComplexServiceCard({ id }: { id: string }) {
   const [saving, setSaving] = useState(false)
   const [savedMessage, setSavedMessage] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [editingBase, setEditingBase] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
@@ -113,7 +115,7 @@ function ComplexServiceCard({ id }: { id: string }) {
     const invalid = priceError(base)
     if (invalid) { setError(invalid); return }
     setSaving(true); setError('')
-    try { setDetails(await updateComplexService(id, base)); setSavedMessage('Изменения сохранены') }
+    try { setDetails(await updateComplexService(id, base)); setSavedMessage('Изменения сохранены'); setEditingBase(false) }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Не удалось сохранить услугу') }
     finally { setSaving(false) }
   }
@@ -170,7 +172,7 @@ function ComplexServiceCard({ id }: { id: string }) {
 
   const availableContracts = contracts.filter(contract => contract.clientId === clientId)
   return <section className="form-page complex-service-page">
-    <div className="page-header"><h1>{details?.service.name ?? 'Комплексная услуга'}</h1><div className="header-actions"><Link className="secondary-button" to="/complex-services">К справочнику</Link>{details && <button type="button" className="secondary-button complex-service-delete-button" onClick={() => { setError(''); setShowDeleteConfirm(true) }}>Удалить услугу</button>}</div></div>
+    <div className="page-header"><h1>{details?.service.name ?? 'Комплексная услуга'}</h1><div className="header-actions">{details && tab === 'main' && !editingBase && <button type="button" className="secondary-button icon-button" title="Редактировать" aria-label="Редактировать" onClick={() => { setEditingBase(true); setSavedMessage(''); setError('') }}><ActionIcon name="edit" /></button>}<Link className="secondary-button" to="/complex-services">К справочнику</Link>{details && <button type="button" className="secondary-button complex-service-delete-button" onClick={() => { setError(''); setShowDeleteConfirm(true) }}>Удалить услугу</button>}</div></div>
     {error && !showDeleteConfirm && <div className="notice error" role="alert">{error}</div>}
     {!details && !error && <div className="table-card table-message">Загружаем услугу…</div>}
     {savedMessage && <div className="notice success" role="status">{savedMessage}<button type="button" className="notice-close" aria-label="Закрыть уведомление" onClick={() => setSavedMessage('')}>×</button></div>}
@@ -179,9 +181,10 @@ function ComplexServiceCard({ id }: { id: string }) {
         <button type="button" role="tab" aria-selected={tab === 'main'} className={`step ${tab === 'main' ? 'current' : ''}`} onClick={() => { setTab('main'); setError('') }}>Основное</button>
         <button type="button" role="tab" aria-selected={tab === 'tariffs'} className={`step ${tab === 'tariffs' ? 'current' : ''}`} onClick={() => { setTab('tariffs'); setError('') }}>Тарифы ({details.tariffs.length})</button>
       </div>}
-      {tab === 'main' && <form onSubmit={saveBase}>
+      {tab === 'main' && !editingBase && <section className="form-section ui-form-section"><h2 className="form-section-heading">Основная информация</h2><dl className="details-grid"><div><dt>Наименование:</dt><dd>{details.service.name}</dd></div><div><dt>Цена с НДС, ₽:</dt><dd>{priceLabel(details.service.priceWithVat)}</dd></div><div><dt>Цена без НДС, ₽:</dt><dd>{priceLabel(details.service.priceWithoutVat)}</dd></div></dl></section>}
+      {tab === 'main' && editingBase && <form onSubmit={saveBase}>
         <section className="form-section ui-form-section"><h2 className="form-section-heading">Основная информация</h2>{serviceFields(base, next => { setBase(next); setSavedMessage('') })}</section>
-        <div className="complex-service-actions"><button className="primary-button" disabled={saving}>{saving ? 'Сохраняем…' : 'Сохранить изменения'}</button></div>
+        <div className="complex-service-actions"><button type="button" className="secondary-button" disabled={saving} onClick={() => { setBase({ name: details.service.name, priceWithoutVat: String(details.service.priceWithoutVat), priceWithVat: String(details.service.priceWithVat) }); setEditingBase(false); setError('') }}>Отмена</button><button className="primary-button" disabled={saving}>{saving ? 'Сохраняем…' : 'Сохранить'}</button></div>
       </form>}
       {tab === 'tariffs' && <section className="complex-service-tariffs">
         <div className="table-toolbar"><strong>Тарифы по договорам</strong><button type="button" className="primary-button" onClick={openTariffForm}><span>+</span> Добавить тариф</button></div>

@@ -1,10 +1,15 @@
+import { VehicleReceivingCargoTable } from '../components/VehicleReceivingCargoTable'
+import { ReceivingContainerAttributes } from '../components/ReceivingContainerAttributes'
+import { ActionIcon } from '../components/ActionIcon'
+import { RouteInformation } from '../components/RouteInformation'
+import { WaybillCompositionTable } from '../components/WaybillCompositionTable'
 import { StatusBadge } from '../components/StatusBadge'
 import { OrderStatusAction } from '../components/OrderStatusAction'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { assignRouteOrders, createReturnReceivingOrder, getOrder, getRoutes } from '../api'
+import { updateOrderContainerAttributes, assignRouteOrders, createReturnReceivingOrder, getOrder, getRoutes } from '../api'
 import type { OrderConfig, OrderDetails } from '../domain'
-import { containerTypeLabel, fillingTypeLabel, statusLabel, transportTypeLabel } from '../domain'
+import { containerTypeLabel, fillingTypeLabel, transportTypeLabel } from '../domain'
 import { getWaybillStationName } from '../waybillOptions'
 import type { RouteSummary, RouteType } from '../routes'
 import { routeDateLabel } from '../routes'
@@ -20,6 +25,10 @@ const formatWeight = (weight: number) => weight.toLocaleString('ru-RU', { maximu
 export function OrderViewPage({ config, providedOrderId, embedded = false }: { config: OrderConfig; providedOrderId?: string; embedded?: boolean }) {
   const { orderId: routeOrderId = '' } = useParams()
   const orderId = providedOrderId ?? routeOrderId
+  return <OrderCard key={orderId} config={config} orderId={orderId} embedded={embedded} />
+}
+
+function OrderCard({ config, orderId, embedded }: { config: OrderConfig; orderId: string; embedded: boolean }) {
   const [activeTab, setActiveTab] = useState(1)
   const [order, setOrder] = useState<OrderDetails | null>(null)
   const [loading, setLoading] = useState(true)
@@ -27,7 +36,8 @@ export function OrderViewPage({ config, providedOrderId, embedded = false }: { c
   const [routes, setRoutes] = useState<RouteSummary[]>([])
   const [selectedRouteId, setSelectedRouteId] = useState('')
   const [routeError, setRouteError] = useState('')
-  const [savingRoute, setSavingRoute] = useState(false)
+  const [routesLoading, setRoutesLoading] = useState(true)
+  const [containerDraft, setContainerDraft] = useState<OrderDetails['containers']>([])
   const [editing, setEditing] = useState(false)
   const [returnToStock, setReturnToStock] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
@@ -45,7 +55,13 @@ export function OrderViewPage({ config, providedOrderId, embedded = false }: { c
     return () => { active = false }
   }, [config.apiPath, orderId])
 
-  useEffect(() => { getRoutes().then(setRoutes).catch(() => setRouteError('Не удалось загрузить рейсы')) }, [])
+  useEffect(() => {
+    let active = true
+    getRoutes().then(value => { if (active) setRoutes(value) })
+      .catch(() => { if (active) setRouteError('Не удалось загрузить рейсы') })
+      .finally(() => { if (active) setRoutesLoading(false) })
+    return () => { active = false }
+  }, [])
 
   const cargoContainers = useMemo(
     () => order?.containers.filter((container) => !container.empty && container.cargo) ?? [],
@@ -75,36 +91,51 @@ export function OrderViewPage({ config, providedOrderId, embedded = false }: { c
     && route.transportType === order?.transportType && route.terminalAreaId === order?.terminalArea?.id && route.status === 'DRAFT')
   const existingReturn = order?.returnOrders?.[0]
   const canEditReturn = config.kind === 'shipping' && order?.transportType === 'VEHICLE' && !!order.serviceOrderId
+  const numberedContainers = order ? [...order.containers, ...order.railwayCarriages.flatMap(w => w.containers)] : []
+  const canEditContainers = order?.status === 'DRAFT' && numberedContainers.length > 0
+    && (config.kind === 'shipping' || order?.transportType === 'VEHICLE')
+  const canEditRoute = order?.status === 'DRAFT' && !order.routeId
+  const assignedRoute = routes.find(route => route.id === order?.routeId)
   function startEditing() {
+    setContainerDraft(numberedContainers.map(row => ({ ...row })))
     setReturnToStock(!!existingReturn)
+    setSelectedRouteId(order?.routeId ?? '')
     setReturnError('')
     setSaveMessage('')
-    setActiveTab(1)
     setEditing(true)
   }
-  async function saveShipping() {
+  function containerTable(rows: OrderDetails['containers']) {
+    return <ReceivingContainerAttributes key={editing ? 'edit' : 'view'} showState vehicleReceiving={config.kind === 'receiving' && order?.transportType === 'VEHICLE'}
+      containers={rows.map(row => ({ ...(editing && canEditContainers ? containerDraft.find(c => c.containerId === row.containerId) ?? row : row), id: row.containerId, name: row.containerName }))}
+      onChange={editing && canEditContainers ? (id, change) => setContainerDraft(current => current.map(row => row.containerId === id ? { ...row, ...change } : row)) : undefined} />
+  }
+  async function saveOrder() {
     if (!order || creatingReturn) return
-    if (!returnToStock || existingReturn) { setEditing(false); setSaveMessage('Заявка сохранена'); return }
     setCreatingReturn(true)
     setReturnError('')
     try {
-      const created = await createReturnReceivingOrder(order.id, { containerIds: order.containers.map(item => item.containerId) })
-      setOrder(current => current ? { ...current, returnOrders: [{ ...created, containerNames: order.containers.map(item => item.containerName) }] } : current)
+      if (canEditContainers && containerDraft.length) {
+        const updated = await updateOrderContainerAttributes(config.apiPath, order.id, containerDraft.map(row => ({
+          containerId: row.containerId, ownerClientId: row.ownerClientId || null, sealNumbers: row.sealNumbers?.trim() || null,
+          sealTypeId: row.sealTypeId || null, hazardClassId: row.hazardClassId || null,
+        })))
+        setOrder(updated)
+      }
+      if (canEditRoute && selectedRouteId) {
+        const updated = await assignRouteOrders(selectedRouteId, [order.id])
+        setOrder(current => current ? { ...current, routeId: updated.route.id } : current)
+        setRoutes(current => current.map(route => route.id === updated.route.id ? updated.route : route))
+      }
+      let message = 'Заявка сохранена'
+      if (canEditReturn && returnToStock && !existingReturn) {
+        const created = await createReturnReceivingOrder(order.id, { containerIds: order.containers.map(item => item.containerId) })
+        setOrder(current => current ? { ...current, returnOrders: [{ ...created, containerNames: order.containers.map(item => item.containerName) }] } : current)
+        message += '. Создана поставка ' + created.code
+      }
       setEditing(false)
-      setSaveMessage('Заявка сохранена. Создана поставка ' + created.code)
+      setSaveMessage(message)
     } catch (cause) { setReturnError(cause instanceof Error ? cause.message : 'Не удалось сохранить заявку') }
     finally { setCreatingReturn(false) }
-  }
-  async function attachRoute() {
-    if (!order || !selectedRouteId) return
-    setSavingRoute(true)
-    setRouteError('')
-    try {
-      await assignRouteOrders(selectedRouteId, [order.id])
-      setOrder(current => current ? { ...current, routeId: selectedRouteId } : current)
-      setRoutes(await getRoutes())
-    } catch (cause) { setRouteError(cause instanceof Error ? cause.message : 'Не удалось выбрать рейс') }
-    finally { setSavingRoute(false) }
   }
 
   return (
@@ -112,9 +143,9 @@ export function OrderViewPage({ config, providedOrderId, embedded = false }: { c
       {!embedded && <div className="page-header form-page-header">
         <div className="view-title">
           <h1>{config.kind === 'receiving' ? 'Заявка на поставку' : 'Заявка на вывоз'}{order ? ` ${order.code}` : ''}</h1>
-          {order && <StatusBadge status={order.status} />}
+
         </div>
-        <div className="view-header-actions">{canEditReturn && !editing && <button type="button" className="secondary-button" onClick={startEditing}>Редактировать</button>}{order && <OrderStatusAction key={order.id} apiPath={config.apiPath} id={order.id} status={order.status} onChanged={status => setOrder(value => value ? { ...value, status } : value)} />}<Link className="close-button" to={config.listPath} aria-label="Вернуться в реестр" title="Закрыть">×</Link></div>
+        <div className="view-header-actions">{(canEditReturn || canEditRoute || canEditContainers) && !editing && <button type="button" className="secondary-button icon-button" onClick={startEditing} aria-label="Редактировать" title="Редактировать"><ActionIcon name="edit" /></button>}{order && !editing && <OrderStatusAction key={order.id} apiPath={config.apiPath} id={order.id} status={order.status} onChanged={status => setOrder(value => value ? { ...value, status } : value)} />}<Link className="close-button" to={config.listPath} aria-label="Вернуться в реестр" title="Закрыть"><ActionIcon name="close" /></Link></div>
       </div>
 
       }
@@ -123,7 +154,7 @@ export function OrderViewPage({ config, providedOrderId, embedded = false }: { c
         {error && <div className="view-error-state"><div className="notice error" role="alert">{error}</div><Link className="secondary-button" to={config.listPath}>← Вернуться в реестр</Link></div>}
 
         {order && !loading && <>
-          {embedded && <OrderStatusAction key={order.id} apiPath={config.apiPath} id={order.id} status={order.status} onChanged={status => setOrder(value => value ? { ...value, status } : value)} />}
+          {embedded && !editing && <div className="view-header-actions">{(canEditReturn || canEditRoute || canEditContainers) && <button type="button" className="secondary-button icon-button" onClick={startEditing} aria-label="Редактировать" title="Редактировать"><ActionIcon name="edit" /></button>}<OrderStatusAction key={order.id} apiPath={config.apiPath} id={order.id} status={order.status} onChanged={status => setOrder(value => value ? { ...value, status } : value)} /></div>}
           <div className="stepper view-tabs" aria-label="Разделы заявки">
             {visibleTabs.map((label, index) => <button type="button" className={`step ${activeTab === index + 1 ? 'current' : ''}`} key={label} onClick={() => setActiveTab(index + 1)}>{label}</button>)}
           </div>
@@ -132,9 +163,14 @@ export function OrderViewPage({ config, providedOrderId, embedded = false }: { c
             <div className="form-section-heading"><h2>Основная информация</h2></div>
             <dl className="details-grid">
               <div><dt>Номер заявки</dt><dd>{order.code}</dd></div>
-              <div><dt>Статус</dt><dd>{statusLabel(order.status)}</dd></div>
+              <div><dt>Статус</dt><dd><StatusBadge status={order.status} /></dd></div>
               <div className="details-wide"><dt>Клиент</dt><dd>{order.clientName}</dd></div>
               <div className="details-wide"><dt>Договор</dt><dd>{order.contractName ?? 'Не указан (ранее созданная заявка)'}</dd></div>
+            </dl>
+            <div className="form-section-heading ui-section-divider"><h2>Параметры заявки</h2></div>
+            <dl className="details-grid">
+              <div><dt>Площадка</dt><dd>{order.terminalArea?.name ?? '—'}</dd></div>
+              <div><dt>Транспорт</dt><dd>{transportTypeLabel(order.transportType)}</dd></div>
               <div><dt>{config.kind === 'receiving' ? 'Дата и время поступления' : 'Дата и время вывоза'}</dt><dd>{(() => {
                 const value = config.kind === 'receiving' ? order.arrivalAt : order.departureAt
                 return value ? new Date(value).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Не указаны'
@@ -143,8 +179,6 @@ export function OrderViewPage({ config, providedOrderId, embedded = false }: { c
               {order.serviceOrderId && <div className="details-wide"><dt>Заявка на услугу</dt><dd><Link to={'/service-orders/' + order.serviceOrderId}>Открыть заявку на услугу</Link></dd></div>}
               {order.sourceReceivingOrderId && <div className="details-wide"><dt>Исходная поставка</dt><dd><Link to={'/receiving-orders/' + order.sourceReceivingOrderId}>Открыть поставку КП-ЖД</Link></dd></div>}
               {order.sourceShippingOrderId && <div className="details-wide"><dt>Исходный вывоз</dt><dd><Link to={'/shipping-orders/' + order.sourceShippingOrderId}>Открыть заявку на вывоз</Link></dd></div>}
-              <div><dt>Площадка</dt><dd>{order.terminalArea?.name ?? '—'}</dd></div>
-              <div><dt>Транспорт</dt><dd>{transportTypeLabel(order.transportType)}</dd></div>
               {isRailwayShipping && <div className="details-wide"><dt>Наличие данных</dt><dd>{fillingTypeLabel(order.fillingType)}</dd></div>}
             </dl>
           </div>}
@@ -157,90 +191,65 @@ export function OrderViewPage({ config, providedOrderId, embedded = false }: { c
               {existingReturn && <p className="route-help">Возврат уже оформлен.</p>}
             </> : <p>{existingReturn ? 'Возврат оформлен' : 'Возврат не запланирован'}</p>}
             {existingReturn && <Link className="secondary-button" to={`/receiving-orders/${existingReturn.id}`}>Поставка {existingReturn.code} · {existingReturn.containerNames.join(', ')}</Link>}
-            {returnError && <div className="notice error" role="alert">{returnError}</div>}
           </div>}
           {saveMessage && <div className="notice success" role="status">{saveMessage}</div>}
-          {editing && <div className="form-footer">
-            <button type="button" className="secondary-button" disabled={creatingReturn} onClick={() => { setEditing(false); setReturnError('') }}>Отмена</button>
-            <button type="button" className="primary-button" disabled={creatingReturn || (returnToStock && !existingReturn && order.containers.length === 0)} onClick={saveShipping}>{creatingReturn ? 'Сохраняем…' : 'Сохранить'}</button>
-          </div>}
-
-          {activeTab === 2 && <div className="form-section ui-form-section">
-            <div className="form-section-heading"><h2>Рейс</h2></div>
-            {order.routeId ? <div className="form-fields-grid"><div className="form-fields-column"><div className="field horizontal-field"><span>Рейс:</span><Link to={'/routes/' + order.routeId}>Открыть рейс</Link></div></div></div> : <>
-              <div className="form-fields-grid"><div className="form-fields-column"><label className="field horizontal-field"><span>Рейс:</span><UiSelect value={selectedRouteId} onChange={event => setSelectedRouteId(event.target.value)} disabled={order.status !== 'DRAFT'}><option value="">Без рейса</option>{compatibleRoutes.map(route => <option key={route.id} value={route.id}>Рейс {route.code} · {routeDateLabel(route.departureAt)}</option>)}</UiSelect></label></div></div>
-              {order.status === 'DRAFT' && <div className="route-form-actions"><button type="button" className="primary-button" disabled={!selectedRouteId || savingRoute} onClick={attachRoute}>{savingRoute ? 'Сохраняем…' : 'Добавить в рейс'}</button></div>}
-              {compatibleRoutes.length === 0 && <p className="route-help">Подходящих черновых рейсов пока нет.</p>}
-            </>}
+          {activeTab === 2 && <div className="order-route-tab">
+            {editing && canEditRoute && <div className="form-section ui-form-section">
+              <label className="field horizontal-field"><span>Рейс:</span><UiSelect value={selectedRouteId} onChange={event => setSelectedRouteId(event.target.value)} disabled={routesLoading || creatingReturn}><option value="">Без рейса</option>{compatibleRoutes.map(route => <option key={route.id} value={route.id}>Рейс {route.code} · {routeDateLabel(route.departureAt)}</option>)}</UiSelect></label>
+              {!routesLoading && !routeError && compatibleRoutes.length === 0 && <p className="route-help">Подходящих черновых рейсов пока нет.</p>}
+            </div>}
+            {order.routeId ? (assignedRoute ? <RouteInformation route={assignedRoute} linkNumber /> : routesLoading ? <p role="status">Загружаем рейс…</p> : <Link to={'/routes/' + order.routeId}>Открыть рейс</Link>) : <p className="route-empty">Рейс не назначен</p>}
             {routeError && <div className="notice error" role="alert">{routeError}</div>}
           </div>}
 
-          {contentTab === 2 && !isRailway && !isUnnumberedVehicleShipping && <ContainerView containers={order.containers} />}
+          {contentTab === 2 && !isRailway && !isUnnumberedVehicleShipping && containerTable(order.containers)}
 
           {contentTab === 2 && isUnnumberedVehicleShipping && (
             <UnnumberedVehicleContainerView rows={order.containerQuantities} />
           )}
 
-          {contentTab === 2 && isRailwayReceiving && <div className="form-section railway-details">
-            <div className="form-section-heading"><h2>Накладные</h2><p>{order.waybills.length} накладных в заявке</p></div>
-            {order.waybills.length === 0 ? <div className="inline-empty">Накладные не найдены</div> : <div className="order-waybill-list">
-              {order.waybills.map((waybill) => <article className="order-waybill-card" key={waybill.id}>
-                <div className="order-waybill-head"><strong>{waybill.number}</strong><span>{getWaybillStationName(waybill.departureStation)} → {getWaybillStationName(waybill.destinationStation)}</span><span>{waybill.payer}</span></div>
-              </article>)}
-            </div>}
-          </div>}
+          {contentTab === 2 && isRailwayReceiving && <section className="form-section" aria-label="Накладные">
+            <div className="table-wrap order-composition-wrap"><table className="order-waybills-table" aria-label="Накладные заявки">
+              <thead><tr><th scope="col" className="composition-index">№</th><th scope="col">Номер накладной</th><th scope="col">Станция отправления</th><th scope="col">Станция назначения</th><th scope="col">Плательщик</th></tr></thead>
+              <tbody>{order.waybills.length ? order.waybills.map((waybill, index) => <tr key={waybill.id}>
+                <td className="composition-index">{index + 1}</td><td>{waybill.number}</td><td>{getWaybillStationName(waybill.departureStation)}</td><td>{getWaybillStationName(waybill.destinationStation)}</td><td>{waybill.payer}</td>
+              </tr>) : <tr><td colSpan={5} className="composition-empty">Накладные не найдены</td></tr>}</tbody>
+            </table></div>
+          </section>}
 
-          {contentTab === 3 && isRailwayReceiving && <div className="form-section railway-details">
-            <div className="form-section-heading"><h2>Вагоны</h2><p>Вагоны сгруппированы по накладным</p></div>
-            <div className="order-waybill-list">{order.waybills.map((waybill) => <article className="order-waybill-card" key={waybill.id}>
-              <div className="order-waybill-head"><strong>{waybill.number}</strong><span>{getWaybillStationName(waybill.departureStation)} → {getWaybillStationName(waybill.destinationStation)}</span></div>
-              <div className="order-waybill-composition"><div>{waybill.railwayCarriages.length === 0 ? <span className="expanded-empty">Нет вагонов</span> : waybill.railwayCarriages.map((carriage) => <div className="order-carriage-row" key={carriage.id}><strong>{carriage.number}</strong></div>)}</div></div>
-            </article>)}</div>
-          </div>}
-
-          {contentTab === 4 && isRailwayReceiving && <div className="form-section railway-details">
-            <div className="form-section-heading"><h2>КТК</h2><p>КТК сгруппированы по накладным и вагонам</p></div>
-            <div className="order-waybill-list">{order.waybills.map((waybill) => <article className="order-waybill-card" key={waybill.id}>
-              <div className="order-waybill-head"><strong>{waybill.number}</strong><span>{getWaybillStationName(waybill.departureStation)} → {getWaybillStationName(waybill.destinationStation)}</span></div>
-              <div className="order-waybill-composition"><div>{waybill.railwayCarriages.length === 0 ? <span className="expanded-empty">Нет вагонов</span> : waybill.railwayCarriages.map((carriage) => <div className="order-carriage-row" key={carriage.id}><strong>{carriage.number}</strong><div>{carriage.containers.length === 0 ? <span className="expanded-empty">Без КТК</span> : carriage.containers.map((container) => <span className="waybill-chip" key={container.containerId}>{container.number} · брутто {formatWeight(container.grossWeight)} кг · тара {formatWeight(container.tareWeight)} кг · груз {formatWeight(container.netWeight)} кг</span>)}</div></div>)}</div></div>
-            </article>)}</div>
-          </div>}
-
-          {contentTab === 5 && isRailwayReceiving && <div className="form-section railway-details">
-            <div className="form-section-heading"><h2>Груз</h2><p>Грузы сгруппированы по накладным</p></div>
-            <div className="order-waybill-list">{order.waybills.map((waybill) => <article className="order-waybill-card" key={waybill.id}>
-              <div className="order-waybill-head"><strong>{waybill.number}</strong><span>{getWaybillStationName(waybill.departureStation)} → {getWaybillStationName(waybill.destinationStation)}</span></div>
-              <div className="order-waybill-composition"><div>{waybill.products.length === 0 ? <span className="expanded-empty">Нет грузов</span> : waybill.products.map((product) => <div className="order-product-row" key={product.id}><span>{product.etsngCode}</span><strong>{product.weight == null ? 'Масса не указана' : `${formatWeight(product.weight)} кг`}</strong></div>)}</div></div>
-            </article>)}</div>
-          </div>}
+          {isRailwayReceiving && contentTab >= 3 && contentTab <= 5 && (
+            <WaybillCompositionTable wagonAttributes key={contentTab} waybills={order.waybills} tab={contentTab === 3 ? 'wagons' : contentTab === 4 ? 'containers' : 'cargo'} />
+          )}
 
           {contentTab === 2 && isRailwayShipping && <div className="form-section railway-details">
-            <div className="form-section-heading"><h2>Вагоны</h2><p>{fillingTypeLabel(order.fillingType)}</p></div>
             {order.railwayCarriages.length > 0 && <div className="shipping-railway-list">{order.railwayCarriages.map((carriage, index) => <article className="shipping-railway-card view-shipping-railway-card" key={carriage.railwayCarriageId}><div className="shipping-railway-card-head"><strong>Вагон {index + 1}</strong><span className="railway-carriage-code">{carriage.railwayCarriageCode}</span></div></article>)}</div>}
             {order.railwayCarriageQuantities.length > 0 && <div className="quantity-section"><div className="view-data-table"><div className="view-data-header view-quantity-grid"><span>Количество</span><span>Род/тип вагона</span></div>{order.railwayCarriageQuantities.map((row) => <div className="view-data-row view-quantity-grid" key={row.id}><strong>{row.quantity}</strong><span>{row.typeName ?? 'Тип не указан'}</span></div>)}</div></div>}
             {order.railwayCarriages.length === 0 && order.railwayCarriageQuantities.length === 0 && <div className="inline-empty">Вагоны не найдены</div>}
           </div>}
 
           {contentTab === 3 && isRailwayShipping && <div className="form-section railway-details">
-            <div className="form-section-heading"><h2>КТК</h2><p>Номерные КТК показаны с контекстом вагона</p></div>
             {order.railwayCarriages.length > 0 && <div className="shipping-railway-list">{order.railwayCarriages.map((carriage, index) => <article className="shipping-railway-card view-shipping-railway-card" key={carriage.railwayCarriageId}>
               <div className="shipping-railway-card-head"><strong>Вагон {index + 1}</strong><span className="railway-carriage-code">{carriage.railwayCarriageCode}</span><span className="railway-container-count">{carriage.containers.length} КТК</span></div>
-              <div className="view-data-table"><div className="view-data-header view-ktk-state-grid"><span>КТК</span><span>Состояние</span></div>{carriage.containers.map((container) => <div className="view-data-row view-ktk-state-grid" key={container.containerId}><strong>{container.containerName}</strong><span>{container.empty ? 'Порожний' : 'Гружёный'}</span></div>)}</div>
+              {containerTable(carriage.containers)}
             </article>)}</div>}
-            {order.containers.length > 0 && <div className="quantity-section"><h3>Номерные КТК</h3><div className="view-data-table"><div className="view-data-header view-ktk-state-grid"><span>КТК</span><span>Состояние</span></div>{order.containers.map((container) => <div className="view-data-row view-ktk-state-grid" key={container.containerId}><strong>{container.containerName}</strong><span>{container.empty ? 'Порожний' : 'Гружёный'}</span></div>)}</div></div>}
+            {order.containers.length > 0 && <div className="quantity-section"><h3>Номерные КТК</h3>{containerTable(order.containers)}</div>}
             {order.containerQuantities.length > 0 && <div className="quantity-section"><h3>Плановые группы КТК</h3><div className="view-container-quantity-list">{order.containerQuantities.map((row) => <article className="container-quantity-card" key={row.id}><div className="view-container-quantity-head"><strong>{row.quantity} КТК</strong><span>{containerTypeLabel(row.type)}</span><span>{row.empty ? 'Порожние' : 'Гружёные'}</span></div></article>)}</div></div>}
             {order.railwayCarriages.every((carriage) => carriage.containers.length === 0) && order.containers.length === 0 && order.containerQuantities.length === 0 && <div className="inline-empty">КТК не найдены</div>}
           </div>}
 
           {contentTab === 4 && isRailwayShipping && <div className="form-section railway-details">
-            <div className="form-section-heading"><h2>Груз</h2><p>Груз только для гружёных КТК и групп</p></div>
             {railwayCargoContainers.length > 0 && <div className="view-data-table"><div className="view-data-header view-railway-cargo-grid"><span>Вагон</span><span>КТК</span><span>Груз</span><span>Масса, кг</span></div>{railwayCargoContainers.map(({ carriage, container }) => <div className="view-data-row view-railway-cargo-grid" key={`${carriage.railwayCarriageId}-${container.containerId}`}><strong>{carriage.railwayCarriageCode}</strong><strong>{container.containerName}</strong><span>{container.cargo?.etsngCodeName}</span><span>{container.cargo ? formatWeight(container.cargo.weight) : '—'}</span></div>)}</div>}
             {cargoContainers.length > 0 && <div className="quantity-section"><div className="view-data-table"><div className="view-data-header view-cargo-grid"><span>КТК</span><span>Груз</span><span>Масса, кг</span></div>{cargoContainers.map((container) => <div className="view-data-row view-cargo-grid" key={container.containerId}><strong>{container.containerName}</strong><span>{container.cargo?.etsngCodeName}</span><span>{container.cargo ? formatWeight(container.cargo.weight) : '—'}</span></div>)}</div></div>}
             {order.containerQuantities.filter((row) => !row.empty).map((row) => <article className="container-quantity-card" key={row.id}><div className="view-container-quantity-head"><strong>{row.quantity} КТК</strong><span>{containerTypeLabel(row.type)}</span><span>Гружёные</span></div><div className="view-data-table"><div className="view-data-header view-quantity-cargo-grid"><span>ЕТСНГ</span><span>Масса на один КТК, кг</span></div>{row.items.map((item) => <div className="view-data-row view-quantity-cargo-grid" key={item.id}><span>{item.etsngCode}</span><strong>{formatWeight(item.weight)}</strong></div>)}</div></article>)}
             {railwayCargoContainers.length === 0 && cargoContainers.length === 0 && order.containerQuantities.every((row) => row.empty) && <div className="all-empty-message"><span>✓</span><div><strong>В заявке нет гружёных КТК</strong><p>Данные о грузе отсутствуют.</p></div></div>}
           </div>}
 
-          {contentTab === 3 && !isRailway && !isUnnumberedVehicleShipping && <CargoView containers={cargoContainers} />}
+          {contentTab === 3 && !isRailway && !isUnnumberedVehicleShipping && cargoContainers.length > 0 && (config.kind === 'receiving' ? <VehicleReceivingCargoTable containers={order.containers} /> : <CargoView containers={cargoContainers} />)}
+          {returnError && <div className="notice error" role="alert">{returnError}</div>}
+          {editing && <div className="form-footer">
+            <button type="button" className="secondary-button" disabled={creatingReturn} onClick={() => { setEditing(false); setSelectedRouteId(''); setReturnError('') }}>Отмена</button>
+            <button type="button" className="primary-button" disabled={creatingReturn || (returnToStock && !existingReturn && order.containers.length === 0)} onClick={saveOrder}>{creatingReturn ? 'Сохраняем…' : 'Сохранить'}</button>
+          </div>}
         </>}
       </div>
     </section>
@@ -250,7 +259,6 @@ export function OrderViewPage({ config, providedOrderId, embedded = false }: { c
 function UnnumberedVehicleContainerView({ rows }: { rows: OrderDetails['containerQuantities'] }) {
   const row = rows[0]
   return <div className="form-section">
-    <div className="form-section-heading"><h2>КТК</h2><p>Безномерный вывоз по авто</p></div>
     {row ? (
       <div className="view-data-table unnumbered-vehicle-view-table">
         <div className="view-data-header unnumbered-vehicle-view-grid">
@@ -264,16 +272,8 @@ function UnnumberedVehicleContainerView({ rows }: { rows: OrderDetails['containe
   </div>
 }
 
-function ContainerView({ containers }: { containers: OrderDetails['containers'] }) {
-  return <div className="form-section">
-    <div className="form-section-heading"><h2>Контейнеры</h2><p>{containers.length} КТК в заявке</p></div>
-    <div className="view-data-table"><div className="view-data-header view-ktk-grid"><span>№</span><span>Номер КТК</span><span>Порожний</span></div>{containers.map((container, index) => <div className="view-data-row view-ktk-grid" key={container.containerId}><span>{index + 1}</span><strong>{container.containerName}</strong><span className={`readonly-checkbox ${container.empty ? 'checked' : ''}`} aria-label={container.empty ? 'Порожний' : 'Гружёный'}>{container.empty ? '✓' : ''}</span></div>)}</div>
-  </div>
-}
-
 function CargoView({ containers }: { containers: OrderDetails['containers'] }) {
   return <div className="form-section">
-    <div className="form-section-heading"><h2>Груз</h2></div>
     {containers.length === 0 ? <div className="all-empty-message"><span>✓</span><div><strong>В заявке нет гружёных КТК</strong><p>Все выбранные контейнеры порожние.</p></div></div> : <div className="view-data-table"><div className="view-data-header view-cargo-grid"><span>КТК</span><span>Груз</span><span>Масса, кг</span></div>{containers.map((container) => <div className="view-data-row view-cargo-grid" key={container.containerId}><strong>{container.containerName}</strong><span>{container.cargo?.etsngCodeName}</span><span>{container.cargo ? formatWeight(container.cargo.weight) : '—'}</span></div>)}</div>}
   </div>
 }

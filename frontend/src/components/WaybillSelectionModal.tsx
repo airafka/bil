@@ -1,7 +1,7 @@
 import { UiInput } from './FormControls'
 import { useEffect, useState } from 'react'
 import { getGroupedWaybills } from '../api'
-import type { GroupedWaybill, GroupedWaybillFilter, GroupedWaybillPage, WaybillLink } from '../domain'
+import type { GroupedWaybill, GroupedWaybillPage, WaybillLink } from '../domain'
 import { canAddWaybill, toSelectedWaybill, type SelectedWaybill } from '../orderForm'
 import { getWaybillStationName } from '../waybillOptions'
 
@@ -13,10 +13,6 @@ type Props = {
 
 export function WaybillSelectionModal({ selected, onConfirm, onClose }: Props) {
   const [draft, setDraft] = useState<SelectedWaybill[]>(selected)
-  const [departureStation, setDepartureStation] = useState('')
-  const [destinationStation, setDestinationStation] = useState('')
-  const [payer, setPayer] = useState('')
-  const [filter, setFilter] = useState<GroupedWaybillFilter>({})
   const [page, setPage] = useState(0)
   const [data, setData] = useState<GroupedWaybillPage | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -25,14 +21,14 @@ export function WaybillSelectionModal({ selected, onConfirm, onClose }: Props) {
 
   useEffect(() => {
     let active = true
-    getGroupedWaybills(filter, page, 10, true)
+    getGroupedWaybills({}, page, 10, true)
       .then((response) => active && setData(response))
       .catch((requestError: unknown) => {
         if (active) setError(requestError instanceof Error ? requestError.message : 'Не удалось загрузить накладные')
       })
       .finally(() => active && setLoading(false))
     return () => { active = false }
-  }, [filter, page])
+  }, [page])
 
   const selectedIds = new Set(draft.map((waybill) => waybill.id))
   const selectedGroupKey = draft[0]?.groupKey
@@ -64,17 +60,6 @@ export function WaybillSelectionModal({ selected, onConfirm, onClose }: Props) {
     })
   }
 
-  const applyFilters = () => {
-    setLoading(true)
-    setError('')
-    setPage(0)
-    setFilter({
-      departureStation: departureStation ? Number(departureStation) : undefined,
-      destinationStation: destinationStation ? Number(destinationStation) : undefined,
-      payer: payer.trim() || undefined,
-    })
-  }
-
   return (
     <div className="modal-backdrop" role="presentation">
       <section className="waybill-picker" role="dialog" aria-modal="true" aria-labelledby="waybill-picker-title">
@@ -82,13 +67,6 @@ export function WaybillSelectionModal({ selected, onConfirm, onClose }: Props) {
           <div><h2 id="waybill-picker-title">Выбор накладных</h2><p>Доступны только накладные, ещё не включённые в заявку.</p></div>
           <button type="button" className="close-button" onClick={onClose} aria-label="Закрыть">×</button>
         </header>
-
-        <div className="registry-filters waybill-picker-filters">
-          <label className="field"><span>Станция отправления</span><UiInput type="number" value={departureStation} onChange={(event) => setDepartureStation(event.target.value)} /></label>
-          <label className="field"><span>Станция назначения</span><UiInput type="number" value={destinationStation} onChange={(event) => setDestinationStation(event.target.value)} /></label>
-          <label className="field"><span>Плательщик</span><UiInput value={payer} onChange={(event) => setPayer(event.target.value)} /></label>
-          <button type="button" className="primary-button" onClick={applyFilters}>Найти</button>
-        </div>
 
         {error && <div className="notice error" role="alert">{error}</div>}
         {selectedGroupKey && <div className="picker-group-hint">Выбрана одна группа. Очистите выбор, чтобы перейти к другому маршруту.</div>}

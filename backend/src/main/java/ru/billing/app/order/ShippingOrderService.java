@@ -39,9 +39,20 @@ public class ShippingOrderService {
                 referenceDataService.validateVehicleShippingCapacity(request.containers());
             }
         }
+        if (request.containers() != null) request.containers().forEach(c -> referenceDataService.validateContainerAttributes(c.ownerClientId(), c.sealTypeId(), c.hazardClassId()));
+        if (request.railwayCarriages() != null) request.railwayCarriages().forEach(w -> {
+            if (w.containers() != null) w.containers().forEach(c -> referenceDataService.validateContainerAttributes(c.ownerClientId(), c.sealTypeId(), c.hazardClassId()));
+        });
         CreatedOrderResponse created = store.create(request);
         if (request.routeId() != null) routeService.assign(request.routeId(), java.util.List.of(created.id()));
         return created;
+    }
+
+    @Transactional
+    public OrderDetails updateContainerAttributes(UUID id, UpdateOrderContainersRequest request) {
+        request.containers().forEach(c -> referenceDataService.validateContainerAttributes(c.ownerClientId(), c.sealTypeId(), c.hazardClassId()));
+        store.updateContainerAttributes(id, request);
+        return store.findById(id);
     }
 
     @Transactional(readOnly = true)
