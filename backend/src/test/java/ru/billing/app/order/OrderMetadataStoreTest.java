@@ -29,10 +29,10 @@ class OrderMetadataStoreTest {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(42);
         CreateOrderRequest request = request();
-        new ReceivingOrderStore(jdbc).createVehicle(request);
-        verify(jdbc).queryForObject(contains("status, arrival_at, consignor"), eq(Integer.class),
+        new ReceivingOrderStore(jdbc).createVehicle(request.withDefaultContainerOwner(request.clientId()));
+        verify(jdbc).queryForObject(contains("order_status, plan_receiving_date_time, consignor"), eq(Integer.class),
                 any(UUID.class), eq(request.clientId()), eq(request.terminalAreaId()), eq("VEHICLE"),
-                eq(request.contractId()), eq(arrival), eq("Отправитель"));
+                eq(request.contractId()), eq(arrival), eq("Отправитель"), eq(request.clientId()));
     }
 
     @Test
@@ -41,9 +41,9 @@ class OrderMetadataStoreTest {
         when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(43);
         CreateOrderRequest request = request();
         new ShippingOrderStore(jdbc).create(request);
-        verify(jdbc).queryForObject(contains("status, departure_at, consignee"), eq(Integer.class),
+        verify(jdbc).queryForObject(contains("order_status, planned_shipping_date_time, consignee_id"), eq(Integer.class),
                 any(UUID.class), eq(request.clientId()), eq(request.terminalAreaId()), eq("VEHICLE"),
-                eq(request.contractId()), eq("ALL"), eq(departure), eq("Получатель"));
+                eq(request.contractId()), eq("ALL"), eq(departure), isNull());
     }
 
     @SuppressWarnings("unchecked")
@@ -58,7 +58,7 @@ class OrderMetadataStoreTest {
         when(rs.getString("consignee")).thenReturn(party);
         when(jdbc.query(anyString(), any(RowMapper.class), any(Object[].class))).thenAnswer(call -> {
             String sql = call.getArgument(0);
-            if (!sql.contains("select o.id, o.code")) return List.of();
+            if (!sql.contains("select o.id, o.number as code")) return List.of();
             RowMapper<?> mapper = call.getArgument(1);
             return List.of(mapper.mapRow(rs, 0));
         });

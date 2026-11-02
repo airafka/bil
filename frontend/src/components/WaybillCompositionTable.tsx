@@ -18,7 +18,7 @@ export type CompositionWaybill = {
 const headings: Record<CompositionTab, string[]> = {
   wagons: ['Номер вагона', 'Род вагона', 'Модель вагона', 'Грузоподъёмность, кг', 'Дата следующего ДР'],
   containers: ['Номер КТК', 'Тип КТК', 'Масса тары, кг', 'Масса брутто, кг', 'Грузоподъёмность, кг', 'Собственник КТК', 'Номера ЗПУ', 'Тип ЗПУ'],
-  cargo: ['Код ЕТСНГ', 'Наименование груза', 'Масса брутто, кг', 'Класс опасности груза'],
+  cargo: ['Код ЕТСНГ', 'Наименование груза', 'Масса брутто, кг', 'Опасный груз', 'Класс опасности', 'Признак опасности'],
 }
 const titles: Record<CompositionTab, string> = { wagons: 'Вагоны', containers: 'КТК', cargo: 'Груз' }
 const weight = (value: number | null) => value == null ? 'Не указана' : value.toLocaleString('ru-RU', { maximumFractionDigits: 3 })
@@ -40,7 +40,7 @@ export function WaybillCompositionTable({ waybills, tab, draft = false, wagonAtt
     </td>)}</tr>
   }
   function containers(rows: WaybillContainerSummary[], key: string) {
-    return rows.map(item => cells([item.number, item.type ? containerTypeLabel(item.type) : '—', weight(item.tareWeight), weight(item.grossWeight), item.loadCapacity == null ? '—' : weight(item.loadCapacity), item.ownerClientName || '—', item.sealNumbers || '—', item.sealTypeName || '—'], `${key}-${item.containerId}`))
+    return rows.map(item => cells([item.number, item.type ? containerTypeLabel(item.type) : '—', weight(item.tareWeight), weight(item.grossWeight), item.loadCapacity == null ? '—' : weight(item.loadCapacity), (item.owner ?? item.ownerClientName) || '—', item.sealNumbers || '—', item.sealTypeName || '—'], `${key}-${item.containerId}`))
   }
   function empty(text: string, key: string) { return <tr key={key}><td colSpan={columns.length} className="composition-empty">{text}</td></tr> }
 
@@ -71,7 +71,7 @@ export function WaybillCompositionTable({ waybills, tab, draft = false, wagonAtt
           } else {
             rows.push(...(bill.products.length ? bill.products.map(product => {
               const [code, ...name] = 'etsngCode' in product ? product.etsngCode.split(/\s+[—–-]\s+/) : [product.code, product.name]
-              return cells([code, name.join(' — ') || '—', weight(product.grossWeight ?? null), product.hazardClassName || '—'], product.id)
+              return cells([code, name.join(' — ') || '—', weight(product.grossWeight ?? null), product.dangerProductName || '—', product.hazardClassName || '—', product.signDanger || '—'], product.id)
             }) : [empty('Грузов нет', bill.id)]))
           }
         }

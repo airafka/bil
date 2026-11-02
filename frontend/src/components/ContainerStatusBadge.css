@@ -1,0 +1,6 @@
+.container-status-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 400; line-height: 16px; white-space: nowrap; vertical-align: middle; }
+.container-status-badge--expected { color: #c64b00; background: #fff9eb; }
+.container-status-badge--in-stock { color: #008653; background: #ecfcf3; }
+.container-status-badge--outbound { color: #0065ff; background: #eef8ff; }
+.container-status-badge--departed { color: #7540db; background: #f8f3ff; }
+.container-status-empty { color: #5e6570; white-space: nowrap; }

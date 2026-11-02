@@ -209,181 +209,19 @@ class OrderRequestValidatorTest {
         );
     }
 
-    @Test
-    void acceptsAllUnnumberedShippingMatrices() {
-        UUID carriage = UUID.randomUUID();
-        RailwayCarriageQuantityRequest carriageQuantity = new RailwayCarriageQuantityRequest(2, null);
-        ContainerQuantityRequest emptyQuantity = new ContainerQuantityRequest(
-                3, ContainerType.STANDARD_20, true, List.of()
-        );
-        ContainerQuantityRequest loadedQuantity = new ContainerQuantityRequest(
-                1,
-                ContainerType.STANDARD_40,
-                false,
-                List.of(new CargoRequest(ETSNG_ID, new BigDecimal("30000.000")))
-        );
 
-        assertThatCode(() -> validator.validateShipping(shippingRequest(
-                FillingType.RAILWAY_CARRIAGE,
-                List.of(new ShippingOrderRailwayCarriageRequest(carriage, List.of())),
-                List.of(),
-                List.of(),
-                List.of(emptyQuantity, loadedQuantity)
-        ))).doesNotThrowAnyException();
-        assertThatCode(() -> validator.validateShipping(shippingRequest(
-                FillingType.CONTAINER,
-                List.of(),
-                List.of(empty(CONTAINER_ONE), loaded(CONTAINER_TWO)),
-                List.of(carriageQuantity),
-                List.of()
-        ))).doesNotThrowAnyException();
-        assertThatCode(() -> validator.validateShipping(shippingRequest(
-                FillingType.NONE,
-                List.of(),
-                List.of(),
-                List.of(carriageQuantity),
-                List.of(emptyQuantity, loadedQuantity)
-        ))).doesNotThrowAnyException();
-    }
 
-    @Test
-    void rejectsUnnumberedCompositionMismatchAndInvalidValues() {
-        UUID carriage = UUID.randomUUID();
-        ContainerQuantityRequest emptyQuantity = new ContainerQuantityRequest(
-                1, ContainerType.STANDARD_20, true, List.of()
-        );
-        assertShippingError(shippingRequest(
-                FillingType.RAILWAY_CARRIAGE, List.of(), List.of(), List.of(), List.of(emptyQuantity)
-        ), "RAILWAY_CARRIAGES_REQUIRED");
-        assertShippingError(shippingRequest(
-                FillingType.CONTAINER,
-                List.of(new ShippingOrderRailwayCarriageRequest(carriage, List.of())),
-                List.of(empty(CONTAINER_ONE)),
-                List.of(new RailwayCarriageQuantityRequest(1, null)),
-                List.of()
-        ), "NUMBERED_RAILWAY_CARRIAGES_NOT_ALLOWED");
-        assertShippingError(shippingRequest(
-                FillingType.NONE,
-                List.of(),
-                List.of(),
-                List.of(new RailwayCarriageQuantityRequest(0, null)),
-                List.of(emptyQuantity)
-        ), "INVALID_QUANTITY");
-        assertShippingError(shippingRequest(
-                FillingType.NONE,
-                List.of(),
-                List.of(),
-                List.of(
-                        new RailwayCarriageQuantityRequest(1, null),
-                        new RailwayCarriageQuantityRequest(2, null)
-                ),
-                List.of(emptyQuantity)
-        ), "DUPLICATE_RAILWAY_CARRIAGE_TYPE");
-    }
 
-    @Test
-    void rejectsInvalidAndDuplicateContainerQuantityRows() {
-        RailwayCarriageQuantityRequest carriageQuantity = new RailwayCarriageQuantityRequest(1, null);
-        ContainerQuantityRequest missingCargo = new ContainerQuantityRequest(
-                1, ContainerType.STANDARD_40, false, List.of()
-        );
-        assertShippingError(shippingRequest(
-                FillingType.NONE, List.of(), List.of(), List.of(carriageQuantity), List.of(missingCargo)
-        ), "CARGO_REQUIRED");
 
-        ContainerQuantityRequest cargoForEmpty = new ContainerQuantityRequest(
-                1,
-                ContainerType.STANDARD_40,
-                true,
-                List.of(new CargoRequest(ETSNG_ID, BigDecimal.ONE))
-        );
-        assertShippingError(shippingRequest(
-                FillingType.NONE, List.of(), List.of(), List.of(carriageQuantity), List.of(cargoForEmpty)
-        ), "CARGO_FOR_EMPTY_CONTAINER");
 
-        ContainerQuantityRequest duplicate = new ContainerQuantityRequest(
-                2, ContainerType.STANDARD_20, true, List.of()
-        );
-        assertShippingError(shippingRequest(
-                FillingType.NONE,
-                List.of(),
-                List.of(),
-                List.of(carriageQuantity),
-                List.of(duplicate, duplicate)
-        ), "DUPLICATE_CONTAINER_QUANTITY_ROW");
-    }
 
-    @Test
-    void acceptsUnnumberedVehicleShipping() {
-        CreateOrderRequest request = unnumberedVehicleRequest(
-                List.of(),
-                List.of(new ContainerQuantityRequest(3, ContainerType.STANDARD_40, true, List.of()))
-        );
 
-        assertThatCode(() -> validator.validateShipping(request)).doesNotThrowAnyException();
-    }
 
-    @Test
-    void rejectsNumberedContainerAndInvalidQuantityForUnnumberedVehicleShipping() {
-        assertShippingError(unnumberedVehicleRequest(
-                List.of(empty(CONTAINER_ONE)),
-                List.of(new ContainerQuantityRequest(1, ContainerType.STANDARD_40, true, List.of()))
-        ), "NUMBERED_CONTAINERS_NOT_ALLOWED");
-        assertShippingError(unnumberedVehicleRequest(
-                List.of(),
-                List.of(new ContainerQuantityRequest(0, ContainerType.STANDARD_40, true, List.of()))
-        ), "INVALID_QUANTITY");
-        assertShippingError(unnumberedVehicleRequest(List.of(), List.of()), "SINGLE_CONTAINER_QUANTITY_REQUIRED");
-    }
 
-    @Test
-    void rejectsLoadedCargoAndMissingTypeForUnnumberedVehicleShipping() {
-        assertShippingError(unnumberedVehicleRequest(
-                List.of(),
-                List.of(new ContainerQuantityRequest(1, ContainerType.STANDARD_40, false, List.of()))
-        ), "VEHICLE_UNNUMBERED_CONTAINER_MUST_BE_EMPTY");
-        assertShippingError(unnumberedVehicleRequest(
-                List.of(),
-                List.of(new ContainerQuantityRequest(
-                        1,
-                        ContainerType.STANDARD_40,
-                        true,
-                        List.of(new CargoRequest(ETSNG_ID, BigDecimal.ONE))
-                ))
-        ), "CARGO_NOT_ALLOWED_FOR_VEHICLE_UNNUMBERED");
-        assertShippingError(unnumberedVehicleRequest(
-                List.of(),
-                List.of(new ContainerQuantityRequest(1, null, true, List.of()))
-        ), "CONTAINER_TYPE_REQUIRED");
-    }
 
-    @Test
-    void rejectsUnnumberedVehicleModeForReceivingAndRailway() {
-        CreateOrderRequest request = new CreateOrderRequest(
-                CLIENT_ID,
-                UUID.randomUUID(),
-                TERMINAL_AREA_ID,
-                TransportType.VEHICLE,
-                List.of(),
-                List.of(),
-                List.of(),
-                FillingType.VEHICLE_UNNUMBERED,
-                List.of(),
-                List.of(new ContainerQuantityRequest(1, ContainerType.STANDARD_40, true, List.of()))
-        );
-        assertThatThrownBy(() -> validator.validate(request))
-                .isInstanceOf(ApiException.class)
-                .extracting(exception -> ((ApiException) exception).getCode())
-                .isEqualTo("INVALID_VEHICLE_FILLING_TYPE");
 
-        assertShippingError(shippingRequest(
-                FillingType.VEHICLE_UNNUMBERED,
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(new ContainerQuantityRequest(1, ContainerType.STANDARD_40, true, List.of()))
-        ), "VEHICLE_UNNUMBERED_ONLY_FOR_VEHICLE_SHIPPING");
-    }
+
+
 
     private CreateOrderRequest request(TransportType transportType, OrderContainerRequest container) {
         if (transportType == TransportType.VEHICLE) {
@@ -509,4 +347,23 @@ class OrderRequestValidatorTest {
                 .extracting(exception -> ((ApiException) exception).getCode())
                 .isEqualTo(expectedCode);
     }
+
+    @Test
+    void rejectsAllModesWithoutFullNumbers() {
+        for (FillingType type : FillingType.values()) {
+            if(type == FillingType.ALL) continue;
+            for(TransportType transport : new TransportType[]{TransportType.VEHICLE, TransportType.RAILWAY}) {
+                CreateOrderRequest request = new CreateOrderRequest(CLIENT_ID, UUID.randomUUID(), TERMINAL_AREA_ID, transport, List.of(), List.of(), List.of(), type, List.of(), List.of());
+                assertThatThrownBy(() -> validator.validateShipping(request)).isInstanceOfSatisfying(ApiException.class, ex -> org.assertj.core.api.Assertions.assertThat(ex.getCode()).isEqualTo("NUMBERED_COMPOSITION_REQUIRED"));
+                assertThatThrownBy(() -> validator.validate(request)).isInstanceOf(ApiException.class);
+            }
+        }
+    }
+
+    @Test
+    void rejectsQuantitiesEvenWithAllFillingType() {
+        CreateOrderRequest request = new CreateOrderRequest(CLIENT_ID, UUID.randomUUID(), TERMINAL_AREA_ID, TransportType.RAILWAY, List.of(), List.of(), List.of(), FillingType.ALL, List.of(new RailwayCarriageQuantityRequest(1, null)), List.of());
+        assertThatThrownBy(() -> validator.validateShipping(request)).isInstanceOfSatisfying(ApiException.class, ex -> org.assertj.core.api.Assertions.assertThat(ex.getCode()).isEqualTo("NUMBERED_COMPOSITION_REQUIRED"));
+    }
 }
+

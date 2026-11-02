@@ -21,11 +21,11 @@ class VehicleShippingCapacityTest {
     private final UUID large = UUID.randomUUID();
 
     VehicleShippingCapacityTest() {
-        when(jdbc.queryForObject("select type from container where id = ?", String.class, smallOne))
+        when(jdbc.queryForObject("select container_type from container where id = ?", String.class, smallOne))
                 .thenReturn("STANDARD_20");
-        when(jdbc.queryForObject("select type from container where id = ?", String.class, smallTwo))
+        when(jdbc.queryForObject("select container_type from container where id = ?", String.class, smallTwo))
                 .thenReturn("STANDARD_20");
-        when(jdbc.queryForObject("select type from container where id = ?", String.class, large))
+        when(jdbc.queryForObject("select container_type from container where id = ?", String.class, large))
                 .thenReturn("STANDARD_40");
     }
 

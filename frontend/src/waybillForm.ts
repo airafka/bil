@@ -1,22 +1,28 @@
 import type { ReferenceOption } from './domain'
 
-export type WaybillContainerRow = Pick<import('./domain').ReceivingContainerAttributes, 'ownerClientId' | 'sealNumbers' | 'sealTypeId'> & {
+export type WaybillContainerRow = Pick<import('./domain').ReceivingContainerAttributes, 'sealNumbers' | 'sealTypeId'> & {
+  owner?: string
   containerId: string
   grossWeight: string
   tareWeight: number
+  netWeightValue?: string
 }
 export type WaybillCarriageRow = { key: number; railwayCarriageId: string; containers: WaybillContainerRow[] }
 export type WaybillFormState = {
+  number?: string
+  products?: Array<{ etsngCodeId: string; weight: string; dangerProductId?: string; signDanger?: string }>
   hazardClassId?: string
   etsngCodeId: string
   receivingOrderId: string; departureStation: string; destinationStation: string; payer: string
   railwayCarriages: WaybillCarriageRow[]
 }
 export type CreateWaybillPayload = {
+  number?: string
+  products: Array<{ etsngCodeId: string; weight: string; dangerProductId?: string; signDanger?: string }>
   hazardClassId?: string | null
   etsngCodeId: string | null
   receivingOrderId: string | null; departureStation: number; destinationStation: number; payer: string
-  railwayCarriages: Array<{ railwayCarriageId: string; containers: Array<{ containerId: string; grossWeight: string }> }>
+  railwayCarriages: Array<{ railwayCarriageId: string; containers: Array<{ containerId: string; grossWeight: string; netWeight: string }> }>
 }
 export const initialWaybillFormState: WaybillFormState = {
   etsngCodeId: '', receivingOrderId: '', departureStation: '', destinationStation: '', payer: '', railwayCarriages: [],
@@ -30,13 +36,18 @@ export function massInGrams(value: string | number): bigint | null {
   return BigInt(whole) * 1000n + BigInt(fraction.padEnd(3, '0'))
 }
 export function netWeight(row: WaybillContainerRow): string | null {
+  if (row.netWeightValue !== undefined && row.netWeightValue !== '') {
+    const explicit = massInGrams(row.netWeightValue), gross = massInGrams(row.grossWeight)
+    if (explicit === null || gross === null || explicit > gross) return null
+    return `${explicit / 1000n}.${String(explicit % 1000n).padStart(3, '0')}`
+  }
   const gross = massInGrams(row.grossWeight), tare = massInGrams(row.tareWeight)
   if (gross === null || tare === null || gross < tare) return null
   const grams = gross - tare
   return `${grams / 1000n}.${String(grams % 1000n).padStart(3, '0')}`
 }
 export function selectWaybillContainer(row: WaybillContainerRow, option?: ReferenceOption): WaybillContainerRow {
-  return { ...row, containerId: option?.id ?? '', tareWeight: option?.tareWeight ?? 0 }
+  return { ...row, containerId: option?.id ?? '', tareWeight: option?.tareWeight ?? 0, netWeightValue: undefined }
 }
 export function validateWaybillStep(state: WaybillFormState, step: number): string[] {
   const errors: string[] = []
@@ -61,26 +72,38 @@ export function validateWaybillStep(state: WaybillFormState, step: number): stri
       const gross = massInGrams(container.grossWeight), tare = massInGrams(container.tareWeight)
       if (gross === null || gross <= 0n) errors.push(`${label}: укажите положительную массу брутто с точностью до 0,001 кг`)
       else if (tare === null || tare <= 0n) errors.push(`${label}: в справочнике отсутствует масса тары`)
-      else if (gross < tare) errors.push(`${label}: масса брутто меньше массы тары`)
-      else if (step >= 4) {
-        if (gross > tare && !state.etsngCodeId) errors.push(`${label}: выберите груз по ЕТСНГ`)
-      }
+      else if (netWeight(container) === null) errors.push(`${label}: нетто должно быть от нуля до брутто, с точностью до 0,001 кг`)
     }
   }
+  if (step >= 4) {
+    const products = productRows(state)
+    if (!products.length || products.some(p => !p.etsngCodeId)) errors.push('выберите груз по ЕТСНГ для каждой строки накладной')
+    if (products.length > 1 && containers.size !== 1) errors.push('Для нескольких грузов в накладной должен быть ровно один КТК')
+    if (products.some(p => massInGrams(p.weight) === null)) errors.push('Укажите неотрицательную массу каждого груза с точностью до 0,001 кг')
+  }
   return errors
+}
+export function totalNetWeight(state: WaybillFormState): string {
+  const grams = state.railwayCarriages.flatMap(c => c.containers).reduce((sum, c) => sum + (massInGrams(netWeight(c) ?? '0') ?? 0n), 0n)
+  return `${grams / 1000n}.${String(grams % 1000n).padStart(3, '0')}`
+}
+export function productRows(state: WaybillFormState) {
+  return state.products ?? [{ etsngCodeId: state.etsngCodeId, weight: totalNetWeight(state), signDanger: undefined, dangerProductId: undefined as string | undefined }]
 }
 export const validateWaybillForm = (state: WaybillFormState) => validateWaybillStep(state, 4)
 export function buildWaybillPayload(state: WaybillFormState): CreateWaybillPayload {
   return {
-    ...(hasLoadedContainers(state) && state.hazardClassId ? { hazardClassId: state.hazardClassId } : {}),
-    etsngCodeId: hasLoadedContainers(state) ? state.etsngCodeId || null : null,
+    ...(state.number?.trim() ? { number: state.number.trim() } : {}),
+    products: productRows(state).map(p => ({ etsngCodeId: p.etsngCodeId, weight: p.weight.trim().replace(',', '.'), ...(p.dangerProductId ? { dangerProductId: p.dangerProductId } : {}), ...(p.signDanger?.trim() ? { signDanger: p.signDanger.trim() } : {}) })),
+    etsngCodeId: null,
     receivingOrderId: state.receivingOrderId || null,
     departureStation: Number(state.departureStation), destinationStation: Number(state.destinationStation), payer: state.payer.trim(),
     railwayCarriages: state.railwayCarriages.map(carriage => ({
       railwayCarriageId: carriage.railwayCarriageId,
       containers: carriage.containers.map(row => ({ containerId: row.containerId,
         grossWeight: row.grossWeight.trim().replace(',', '.'),
-        ...(row.ownerClientId ? { ownerClientId: row.ownerClientId } : {}),
+        netWeight: netWeight(row) ?? '',
+        ...(row.owner?.trim() ? { owner: row.owner.trim() } : {}),
         ...(row.sealNumbers?.trim() ? { sealNumbers: row.sealNumbers.trim() } : {}),
         ...(row.sealTypeId ? { sealTypeId: row.sealTypeId } : {}),
       })),

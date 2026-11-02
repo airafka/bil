@@ -9,8 +9,20 @@ import static org.assertj.core.api.Assertions.*;
 
 class WaybillValidatorTest {
     private final WaybillValidator validator = new WaybillValidator();
+    @Test void requiresProductsEvenForEmptyComposition() {
+        assertError(new CreateWaybillRequest(null, 1, 2, "P", List.of()), "WAYBILL_PRODUCTS_REQUIRED");
+    }
+    @Test void permitsSeveralProductsOnlyForOneContainer() {
+        var first = new WaybillProductRequest(UUID.randomUUID(), new BigDecimal("600"), null);
+        var second = new WaybillProductRequest(UUID.randomUUID(), new BigDecimal("900"), null);
+        var container = new WaybillContainerRequest(UUID.randomUUID(), new BigDecimal("5000"), null);
+        var carriages = List.of(new WaybillRailwayCarriageRequest(UUID.randomUUID(), List.of(container)));
+        var normalized = validator.normalizeAndValidate(new CreateWaybillRequest(null, 1, 2, "P", null, null, carriages, List.of(first, second)));
+        assertThat(normalized.products()).hasSize(2);
+        assertError(new CreateWaybillRequest(null, 1, 2, "P", null, null, List.of(), List.of(first, second)), "MULTIPLE_PRODUCTS_SINGLE_CONTAINER");
+    }
     @Test void trimsPayerAndNormalizesEmptyComposition() {
-        var result = validator.normalizeAndValidate(new CreateWaybillRequest(null, 1, 2, "  Payer  ", null));
+        var result = validator.normalizeAndValidate(new CreateWaybillRequest(null, 1, 2, "  Payer  ", UUID.randomUUID(), List.of()));
         assertThat(result.payer()).isEqualTo("Payer");
         assertThat(result.railwayCarriages()).isEmpty();
     }
@@ -38,13 +50,13 @@ class WaybillValidatorTest {
         UUID cargo = UUID.randomUUID();
         var legacy = request(new WaybillContainerRequest(UUID.randomUUID(), new BigDecimal("5000"), null));
         var result = validator.normalizeAndValidate(new CreateWaybillRequest(null, 1, 2, "P", cargo, legacy.railwayCarriages()));
-        assertThat(result.etsngCodeId()).isEqualTo(cargo);
+        assertThat(result.products().getFirst().etsngCodeId()).isEqualTo(cargo);
         assertThat(result.railwayCarriages().getFirst().containers().getFirst().etsngCodeId()).isNull();
     }
     @Test void infersOneLegacyCargoAndRejectsConflictingHeaderOrRows() {
         UUID cargo = UUID.randomUUID();
         var legacy = request(new WaybillContainerRequest(UUID.randomUUID(), new BigDecimal("5000"), cargo));
-        assertThat(validator.normalizeAndValidate(legacy).etsngCodeId()).isEqualTo(cargo);
+        assertThat(validator.normalizeAndValidate(legacy).products().getFirst().etsngCodeId()).isEqualTo(cargo);
         assertError(new CreateWaybillRequest(null, 1, 2, "P", UUID.randomUUID(), legacy.railwayCarriages()), "SINGLE_WAYBILL_CARGO");
         assertError(new CreateWaybillRequest(null, 1, 2, "P", List.of(new WaybillRailwayCarriageRequest(UUID.randomUUID(), List.of(
                 new WaybillContainerRequest(UUID.randomUUID(), new BigDecimal("5000"), cargo),

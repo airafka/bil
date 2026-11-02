@@ -9,6 +9,7 @@ export type ReferenceOption = {
 }
 
 export type TransportType = 'VEHICLE' | 'RAILWAY'
+// Legacy values are decoded only to reject unsupported requests; new orders use ALL.
 export type FillingType = 'ALL' | 'RAILWAY_CARRIAGE' | 'CONTAINER' | 'NONE' | 'VEHICLE_UNNUMBERED'
 export type ContainerType =
   | 'STANDARD_20'
@@ -16,22 +17,10 @@ export type ContainerType =
 
 export const fillingTypeOptions: Array<{ value: FillingType; name: string }> = [
   { value: 'ALL', name: 'Заданы номера вагонов и КТК' },
-  { value: 'RAILWAY_CARRIAGE', name: 'Заданы только номера вагонов' },
-  { value: 'CONTAINER', name: 'Заданы только номера КТК' },
-  { value: 'NONE', name: 'Не заданы номера вагонов и КТК' },
-  { value: 'VEHICLE_UNNUMBERED', name: 'Безномерный вывоз по авто' },
 ]
 
 export const fillingTypeLabel = (value: FillingType | null | undefined) =>
   fillingTypeOptions.find((option) => option.value === (value ?? 'ALL'))?.name ?? 'Заданы номера вагонов и КТК'
-
-export const vehicleShippingTypeLabel = (value: FillingType | null | undefined) =>
-  value === 'VEHICLE_UNNUMBERED' ? 'Номера КТК не известны' : 'Номера КТК известны'
-
-export const vehicleShippingDataOptions: Array<{ value: 'ALL' | 'VEHICLE_UNNUMBERED'; name: string }> = [
-  { value: 'ALL', name: 'Номера КТК известны' },
-  { value: 'VEHICLE_UNNUMBERED', name: 'Номера КТК не известны' },
-]
 
 export const containerTypeOptions: Array<{ value: ContainerType; name: string }> = [
   { value: 'STANDARD_20', name: 'Стандартный 20' },
@@ -58,6 +47,11 @@ export type CreatedWaybill = {
 }
 
 export type WaybillProductSummary = {
+  dangerProductId?: string | null
+  dangerProductIdentifier?: number | null
+  dangerProductName?: string | null
+  dangerClassCode?: string | null
+  signDanger?: string | null
   grossWeight?: number | null
   hazardClassId?: string | null
   hazardClassName?: string | null
@@ -69,6 +63,7 @@ export type WaybillProductSummary = {
 }
 
 export type WaybillContainerSummary = Omit<ReceivingContainerAttributes, 'hazardClassId' | 'hazardClassName'> & {
+  owner?: string | null
   type?: ContainerType | null; loadCapacity?: number | null
   containerId: string; number: string; grossWeight: number; tareWeight: number; netWeight: number
   etsngCodeId?: string | null; etsngCodeName?: string | null
@@ -123,7 +118,7 @@ export type GroupedWaybillFilter = {
 export type OrderSummary = {
   contractId: string | null
   contractName: string | null
-  serviceOrderId: string | null
+  comprehensiveServiceOrderId: string | null
   sourceReceivingOrderId?: string | null
   id: string
   code: number
@@ -166,10 +161,12 @@ export type ReceivingContainerAttributes = {
 }
 
 export type OrderContainerDetails = ReceivingContainerAttributes & {
+  containerStatus?: string | null
   containerId: string
   containerName: string
   empty: boolean
   cargo: OrderCargoDetails | null
+  cargoItems?: OrderCargoDetails[]
 }
 
 export type OrderWaybillContainerDetails = WaybillContainerSummary
@@ -186,6 +183,11 @@ export type OrderWaybillCarriageDetails = {
 }
 
 export type OrderWaybillProductDetails = {
+  dangerProductId?: string | null
+  dangerProductIdentifier?: number | null
+  dangerProductName?: string | null
+  dangerClassCode?: string | null
+  signDanger?: string | null
   grossWeight?: number | null
   hazardClassId?: string | null
   hazardClassName?: string | null
@@ -233,6 +235,8 @@ export type ContainerQuantityDetails = {
 }
 
 export type OrderDetails = {
+  defaultContainerOwnerId?: string | null
+  defaultContainerOwnerName?: string | null
   arrivalAt: string | null
   consignor: string | null
   departureAt: string | null
@@ -242,7 +246,7 @@ export type OrderDetails = {
   routeId?: string | null
   contractId: string | null
   contractName: string | null
-  serviceOrderId: string | null
+  comprehensiveServiceOrderId: string | null
   sourceReceivingOrderId?: string | null
   id: string
   code: number
@@ -302,3 +306,5 @@ export function transportTypeLabel(transportType: TransportType | null) {
   if (transportType === 'RAILWAY') return 'ЖД'
   return '—'
 }
+
+export type DangerProductOption = { id: string; identifier: number; name: string; dangerClassId: string; dangerClassName: string; dangerClassCode: string | null }

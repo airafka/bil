@@ -55,11 +55,12 @@ public class RouteService {
         String table = orderTable(request.routeType());
         UUID id = UUID.randomUUID();
         jdbc.update("""
-                insert into route(id, route_type, departure_at, terminal_area_catalog_id, transport_type,
-                                  carrier, driver_name, vehicle_number, comment)
+                insert into route(id, route_type, data_time, terminal_area_catalog_id, transport_type,
+                                  client_related_entity_id, client_driver_id, client_vehicle_id, comment)
                 values (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, id, request.routeType().name(), request.departureAt(), request.terminalAreaId(),
-                request.transportType().name(), carrier, driver, vehicle, text(request.comment()));
+                request.transportType().name(), ru.billing.app.reference.PartyReferences.party(jdbc, carrier),
+                ru.billing.app.reference.PartyReferences.driver(jdbc, driver), ru.billing.app.reference.PartyReferences.vehicle(jdbc, vehicle), text(request.comment()));
         for (UUID orderId : unique) jdbc.update("update " + table + " set route_id = ? where id = ?", id, orderId);
         return findById(id);
     }
@@ -87,7 +88,7 @@ public class RouteService {
         }
         String table = orderTable(type);
         for (UUID orderId : unique.stream().sorted(Comparator.naturalOrder()).toList()) {
-            List<OrderCandidate> matches = jdbc.query("select status, terminal_area_catalog_id, transport_type, route_id from "
+            List<OrderCandidate> matches = jdbc.query("select order_status as status, terminal_area_catalog_id, transport_type, route_id from "
                             + table + " where id = ? for update", (rs, row) -> new OrderCandidate(rs.getString("status"),
                     rs.getObject("terminal_area_catalog_id", UUID.class), rs.getString("transport_type"),
                     rs.getObject("route_id", UUID.class)), orderId);
@@ -104,7 +105,7 @@ public class RouteService {
 
     @Transactional(readOnly = true)
     public List<RouteSummary> findAll() {
-        return jdbc.query(summarySql() + " order by r.code desc", (rs, row) -> summary(rs));
+        return jdbc.query(summarySql() + " order by r.number desc", (rs, row) -> summary(rs));
     }
 
     @Transactional(readOnly = true)
@@ -113,8 +114,8 @@ public class RouteService {
         if (rows.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "ROUTE_NOT_FOUND", "Рейс не найден");
         RouteSummary route = rows.getFirst();
         String table = orderTable(route.routeType());
-        List<RouteOrderOption> orders = jdbc.query("select o.id, o.code, c.code as client_name, o.status from "
-                + table + " o join client c on c.id = o.client_id where o.route_id = ? order by o.code",
+        List<RouteOrderOption> orders = jdbc.query("select o.id, o.number as code, c.name as client_name, o.order_status as status from "
+                + table + " o join client c on c.id = o.client_id where o.route_id = ? order by o.number",
                 (rs, row) -> new RouteOrderOption(rs.getObject("id", UUID.class), rs.getInt("code"),
                         rs.getString("client_name"), rs.getString("status")), id);
         return new RouteDetails(route, orders);
@@ -124,31 +125,38 @@ public class RouteService {
     public List<RouteOrderOption> available(RouteType routeType, TransportType transportType, UUID terminalAreaId) {
         if (routeType == null || transportType == null || terminalAreaId == null) return List.of();
         String table = orderTable(routeType);
-        return jdbc.query("select o.id, o.code, c.code as client_name, o.status from " + table
-                        + " o join client c on c.id = o.client_id where o.route_id is null and o.status = 'DRAFT'"
-                        + " and o.transport_type = ? and o.terminal_area_catalog_id = ? order by o.code desc",
+        return jdbc.query("select o.id, o.number as code, c.name as client_name, o.order_status as status from " + table
+                        + " o join client c on c.id = o.client_id where o.route_id is null and o.order_status = 'DRAFT'"
+                        + " and o.transport_type = ? and o.terminal_area_catalog_id = ? order by o.number desc",
                 (rs, row) -> new RouteOrderOption(rs.getObject("id", UUID.class), rs.getInt("code"),
                         rs.getString("client_name"), rs.getString("status")), transportType.name(), terminalAreaId);
     }
 
     private static String summarySql() {
         return """
-                select r.id, r.code, r.route_type, r.departure_at, r.terminal_area_catalog_id,
-                       a.name as area_name, r.transport_type, r.carrier, r.driver_name, r.vehicle_number,
+                select r.id, r.number as code, r.route_type, r.data_time, r.terminal_area_catalog_id,
+                       a.name as area_name, r.transport_type, (select name from client_related_entity where id=r.client_related_entity_id) as carrier,
+                       (select code from client_driver where id=r.client_driver_id) as driver_name,
+                       (select code from client_vehicle where id=r.client_vehicle_id) as vehicle_number,
                        r.comment, r.status,
                        (select count(*) from receiving_order o where o.route_id = r.id)
-                       + (select count(*) from shipping_order o where o.route_id = r.id) as order_count
+                       + (select count(*) from shipping_order o where o.route_id = r.id) as order_count,
+                       array(select o.number from receiving_order o where o.route_id=r.id
+                             union all select o.number from shipping_order o where o.route_id=r.id order by number) as order_numbers
                 from route r join terminal_area_catalog a on a.id = r.terminal_area_catalog_id
                 """;
     }
 
     private static RouteSummary summary(ResultSet rs) throws SQLException {
+        var array=rs.getArray("order_numbers");
+        List<Integer> orderNumbers=array==null?List.of():java.util.Arrays.stream((Object[])array.getArray()).map(value -> ((Number)value).intValue()).toList();
+        if(array!=null)array.free();
         return new RouteSummary(rs.getObject("id", UUID.class), rs.getInt("code"),
-                RouteType.valueOf(rs.getString("route_type")), rs.getObject("departure_at", OffsetDateTime.class),
+                RouteType.valueOf(rs.getString("route_type")), rs.getObject("data_time", OffsetDateTime.class),
                 rs.getObject("terminal_area_catalog_id", UUID.class), rs.getString("area_name"),
                 TransportType.valueOf(rs.getString("transport_type")), rs.getString("carrier"),
                 rs.getString("driver_name"), rs.getString("vehicle_number"), rs.getString("comment"),
-                rs.getString("status"), rs.getInt("order_count"));
+                rs.getString("status"), rs.getInt("order_count"), orderNumbers);
     }
 
     private record OrderCandidate(String status, UUID areaId, String transportType, UUID routeId) {}

@@ -42,13 +42,15 @@ describe('Состав накладных в заявке', () => {
 })
 
 it('shows capacity, type and gross weight, and cargo hazard without net weight', () => {
-  const fixture: CompositionWaybill = { ...bill, railwayCarriages: [{ id: 'w1', number: '91635193', containers: [{ ...container, type: 'STANDARD_40', loadCapacity: 25000 }] }], products: [{ id: 'p', etsngCodeId: 'e', code: '011005', name: 'Пшеница', weight: 1800, grossWeight: 5000, hazardClassName: 'TEST HAZARD' }] }
+  const fixture: CompositionWaybill = { ...bill, railwayCarriages: [{ id: 'w1', number: '91635193', containers: [{ ...container, type: 'STANDARD_40', loadCapacity: 25000 }] }], products: [{ id: 'p', etsngCodeId: 'e', code: '011005', name: 'Пшеница', weight: 1800, grossWeight: 5000, hazardClassName: 'TEST HAZARD', dangerProductName: 'TEST PRODUCT', signDanger: 'SOURCE FLAG' }] }
   const containers = renderToStaticMarkup(<WaybillCompositionTable waybills={[fixture]} tab="containers" />)
   expect(containers).toContain('Стандартный 40')
   expect(containers).toContain('Грузоподъёмность, кг')
   expect(containers).not.toContain('Масса груза')
   const cargo = renderToStaticMarkup(<WaybillCompositionTable waybills={[fixture]} tab="cargo" />)
   expect(cargo).toContain('TEST HAZARD')
+  expect(cargo).toContain('TEST PRODUCT')
+  expect(cargo).toContain('SOURCE FLAG')
   expect(cargo).toContain('Масса брутто, кг')
   expect(cargo).not.toContain('1 800')
 })

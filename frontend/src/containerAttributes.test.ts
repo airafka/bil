@@ -13,14 +13,14 @@ describe('Container attributes', () => {
   })
   it('keeps distinct attributes per waybill container and the common cargo', () => {
     const form = { ...initialWaybillFormState, etsngCodeId: 'cargo', railwayCarriages: [{ key: 1, railwayCarriageId: 'w', containers: [
-      { containerId: 'c1', grossWeight: '5000', tareWeight: 3200, ownerClientId: 'owner1', sealNumbers: '  001  ', sealTypeId: 'seal' },
-      { containerId: 'c2', grossWeight: '3200', tareWeight: 3200, ownerClientId: 'owner2' },
+      { containerId: 'c1', grossWeight: '5000', tareWeight: 3200, owner: 'Владелец из накладной', sealNumbers: '  001  ', sealTypeId: 'seal' },
+      { containerId: 'c2', grossWeight: '3200', tareWeight: 3200, owner: 'Произвольное название' },
     ] }] }
     const result = buildWaybillPayload(form)
-    expect(result.etsngCodeId).toBe('cargo')
+    expect(result.products[0].etsngCodeId).toBe('cargo')
     expect(result.railwayCarriages[0].containers).toEqual([
-      { containerId: 'c1', grossWeight: '5000', ownerClientId: 'owner1', sealNumbers: '001', sealTypeId: 'seal' },
-      { containerId: 'c2', grossWeight: '3200', ownerClientId: 'owner2' },
+      { containerId: 'c1', grossWeight: '5000', netWeight: '1800.000', owner: 'Владелец из накладной', sealNumbers: '001', sealTypeId: 'seal' },
+      { containerId: 'c2', grossWeight: '3200', netWeight: '0.000', owner: 'Произвольное название' },
     ])
   })
 })

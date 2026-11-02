@@ -9,7 +9,7 @@ import {
   getContracts, getReferenceOptions, saveComplexServiceTariff, updateComplexService,
 } from '../api'
 import type { ReferenceOption } from '../domain'
-import type { ContractOption } from '../serviceOrder'
+import type { ContractOption } from '../comprehensiveServiceOrder'
 import type { ComplexService, ComplexServiceDetails, ComplexServicePayload, ComplexServiceTariff } from '../complexService'
 import { priceLabel } from '../complexService'
 

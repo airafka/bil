@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { ServiceProgressCards } from './ServiceProgressCards'
-import type { ServiceProgress } from '../serviceOrder'
+import type { ServiceProgress } from '../comprehensiveServiceOrder'
 
 const progress: ServiceProgress = {
   initialServiceName: 'Приём и вывоз из справочника', returnServiceName: 'Возврат из справочника',

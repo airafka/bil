@@ -1,4 +1,9 @@
 import { lazy, Suspense } from 'react'
+const ContainerStockPage = lazy(() => import('./pages/ContainerStockPages').then(m => ({ default: m.ContainerStockPage })))
+const ContainerHistoryPage = lazy(() => import('./pages/ContainerStockPages').then(m => ({ default: m.ContainerHistoryPage })))
+const OwnershipOrderRegistryPage = lazy(() => import('./pages/OwnershipOrderPages').then(m => ({ default: m.OwnershipOrderRegistryPage })))
+const OwnershipOrderCreatePage = lazy(() => import('./pages/OwnershipOrderPages').then(m => ({ default: m.OwnershipOrderCreatePage })))
+const OwnershipOrderViewPage = lazy(() => import('./pages/OwnershipOrderPages').then(m => ({ default: m.OwnershipOrderViewPage })))
 const InvoiceRegistryPage = lazy(() => import('./pages/PaymentInvoicePages').then(module => ({ default: module.InvoiceRegistryPage })))
 const InvoiceCreatePage = lazy(() => import('./pages/PaymentInvoicePages').then(module => ({ default: module.InvoiceCreatePage })))
 const InvoiceViewPage = lazy(() => import('./pages/PaymentInvoicePages').then(module => ({ default: module.InvoiceViewPage })))
@@ -8,8 +13,8 @@ const RouteCreatePage = lazy(() => import('./pages/RoutePages').then(module => (
 const RouteViewPage = lazy(() => import('./pages/RoutePages').then(module => ({ default: module.RouteViewPage })))
 const RailwayCarriageRegistryPage = lazy(() => import('./pages/RailwayCarriageRegistryPage').then(module => ({ default: module.RailwayCarriageRegistryPage })))
 const ContainerRegistryPage = lazy(() => import('./pages/ContainerRegistryPage').then(module => ({ default: module.ContainerRegistryPage })))
-const ServiceOrderRegistryPage = lazy(() => import('./pages/ServiceOrderRegistryPage').then(module => ({ default: module.ServiceOrderRegistryPage })))
-const ServiceOrderViewPage = lazy(() => import('./pages/ServiceOrderViewPage').then(module => ({ default: module.ServiceOrderViewPage })))
+const ComprehensiveServiceOrderRegistryPage = lazy(() => import('./pages/ComprehensiveServiceOrderRegistryPage').then(module => ({ default: module.ComprehensiveServiceOrderRegistryPage })))
+const ComprehensiveServiceOrderViewPage = lazy(() => import('./pages/ComprehensiveServiceOrderViewPage').then(module => ({ default: module.ComprehensiveServiceOrderViewPage })))
 import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/AppLayout'
 import { orderConfigs } from './domain'
@@ -28,13 +33,18 @@ function App() {
       <AppLayout>
         <Suspense fallback={<div className="view-loading" role="status">Загружаем раздел…</div>}><Routes>
           <Route path="/" element={<Navigate to="/receiving-orders" replace />} />
+          <Route path="/container-owners" element={<ContainerStockPage />} />
+          <Route path="/container-owners/:containerId/history" element={<ContainerHistoryPage />} />
+          <Route path="/service-orders" element={<OwnershipOrderRegistryPage />} />
+          <Route path="/service-orders/new" element={<OwnershipOrderCreatePage />} />
+          <Route path="/service-orders/:ownershipOrderId" element={<OwnershipOrderViewPage />} />
           <Route path="/billing-charges" element={<BillingChargesPage />} />
           <Route path="/payment-invoices" element={<InvoiceRegistryPage />} />
           <Route path="/payment-invoices/new" element={<InvoiceCreatePage />} />
           <Route path="/payment-invoices/:invoiceId" element={<InvoiceViewPage />} />
-          <Route path="/service-orders" element={<ServiceOrderRegistryPage />} />
-          <Route path="/service-orders/new" element={<CreateOrderPage key="service" config={orderConfigs.receiving} serviceMode />} />
-          <Route path="/service-orders/:serviceOrderId" element={<ServiceOrderViewPage />} />
+          <Route path="/comprehensive-service-orders" element={<ComprehensiveServiceOrderRegistryPage />} />
+          <Route path="/comprehensive-service-orders/new" element={<CreateOrderPage key="service" config={orderConfigs.receiving} serviceMode />} />
+          <Route path="/comprehensive-service-orders/:comprehensiveServiceOrderId" element={<ComprehensiveServiceOrderViewPage />} />
           <Route path="/complex-services" element={<ComplexServiceRegistryPage />} />
           <Route path="/complex-services/new" element={<ComplexServiceCreatePage />} />
           <Route path="/complex-services/:complexServiceId" element={<ComplexServiceViewPage />} />
@@ -51,7 +61,7 @@ function App() {
           <Route path="/containers" element={<ContainerRegistryPage />} />
           <Route path="/waybills" element={<WaybillRegistryPage />} />
           <Route path="/waybills/create" element={<WaybillCreatePage />} />
-          <Route path="*" element={<section className="table-card empty-state"><h1>Страница не найдена</h1><p>Проверьте адрес или откройте реестр заявок.</p><Link className="primary-button" to="/service-orders">К заявкам на услугу</Link></section>} />
+          <Route path="*" element={<section className="table-card empty-state"><h1>Страница не найдена</h1><p>Проверьте адрес или откройте реестр заявок.</p><Link className="primary-button" to="/comprehensive-service-orders">К заявкам на услугу</Link></section>} />
         </Routes></Suspense>
       </AppLayout>
     </BrowserRouter>

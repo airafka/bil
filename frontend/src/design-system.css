@@ -46,7 +46,6 @@ tbody tr:hover, .service-compact-table tbody tr:hover { background: #f2f7ff; }
 .status-badge[data-status="DRAFT"] { color: #191a1f; background: #f2f4f7; }
 .status-badge[data-status="CONFIRMED"] { color: #175cd3; background: #eff8ff; }
 .status-badge[data-status="COMPLETED"] { color: #027a48; background: #ecfdf3; }
-.status-badge::before { content: ''; width: 5px; height: 5px; flex-shrink: 0; margin-right: 5px; border-radius: 50%; background: currentColor; }
 .stepper { display: flex; align-items: center; width: fit-content; max-width: 100%; padding: 0; gap: 4px; margin-bottom: 24px; background: #f2f4f7; border: 0; border-radius: 6px; overflow-x: auto; }
 .step { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; min-width: 0; height: 40px; padding: 7px 16px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #98a2b3; font-size: 16px; line-height: 24px; font-weight: 400; white-space: nowrap; }
 .step.complete { color: #98a2b3; }

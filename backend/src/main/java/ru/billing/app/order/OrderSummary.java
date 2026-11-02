@@ -13,6 +13,6 @@ public record OrderSummary(
         String status,
         UUID contractId,
         String contractName,
-        UUID serviceOrderId
+        UUID comprehensiveServiceOrderId
 ) {
 }

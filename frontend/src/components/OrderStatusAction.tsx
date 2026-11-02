@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { changeOrderStatus } from '../api'
+import { changeOrderStatus, finishContainerOrder } from '../api'
 import { statusLabel } from '../domain'
 
 const statuses = ['DRAFT', 'CONFIRMED', 'COMPLETED']
@@ -19,7 +19,8 @@ export function OrderStatusAction({ apiPath, id, status, onChanged }: {
     setError('')
     setMessage('')
     try {
-      const updated = await changeOrderStatus(apiPath, id, status, next)
+      const movement = next === 'COMPLETED' && (apiPath === '/api/receiving-orders' || apiPath === '/api/shipping-orders')
+      const updated = movement ? await finishContainerOrder(apiPath, id) : await changeOrderStatus(apiPath, id, status, next)
       onChanged(updated.status)
       setMessage(`Статус изменён: ${statusLabel(updated.status)}`)
     } catch (e) {
@@ -30,7 +31,7 @@ export function OrderStatusAction({ apiPath, id, status, onChanged }: {
     }
   }
   return <div className="order-status-control">
-    {next && <button type="button" className="primary-button" disabled={busy} onClick={advance}>{busy ? 'Сохраняем…' : next === 'CONFIRMED' ? 'Подтвердить' : 'Выполнить'}</button>}
+    {next && <button type="button" className="primary-button" disabled={busy} onClick={advance}>{busy ? 'Сохраняем…' : next === 'CONFIRMED' ? 'Подтвердить' : apiPath === '/api/receiving-orders' ? 'Завершить разгрузку' : apiPath === '/api/shipping-orders' ? 'Завершить погрузку' : 'Выполнить'}</button>}
     {error && <div className="notice error" role="alert">{error}</div>}
     <span className="service-sr-only" role="status">{message}</span>
   </div>

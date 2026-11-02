@@ -96,7 +96,7 @@ export function OrderListPage({ config }: { config: OrderConfig }) {
                       {order.code}
                     </Link>
                   </td>
-                  <td>{order.clientName}</td><td>{order.contractName ?? '—'}</td><td>{order.serviceOrderId ? <Link to={'/service-orders/' + order.serviceOrderId}>Открыть</Link> : '—'}</td>
+                  <td>{order.clientName}</td><td>{order.contractName ?? '—'}</td><td>{order.comprehensiveServiceOrderId ? <Link to={'/comprehensive-service-orders/' + order.comprehensiveServiceOrderId}>Открыть</Link> : '—'}</td>
                   <td>{order.terminalArea?.name ?? '—'}</td>
                   <td>{transportTypeLabel(order.transportType)}</td>
                   {config.kind === 'shipping' && <td>{order.transportType === 'RAILWAY'

@@ -3,13 +3,16 @@ import type { ReceivingContainerAttributes as Attributes, ReferenceOption } from
 import { getReferenceOptions } from '../api'
 import { UiInput, UiSelect } from './FormControls'
 
-type Row = Attributes & { id: string; name: string; empty?: boolean }
-export function ReceivingContainerAttributes({ containers, onChange, includeHazardClass = true, showState = false, vehicleReceiving = false }: {
+type Row = Attributes & { id: string; name: string; empty?: boolean; owner?: string | null }
+export function ReceivingContainerAttributes({ containers, onChange, includeHazardClass = true, showState = false, vehicleReceiving = false, ownerAsText = false, ownerReadOnly = false, defaultOwnerId }: {
+  defaultOwnerId?: string
+  ownerReadOnly?: boolean
+  ownerAsText?: boolean
   vehicleReceiving?: boolean
   showState?: boolean
   includeHazardClass?: boolean
   containers: Row[]
-  onChange?: (id: string, change: Attributes) => void
+  onChange?: (id: string, change: Attributes & { owner?: string }) => void
 }) {
   const editing = !!onChange
   const [references, setReferences] = useState<ReferenceOption[][]>([[], [], []])
@@ -18,15 +21,15 @@ export function ReceivingContainerAttributes({ containers, onChange, includeHaza
   useEffect(() => {
     if (!editing) return
     let active = true
-    Promise.all([getReferenceOptions('clients'), getReferenceOptions('seal-types'), includeHazardClass ? getReferenceOptions('hazard-classes') : Promise.resolve([])])
+    Promise.all([(ownerAsText || ownerReadOnly) ? Promise.resolve([]) : getReferenceOptions('clients'), getReferenceOptions('seal-types'), includeHazardClass ? getReferenceOptions('hazard-classes') : Promise.resolve([])])
       .then(value => { if (active) setReferences(value) })
       .catch(cause => { if (active) setError(cause instanceof Error ? cause.message : 'Не удалось загрузить справочники') })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [editing, includeHazardClass])
+  }, [editing, includeHazardClass, ownerAsText, ownerReadOnly])
   if (!containers.length) return null
   const select = (row: Row, key: 'ownerClientId' | 'sealTypeId' | 'hazardClassId', label: string, options: ReferenceOption[], name?: string | null) =>
-    <UiSelect aria-label={label + ' — ' + row.name} value={row[key] ?? ''} disabled={loading || !!error}
+    <UiSelect aria-label={label + ' — ' + row.name} value={row[key] ?? (key === 'ownerClientId' ? defaultOwnerId : '') ?? ''} disabled={loading || !!error}
       onChange={event => onChange?.(row.id, { [key]: event.target.value || null })}>
       <option value="">{loading ? 'Загрузка…' : options.length ? 'Не указан' : 'Справочник пуст'}</option>
       {row[key] && !options.some(option => option.id === row[key]) && <option value={row[key]}>{name || row[key]}</option>}
@@ -39,7 +42,7 @@ export function ReceivingContainerAttributes({ containers, onChange, includeHaza
       <tbody>{containers.map((row, index) => <tr key={row.id}>
         {showState && <td>{index + 1}</td>}<td>{row.name}</td>
         {showState && !vehicleReceiving && <td><span className={`readonly-checkbox ${row.empty ? 'checked' : ''}`} aria-label={row.empty ? 'Порожний' : 'Гружёный'}>{row.empty && <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2.5 6 5 8.5 9.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}</span></td>}
-        <td>{editing ? select(row, 'ownerClientId', 'Собственник КТК', references[0], row.ownerClientName) : row.ownerClientName || '—'}</td>
+        <td>{ownerAsText ? (editing ? <UiInput aria-label={'Собственник КТК — ' + row.name} maxLength={255} value={row.owner ?? ''} onChange={event => onChange?.(row.id, { owner: event.target.value })} /> : row.owner || '—') : editing && !ownerReadOnly ? select(row, 'ownerClientId', 'Собственник КТК', references[0], row.ownerClientName) : row.ownerClientName || '—'}</td>
         <td>{editing ? <UiInput aria-label={'Номера ЗПУ — ' + row.name} maxLength={1000} value={row.sealNumbers ?? ''}
           onChange={event => onChange?.(row.id, { sealNumbers: event.target.value })} placeholder="Номера через запятую" /> : row.sealNumbers ? (vehicleReceiving ? <span className="seal-pills">{row.sealNumbers.split(/[,;\n]+/).map((seal, i) => seal.trim() && <span className="seal-pill" key={i}>{seal.trim()}</span>)}</span> : row.sealNumbers) : '—'}</td>
         <td>{editing ? select(row, 'sealTypeId', 'Тип ЗПУ', references[1], row.sealTypeName) : row.sealTypeName || '—'}</td>

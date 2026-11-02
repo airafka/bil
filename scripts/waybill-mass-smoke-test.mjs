@@ -58,7 +58,7 @@ try {
   assert.equal((await find(next.id)).containers[0].netWeight, 21600.125)
   console.log('PASS: tare is read live from the container reference for every waybill')
   const clients = await call('/api/references/clients'), contracts = await call('/api/references/contracts')
-  const service = await call('/api/service-orders', {
+  const service = await call('/api/comprehensive-service-orders', {
     clientId: clients[0].id, contractId: contracts.find(c => c.clientId === clients[0].id).id, waybillIds: [bill.id],
   }, 201)
   const nested = service.receivingOrder.waybills[0].railwayCarriages.flatMap(c => c.containers).find(c => c.containerId === first.id)

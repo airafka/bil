@@ -14,7 +14,7 @@ try {
   const source = await call('/api/billing-charges?size=100')
   assert.ok(source.items.length, 'The isolated stack needs performed services and charges')
   const first = source.items[0]
-  const service = await call(`/api/service-orders/${first.serviceOrderId}`)
+  const service = await call(`/api/comprehensive-service-orders/${first.comprehensiveServiceOrderId}`)
   const filters = {
     clientId: service.order.clientId, contractId: service.order.contractId,
     period: new Date(first.performedAt).toLocaleDateString('sv-SE', { timeZone: 'Europe/Moscow' }).slice(0, 7),

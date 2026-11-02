@@ -1,4 +1,4 @@
+# Demo seeds are deliberately not run against the preserved working references.
 spring:
   flyway:
-    locations: classpath:db/migration,classpath:db/dev
-
+    locations: classpath:db/baseline

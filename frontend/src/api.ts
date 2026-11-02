@@ -1,4 +1,4 @@
-import type { ContractOption, ServiceOrderSummary, ServiceOrderDetails } from './serviceOrder'
+import type { ContractOption, ComprehensiveServiceOrderSummary, ComprehensiveServiceOrderDetails } from './comprehensiveServiceOrder'
 import type {
   CreatedOrder,
   CreatedWaybill,
@@ -74,7 +74,7 @@ function request<T>(url: string, options?: RequestInit): Promise<T> {
   return pending
 }
 
-export function getReferenceOptions(resource: 'clients' | 'containers' | 'etsng-codes' | 'railway-carriages' | 'railway-carriage-types' | 'seal-types' | 'hazard-classes' | 'railway-carriage-models' | 'railway-carriage-kinds', query = '') {
+export function getReferenceOptions(resource: 'clients' | 'containers' | 'etsng-codes' | 'railway-carriages' | 'railway-carriage-types' | 'seal-types' | 'hazard-classes' | 'danger-products' | 'railway-carriage-models' | 'railway-carriage-kinds', query = '') {
   return request<ReferenceOption[]>(`/api/references/${resource}?limit=100&q=${encodeURIComponent(query)}`)
 }
 
@@ -90,8 +90,8 @@ export function getOrders(apiPath: string, page: number, size = 20, query = '', 
   return request<PagedResponse<OrderSummary>>(`${apiPath}?page=${page}&size=${size}&query=${encodeURIComponent(query)}&status=${encodeURIComponent(status)}`)
 }
 
-export function updateOrderContainerAttributes(apiPath: string, id: string, containers: Array<import('./domain').ReceivingContainerAttributes & { containerId: string }>) {
-  return request<OrderDetails>(`${apiPath}/${id}/containers`, { method: 'PATCH', body: JSON.stringify({ containers }) })
+export function updateOrderContainerAttributes(apiPath: string, id: string, containers: Array<import('./domain').ReceivingContainerAttributes & { containerId: string }>, defaultContainerOwnerId?: string, additions: Array<{container: CreateOrderPayload['containers'][number]; railwayCarriageId?: string}> = []) {
+  return request<OrderDetails>(`${apiPath}/${id}/containers`, { method: 'PATCH', body: JSON.stringify({ containers, ...(defaultContainerOwnerId ? { defaultContainerOwnerId } : {}), ...(additions.length ? { additions } : {}) }) })
 }
 
 export function getOrder(apiPath: string, id: string) {
@@ -132,13 +132,13 @@ export function getGroupedWaybills(
 
 
 export function getContracts() { return request<ContractOption[]>('/api/references/contracts') }
-export function getServiceOrders(page = 0, query = '', status = '') { return request<PagedResponse<ServiceOrderSummary>>('/api/service-orders?page=' + page + '&size=20&query=' + encodeURIComponent(query) + '&status=' + encodeURIComponent(status)) }
-export function getServiceOrder(id: string) { return request<ServiceOrderDetails>('/api/service-orders/' + id) }
-export function createServiceOrder(payload: { clientId: string; contractId: string; waybillIds: string[] }) {
-  return request<ServiceOrderDetails>('/api/service-orders', { method: 'POST', body: JSON.stringify(payload) })
+export function getComprehensiveServiceOrders(page = 0, query = '', status = '') { return request<PagedResponse<ComprehensiveServiceOrderSummary>>('/api/comprehensive-service-orders?page=' + page + '&size=20&query=' + encodeURIComponent(query) + '&status=' + encodeURIComponent(status)) }
+export function getComprehensiveServiceOrder(id: string) { return request<ComprehensiveServiceOrderDetails>('/api/comprehensive-service-orders/' + id) }
+export function createComprehensiveServiceOrder(payload: { clientId: string; contractId: string; waybillIds: string[]; defaultContainerOwnerId?: string }) {
+  return request<ComprehensiveServiceOrderDetails>('/api/comprehensive-service-orders', { method: 'POST', body: JSON.stringify(payload) })
 }
 export function createServiceShippingOrder(serviceId: string, containerIds: string[]) {
-  return request<ServiceOrderDetails>(`/api/service-orders/${serviceId}/shipping-orders`, {
+  return request<ComprehensiveServiceOrderDetails>(`/api/comprehensive-service-orders/${serviceId}/shipping-orders`, {
     method: 'POST', body: JSON.stringify({ containerIds }),
   })
 }
@@ -185,12 +185,12 @@ export function deleteComplexServiceTariff(id: string, contractId: string) {
   return request<void>(`/api/complex-services/${id}/tariffs/${contractId}`, { method: 'DELETE' })
 }
 
-export function getBillingCharges(serviceOrderId?: string, page = 0) {
-  return request<import('./billing').BillingChargePage>(`/api/billing-charges?page=${page}&size=20${serviceOrderId ? `&serviceOrderId=${serviceOrderId}` : ''}`)
+export function getBillingCharges(comprehensiveServiceOrderId?: string, page = 0) {
+  return request<import('./billing').BillingChargePage>(`/api/billing-charges?page=${page}&size=20${comprehensiveServiceOrderId ? `&comprehensiveServiceOrderId=${comprehensiveServiceOrderId}` : ''}`)
 }
 
 export function createServiceReturns(serviceId: string, shippingOrderIds: string[]) {
-  return request<CreatedOrder[]>('/api/service-orders/' + serviceId + '/returns', { method: 'POST', body: JSON.stringify({ shippingOrderIds }) })
+  return request<CreatedOrder[]>('/api/comprehensive-service-orders/' + serviceId + '/returns', { method: 'POST', body: JSON.stringify({ shippingOrderIds }) })
 }
 
 export function getRailwayCarriagePage(page: number) {
@@ -202,4 +202,25 @@ export function updateRailwayCarriage(id: string, value: import('./railwayCarria
 
 export function updateContainerAttributes(id: string, tareWeight: string, loadCapacity: string | null) {
   return request<ReferenceOption>('/api/references/containers/' + id + '/attributes', { method: 'PATCH', body: JSON.stringify({ tareWeight, loadCapacity }) })
+}
+
+export function finishContainerOrder(apiPath: string, id: string) {
+  return request<import('./domain').CreatedOrder>(apiPath + '/' + id + '/events', { method: 'POST', body: JSON.stringify({ eventCode: apiPath === '/api/receiving-orders' ? 'UNLOAD_FINISH' : 'LOAD_FINISH' }) })
+}
+
+export function getContainerStock(query = '', clientId = '', status = '', page = 0) {
+  return request<PagedResponse<import('./containerStock').StockOwner>>('/api/container-owners?' + new URLSearchParams({ query, ...(clientId ? { clientId } : {}), ...(status ? { status } : {}), page: String(page) }))
+}
+export function getOwnerHistory(id: string, includeReservations = false) { return request<import('./containerStock').OwnerHistory[]>('/api/containers/' + id + '/owner-history?includeReservations=' + includeReservations) }
+export function getOwnershipOrders(query = '', page = 0) { return request<PagedResponse<import('./containerStock').OwnershipHeader>>('/api/service-orders?' + new URLSearchParams({ query, page: String(page) })) }
+export function getOwnershipOrder(id: string) { return request<import('./containerStock').OwnershipDetails>('/api/service-orders/' + id) }
+export function createOwnershipOrder(clientId: string, comment: string) { return request<import('./containerStock').OwnershipDetails>('/api/service-orders', { method: 'POST', body: JSON.stringify({ clientId, service: 'CHANGE_OWNER', comment }) }) }
+export function updateOwnershipOrder(id: string, comment: string) { return request<import('./containerStock').OwnershipDetails>('/api/service-orders/' + id, { method: 'PUT', body: JSON.stringify({ id, service: 'CHANGE_OWNER', comment }) }) }
+export function getOwnershipAvailable(id: string, query = '', page = 0) { return request<PagedResponse<import('./containerStock').OwnershipContainer>>('/api/service-orders/' + id + '/containers/available?' + new URLSearchParams({ query, page: String(page) })) }
+export function saveOwnershipSelection(id: string, containerOwnerIds: string[]) { return request<import('./containerStock').OwnershipDetails>('/api/service-orders/' + id + '/containers', { method: 'PUT', body: JSON.stringify(containerOwnerIds.map(containerOwnerId => ({ containerOwnerId }))) }) }
+export function acceptOwnershipOrder(id: string) { return request<import('./containerStock').OwnershipDetails>('/api/service-orders/' + id + '/accept', { method: 'POST' }) }
+export function deleteOwnershipOrder(id: string) { return request<void>('/api/service-orders/' + id, { method: 'DELETE' }) }
+
+export function lookupContainerStock(containerIds: string[]) {
+  return request<import('./containerStock').ContainerStockLookup[]>('/api/container-owners/lookup', { method: 'POST', body: JSON.stringify({ containerIds }) })
 }

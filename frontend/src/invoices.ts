@@ -1,6 +1,6 @@
 export type InvoiceFilters = { clientId: string; contractId: string; period: string }
 export type InvoiceLine = {
-  id: string; performedAt: string; serviceOrderId: string; serviceOrderCode: number
+  id: string; performedAt: string; comprehensiveServiceOrderId: string; comprehensiveServiceOrderCode: number
   containerName: string; serviceName: string; amountWithoutVat: number; amountWithVat: number
 }
 export type PaymentInvoice = InvoiceFilters & {

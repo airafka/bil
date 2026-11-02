@@ -14,6 +14,7 @@ export type RouteSummary = {
   vehicleNumber: string | null
   comment: string | null
   status: string
+  orderNumbers?: number[]
   orderCount: number
 }
 export type RouteOrder = { id: string; code: number; clientName: string; status: string }

@@ -27,7 +27,7 @@ class OrderServiceTest {
     @Test
     void receivingOrderGetsGeneratedNumberAndDraftStatus() {
         ReceivingOrderStore store = mock(ReceivingOrderStore.class);
-        ReceivingOrderService service = new ReceivingOrderService(validator, references, store, mock(RouteService.class));
+        ReceivingOrderService service = new ReceivingOrderService(validator, references, store, mock(RouteService.class), mock(OrderContainerAdditionService.class));
         CreateOrderRequest request = validRequest();
         CreatedOrderResponse expected = new CreatedOrderResponse(UUID.randomUUID(), 17, "DRAFT");
         when(store.createVehicle(request)).thenReturn(expected);
@@ -42,7 +42,7 @@ class OrderServiceTest {
     @Test
     void railwayReceivingOrderUsesWaybillsWithoutVehicleReferences() {
         ReceivingOrderStore store = mock(ReceivingOrderStore.class);
-        ReceivingOrderService service = new ReceivingOrderService(validator, references, store, mock(RouteService.class));
+        ReceivingOrderService service = new ReceivingOrderService(validator, references, store, mock(RouteService.class), mock(OrderContainerAdditionService.class));
         CreateOrderRequest request = new CreateOrderRequest(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
@@ -54,7 +54,7 @@ class OrderServiceTest {
                 FillingType.ALL,
                 List.of(),
                 List.of()
-        );
+        ).withDefaultContainerOwner(UUID.randomUUID());
         CreatedOrderResponse expected = new CreatedOrderResponse(UUID.randomUUID(), 18, "DRAFT");
         when(store.createRailway(request)).thenReturn(expected);
 
@@ -68,8 +68,8 @@ class OrderServiceTest {
     @Test
     void shippingOrderGetsGeneratedNumberAndDraftStatus() {
         ShippingOrderStore store = mock(ShippingOrderStore.class);
-        ShippingOrderService service = new ShippingOrderService(validator, references, store, mock(RouteService.class));
-        CreateOrderRequest request = validRequest();
+        ShippingOrderService service = new ShippingOrderService(validator, references, store, mock(RouteService.class), mock(OrderContainerAdditionService.class));
+        CreateOrderRequest request = validRequest().withDefaultContainerOwner(null);
         CreatedOrderResponse expected = new CreatedOrderResponse(UUID.randomUUID(), 9, "DRAFT");
         when(store.create(request)).thenReturn(expected);
 
@@ -83,7 +83,7 @@ class OrderServiceTest {
     @Test
     void railwayShippingOrderUsesNestedReferences() {
         ShippingOrderStore store = mock(ShippingOrderStore.class);
-        ShippingOrderService service = new ShippingOrderService(validator, references, store, mock(RouteService.class));
+        ShippingOrderService service = new ShippingOrderService(validator, references, store, mock(RouteService.class), mock(OrderContainerAdditionService.class));
         CreateOrderRequest request = new CreateOrderRequest(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
@@ -98,7 +98,7 @@ class OrderServiceTest {
                 FillingType.ALL,
                 List.of(),
                 List.of()
-        );
+        ).withDefaultContainerOwner(null);
         CreatedOrderResponse expected = new CreatedOrderResponse(UUID.randomUUID(), 10, "DRAFT");
         when(store.create(request)).thenReturn(expected);
 
@@ -111,7 +111,7 @@ class OrderServiceTest {
     @Test
     void unnumberedVehicleShippingUsesExistingQuantityComposition() {
         ShippingOrderStore store = mock(ShippingOrderStore.class);
-        ShippingOrderService service = new ShippingOrderService(validator, references, store, mock(RouteService.class));
+        ShippingOrderService service = new ShippingOrderService(validator, references, store, mock(RouteService.class), mock(OrderContainerAdditionService.class));
         CreateOrderRequest request = new CreateOrderRequest(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
@@ -124,18 +124,14 @@ class OrderServiceTest {
                 List.of(),
                 List.of(new ContainerQuantityRequest(1, ContainerType.STANDARD_40, true, List.of()))
         );
-        CreatedOrderResponse expected = new CreatedOrderResponse(UUID.randomUUID(), 11, "DRAFT");
-        when(store.create(request)).thenReturn(expected);
-
-        assertThat(service.create(request)).isEqualTo(expected);
-        verify(references).validateReferences(request);
-        verify(store).create(request);
+        assertThatThrownBy(() -> service.create(request)).isInstanceOf(ApiException.class);
+        org.mockito.Mockito.verifyNoInteractions(store, references);
     }
 
     @Test
     void receivingOrderIsNotWrittenWhenReferenceIsMissing() {
         ReceivingOrderStore store = mock(ReceivingOrderStore.class);
-        ReceivingOrderService service = new ReceivingOrderService(validator, references, store, mock(RouteService.class));
+        ReceivingOrderService service = new ReceivingOrderService(validator, references, store, mock(RouteService.class), mock(OrderContainerAdditionService.class));
         CreateOrderRequest request = validRequest();
         doThrow(new ApiException(HttpStatus.NOT_FOUND, "CLIENT_NOT_FOUND", "Клиент не найден"))
                 .when(references).validateReferences(request);
@@ -164,6 +160,17 @@ class OrderServiceTest {
                 FillingType.ALL,
                 List.of(),
                 List.of()
-        );
+        ).withDefaultContainerOwner(UUID.randomUUID());
+    }
+
+    @Test
+    void requiresDefaultOwnerWithoutFallingBackToOrderClient() {
+        ReceivingOrderStore store = mock(ReceivingOrderStore.class);
+        ReceivingOrderService service = new ReceivingOrderService(validator, references, store, mock(RouteService.class), mock(OrderContainerAdditionService.class));
+        CreateOrderRequest request = validRequest().withDefaultContainerOwner(null);
+        assertThat(request.effectiveDefaultContainerOwnerId()).isNull();
+        assertThatThrownBy(() -> service.create(request)).isInstanceOfSatisfying(ApiException.class,
+            ex -> assertThat(ex.getCode()).isEqualTo("DEFAULT_CONTAINER_OWNER_REQUIRED"));
+        org.mockito.Mockito.verifyNoInteractions(store, references);
     }
 }

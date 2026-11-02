@@ -13,8 +13,19 @@ public record CreateWaybillRequest(
         @NotBlank(message = "Плательщик обязателен") String payer,
         UUID etsngCodeId,
         UUID hazardClassId,
-        List<@NotNull @Valid WaybillRailwayCarriageRequest> railwayCarriages
+        List<@NotNull @Valid WaybillRailwayCarriageRequest> railwayCarriages,
+        List<@NotNull @Valid WaybillProductRequest> products,
+        @jakarta.validation.constraints.Size(max = 255) String number
 ) {
+    public CreateWaybillRequest(UUID receivingOrderId, Integer departureStation, Integer destinationStation,
+            String payer, UUID etsngCodeId, UUID hazardClassId, List<WaybillRailwayCarriageRequest> railwayCarriages,
+            List<WaybillProductRequest> products) {
+        this(receivingOrderId, departureStation, destinationStation, payer, etsngCodeId, hazardClassId, railwayCarriages, products, null);
+    }
+    public CreateWaybillRequest(UUID receivingOrderId, Integer departureStation, Integer destinationStation,
+            String payer, UUID etsngCodeId, UUID hazardClassId, List<WaybillRailwayCarriageRequest> railwayCarriages) {
+        this(receivingOrderId, departureStation, destinationStation, payer, etsngCodeId, hazardClassId, railwayCarriages, null);
+    }
     public CreateWaybillRequest(UUID receivingOrderId, Integer departureStation, Integer destinationStation,
             String payer, UUID etsngCodeId, List<WaybillRailwayCarriageRequest> railwayCarriages) {
         this(receivingOrderId, departureStation, destinationStation, payer, etsngCodeId, null, railwayCarriages);

@@ -21,8 +21,21 @@ public record CreateOrderRequest(
     LocalDateTime arrivalAt,
     @Size(max = 255, message = "Грузоотправитель: не более 255 символов") String consignor,
     LocalDateTime departureAt,
-    @Size(max = 255, message = "Грузополучатель: не более 255 символов") String consignee
+    @Size(max = 255, message = "Грузополучатель: не более 255 символов") String consignee,
+    UUID defaultContainerOwnerId
 ) {
+    public UUID effectiveDefaultContainerOwnerId() { return defaultContainerOwnerId; }
+    public CreateOrderRequest withDefaultContainerOwner(UUID owner) {
+        return new CreateOrderRequest(clientId,contractId,terminalAreaId,transportType,containers,waybillIds,railwayCarriages,
+            fillingType,railwayCarriageQuantities,containerQuantities,routeId,arrivalAt,consignor,departureAt,consignee,owner);
+    }
+    public CreateOrderRequest(UUID clientId,UUID contractId,UUID terminalAreaId,TransportType transportType,
+            List<OrderContainerRequest> containers,List<UUID> waybillIds,List<ShippingOrderRailwayCarriageRequest> railwayCarriages,
+            FillingType fillingType,List<RailwayCarriageQuantityRequest> railwayCarriageQuantities,List<ContainerQuantityRequest> containerQuantities,
+            UUID routeId,LocalDateTime arrivalAt,String consignor,LocalDateTime departureAt,String consignee) {
+        this(clientId,contractId,terminalAreaId,transportType,containers,waybillIds,railwayCarriages,fillingType,
+            railwayCarriageQuantities,containerQuantities,routeId,arrivalAt,consignor,departureAt,consignee,null);
+    }
     public CreateOrderRequest {
         consignor = consignor == null || consignor.isBlank() ? null : consignor.strip();
         consignee = consignee == null || consignee.isBlank() ? null : consignee.strip();

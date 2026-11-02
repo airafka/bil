@@ -9,8 +9,8 @@ async function api(path,body,expected=200,method='POST'){
 }
 const status=(resource,id,from,to,expected=200)=>api(`/api/${resource}/${id}/status`,{expectedStatus:from,status:to},expected,'PATCH')
 const complete=async(resource,id)=>{await status(resource,id,'DRAFT','CONFIRMED');await status(resource,id,'CONFIRMED','COMPLETED')}
-const charges=id=>api(`/api/billing-charges?serviceOrderId=${id}&size=100`)
-const baselineOrders=Number(sql('select (select count(*) from service_order)+(select count(*) from receiving_order)+(select count(*) from shipping_order)')); const baselineCharges=sql('select json_agg(row_to_json(b) order by b.id) from billing_charge b')
+const charges=id=>api(`/api/billing-charges?comprehensiveServiceOrderId=${id}&size=100`)
+const baselineOrders=Number(sql('select (select count(*) from comprehensive_service_order)+(select count(*) from receiving_order)+(select count(*) from shipping_order)')); const baselineCharges=sql('select json_agg(row_to_json(b) order by b.id) from billing_charge b')
 const stamp=Date.now()
 sql(`insert into container(id,code,tare_weight,type) select gen_random_uuid(),'BILL${stamp}-'||lpad(n::text,2,'0'),3200,case when n<=2 then 'STANDARD_20' else 'STANDARD_40' end from generate_series(1,41) n`)
 const fixture=sql(`select json_agg(id order by code) from container where code like 'BILL${stamp}-%'`)
@@ -21,11 +21,11 @@ const contract=contracts.find(c=>c.clientId===client.id && c.name==='ОП-330/25
 const bill=async selected=>api('/api/waybills',{departureStation:11111,destinationStation:999999,payer:`BILL${stamp}`,railwayCarriages:[{railwayCarriageId:cars[0].id,containers:selected.map(containerId=>({containerId,grossWeight:13200,etsngCodeId:cargo[0].id}))}]},201)
 async function service(selected,clientId=client.id,contractId=contract.id,duplicate=false){
  const a=await bill(selected);const waybillIds=[a.id];if(duplicate)waybillIds.push((await bill([selected[0]])).id)
- return api('/api/service-orders',{clientId,contractId,waybillIds},201)
+ return api('/api/comprehensive-service-orders',{clientId,contractId,waybillIds},201)
 }
 const main=await service(ids.slice(0,3),client.id,contract.id,true)
 const parent=main.order.id,initial=main.receivingOrder.id,single=main.shippingOrders[0].id
-const withPair=await api(`/api/service-orders/${parent}/shipping-orders`,{containerIds:ids.slice(0,2)},201)
+const withPair=await api(`/api/comprehensive-service-orders/${parent}/shipping-orders`,{containerIds:ids.slice(0,2)},201)
 const pair=withPair.shippingOrders.find(s=>s.id!==single).id
 await status('shipping-orders',single,'DRAFT','CONFIRMED')
 await status('shipping-orders',single,'CONFIRMED','COMPLETED',409)
@@ -45,7 +45,7 @@ assert.equal((await charges(parent)).total,3)
 await complete('receiving-orders',ret.id)
 totals=await charges(parent);assert.equal(totals.total,4);assert.equal(totals.totalWithoutVat,76200);assert.equal(totals.totalWithVat,92964)
 await status('receiving-orders',ret.id,'CONFIRMED','COMPLETED',409)
-await complete('service-orders',parent);assert.equal((await charges(parent)).total,4)
+await complete('comprehensive-service-orders',parent);assert.equal((await charges(parent)).total,4)
 console.log('PASS: 3 unique KTK incl duplicate bill, paired shipping=2 A, single shipping=1 A, return=1 B; totals 76200 / 92964; predecessor guard; concurrent idempotence; parent creates no charges')
 const catalog=await api('/api/complex-services')
 const wagon=catalog.find(s=>s.name.includes('повагонной'))
@@ -62,7 +62,7 @@ const sh=missing.shippingOrders[0].id
 await status('shipping-orders',sh,'DRAFT','CONFIRMED')
 await status('shipping-orders',sh,'CONFIRMED','COMPLETED',409)
 assert.equal((await api(`/api/shipping-orders/${sh}`)).status,'CONFIRMED');assert.equal((await charges(missing.order.id)).total,0)
-assert.equal(sql(`select count(*) from service_execution where service_order_id='${missing.order.id}'`),'0')
+assert.equal(sql(`select count(*) from service_execution where comprehensive_service_order_id='${missing.order.id}'`),'0')
 await api(`/api/complex-services/${wagon.id}/tariffs`,{clientId:noRate.clientId,contractId:noRate.id,coefficient:1},200,'PUT')
 await status('shipping-orders',sh,'CONFIRMED','COMPLETED')
 assert.equal((await charges(missing.order.id)).total,1)
@@ -109,14 +109,14 @@ await status('shipping-orders',historical.shippingOrders[0].id,'CONFIRMED','COMP
 assert.equal((await charges(historical.order.id)).total,0)
 const agreed=await service(ids.slice(2,3))
 await complete('receiving-orders',agreed.receivingOrder.id)
-sql(`insert into service_execution(id,service_order_id,container_id,family,complex_service_id,receiving_order_id,shipping_order_id,status,tariff_id,coefficient,base_price_without_vat,base_price_with_vat,price_without_vat,price_with_vat,priced_at,accepted_container_count)
+sql(`insert into service_execution(id,comprehensive_service_order_id,container_id,family,complex_service_id,receiving_order_id,shipping_order_id,status,tariff_id,coefficient,base_price_without_vat,base_price_with_vat,price_without_vat,price_with_vat,priced_at,accepted_container_count)
  select gen_random_uuid(),'${agreed.order.id}','${ids[2]}','A',c.id,'${agreed.receivingOrder.id}','${agreed.shippingOrders[0].id}','PLANNED',t.id,t.coefficient,c.price_without_vat,c.price_with_vat,100,122,current_timestamp,1
  from complex_service_catalog c join complex_service_tariff t on t.complex_service_id=c.id where c.purpose='A_WAGON' and t.contract_id='${contract.id}'`)
 await complete('shipping-orders',agreed.shippingOrders[0].id)
 assert.equal((await charges(agreed.order.id)).totalWithoutVat,100)
 console.log('PASS: historical acceptance requires explicit reconciliation; pre-agreed snapshot price is preserved')
 
-const allCodes=()=>sql('select count(*)=count(distinct code) from (select code from service_order union all select code from receiving_order union all select code from shipping_order) numbers')
+const allCodes=()=>sql('select count(*)=count(distinct code) from (select code from comprehensive_service_order union all select code from receiving_order union all select code from shipping_order) numbers')
 assert.equal(allCodes(),'t')
 assert.ok(main.order.code < main.receivingOrder.code)
 assert.ok(main.receivingOrder.code < main.shippingOrders[0].code)
@@ -127,7 +127,7 @@ assert.equal(removal.code,supply.code+1)
 const parallel=await Promise.all(Array.from({length:12},(_,n)=>api(`/api/${n%2?'receiving':'shipping'}-orders`,payload,201)))
 assert.equal(new Set(parallel.map(row=>row.code)).size,12)
 assert.equal(allCodes(),'t')
-assert.equal(sql('select count(*) from (select legacy_code from receiving_order where legacy_code is not null union all select legacy_code from shipping_order where legacy_code is not null union all select legacy_code from service_order where legacy_code is not null) n'),String(baselineOrders))
+assert.equal(sql('select count(*) from (select legacy_code from receiving_order where legacy_code is not null union all select legacy_code from shipping_order where legacy_code is not null union all select legacy_code from comprehensive_service_order where legacy_code is not null) n'),String(baselineOrders))
 console.log('PASS: existing numbers archived; all orders globally unique; receiving/shipping consecutive; 12 concurrent creations have unique codes; parent number allocated first')
 const originals=JSON.parse(baselineCharges || 'null') ?? []
 if(originals.length){

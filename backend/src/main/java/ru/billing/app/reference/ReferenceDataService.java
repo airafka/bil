@@ -31,29 +31,43 @@ public class ReferenceDataService {
     }
 
     public List<ReferenceOption> findSealTypes(String query, Integer limit) { return find("seal_type", query, limit); }
-    public List<ReferenceOption> findHazardClasses(String query, Integer limit) { return find("hazard_class", query, limit); }
+    public List<ReferenceOption> findHazardClasses(String query, Integer limit) { return find("danger_class", query, limit); }
+
+    public List<DangerProductOption> findDangerProducts(String query, Integer limit) {
+        String search = "%" + (query == null ? "" : query.trim()) + "%";
+        return jdbcTemplate.query("""
+            select p.id, p.identifier, p.name, p.danger_class_id, c.code, c.code_danger_class
+            from danger_product p join danger_class c on c.id = p.danger_class_id
+            where lower(p.name) like lower(?) or p.identifier::text like ? or lower(c.code) like lower(?)
+            order by p.identifier limit ?
+            """, (rs, row) -> new DangerProductOption(rs.getObject("id", UUID.class), rs.getInt("identifier"),
+                rs.getString("name"), rs.getObject("danger_class_id", UUID.class), rs.getString("code"), rs.getString("code_danger_class")),
+            search, search, search, normalizedLimit(limit));
+    }
 
     public void validateContainerAttributes(UUID ownerClientId, UUID sealTypeId, UUID hazardClassId) {
-        if (ownerClientId != null) ensureExists("client", ownerClientId, "OWNER_CLIENT_NOT_FOUND", "Собственник КТК не найден");
+        if (ownerClientId != null) {
+            ensureExists("client", ownerClientId, "OWNER_CLIENT_NOT_FOUND", "Собственник КТК не найден");
+        }
         if (sealTypeId != null) ensureExists("seal_type", sealTypeId, "SEAL_TYPE_NOT_FOUND", "Тип ЗПУ не найден");
-        if (hazardClassId != null) ensureExists("hazard_class", hazardClassId, "HAZARD_CLASS_NOT_FOUND", "Класс опасности не найден");
+        if (hazardClassId != null) ensureExists("danger_class", hazardClassId, "HAZARD_CLASS_NOT_FOUND", "Класс опасности не найден");
     }
 
     public List<ReferenceOption> findClients(String query, Integer limit) {
-        return find("client", query, limit);
+        return findNamed("client", query, limit);
     }
 
     public List<ContainerReferenceOption> findContainers(String query, Integer requestedLimit) {
         int limit = normalizedLimit(requestedLimit);
         String search = query == null ? "" : query.trim();
         return jdbcTemplate.query(
-                "select id, code, type, tare_weight, load_capacity from container "
+                "select id, code, container_type, weight, lifting_capacity from container "
                         + "where lower(code) like lower(?) order by code limit ?",
                 (resultSet, rowNumber) -> new ContainerReferenceOption(
                         resultSet.getObject("id", UUID.class),
                         resultSet.getString("code"),
-                        resultSet.getString("type"),
-                        resultSet.getBigDecimal("tare_weight"), resultSet.getBigDecimal("load_capacity")
+                        resultSet.getString("container_type"),
+                        resultSet.getBigDecimal("weight"), resultSet.getBigDecimal("lifting_capacity")
                 ),
                 "%" + search + "%",
                 limit
@@ -64,18 +78,18 @@ public class ReferenceDataService {
     public ContainerReferenceOption updateContainerTare(UUID id, java.math.BigDecimal tareWeight) {
         List<UUID> locked = jdbcTemplate.query("select id from container where id = ? for update", (rs, row) -> rs.getObject("id", UUID.class), id);
         if (locked.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "CONTAINER_NOT_FOUND", "КТК не найден");
-        Boolean invalid = jdbcTemplate.queryForObject("select exists(select 1 from waybill_container where container_id = ? and gross_weight < ?)", Boolean.class, id, tareWeight);
+        Boolean invalid = jdbcTemplate.queryForObject("select exists(select 1 from waybill_container where container_id = ? and weight < ?)", Boolean.class, id, tareWeight);
         if (Boolean.TRUE.equals(invalid)) throw new ApiException(HttpStatus.BAD_REQUEST, "TARE_EXCEEDS_GROSS", "Тара превышает брутто КТК в существующей накладной");
-        int updated = jdbcTemplate.update("update container set tare_weight = ? where id = ?", tareWeight, id);
+        int updated = jdbcTemplate.update("update container set weight = ? where id = ?", tareWeight, id);
         if (updated == 0) throw new ApiException(HttpStatus.NOT_FOUND, "CONTAINER_NOT_FOUND", "КТК не найден");
-        return jdbcTemplate.queryForObject("select id, code, type, tare_weight, load_capacity from container where id = ?",
-                (rs, row) -> new ContainerReferenceOption(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("type"), rs.getBigDecimal("tare_weight"), rs.getBigDecimal("load_capacity")), id);
+        return jdbcTemplate.queryForObject("select id, code, container_type, weight, lifting_capacity from container where id = ?",
+                (rs, row) -> new ContainerReferenceOption(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("container_type"), rs.getBigDecimal("weight"), rs.getBigDecimal("lifting_capacity")), id);
     }
 
     @org.springframework.transaction.annotation.Transactional
     public ContainerReferenceOption updateContainerAttributes(UUID id, UpdateContainerAttributesRequest request) {
         ContainerReferenceOption current = updateContainerTare(id, request.tareWeight());
-        jdbcTemplate.update("update container set load_capacity = ? where id = ?", request.loadCapacity(), id);
+        jdbcTemplate.update("update container set lifting_capacity = ? where id = ?", request.loadCapacity(), id);
         return new ContainerReferenceOption(current.id(), current.name(), current.type(), current.tareWeight(), request.loadCapacity());
     }
 
@@ -84,18 +98,18 @@ public class ReferenceDataService {
     }
 
     private static final String CARRIAGE_SELECT = """
-        select c.id, c.code, c.model_id, m.code as model_name, c.load_capacity, c.next_depot_repair_date,
-               c.carriage_type_id, case t.code when 'PLATFORM_40' then 'Платформа 40 - футов'
+        select c.id, c.code, c.model_id, m.code as model_name, c.lifting_capacity, c.date_depot_repair,
+               c.type_id, case t.code when 'PLATFORM_40' then 'Платформа 40 - футов'
                    when 'PLATFORM_80' then 'Платформа 80 - футов' else t.name end as type_name
         from railway_carriage c left join railway_carriage_model m on m.id = c.model_id
-        left join railway_carriage_type t on t.id = c.carriage_type_id
+        left join railway_carriage_type t on t.id = c.type_id
         """;
 
     private RailwayCarriageReferenceOption carriage(java.sql.ResultSet rs) throws java.sql.SQLException {
         return new RailwayCarriageReferenceOption(rs.getObject("id", UUID.class), rs.getString("code"),
-                rs.getObject("model_id", UUID.class), rs.getString("model_name"), rs.getBigDecimal("load_capacity"),
-                rs.getObject("next_depot_repair_date", java.time.LocalDate.class),
-                rs.getObject("carriage_type_id", UUID.class), rs.getString("type_name"));
+                rs.getObject("model_id", UUID.class), rs.getString("model_name"), rs.getBigDecimal("lifting_capacity"),
+                rs.getObject("date_depot_repair", java.time.LocalDate.class),
+                rs.getObject("type_id", UUID.class), rs.getString("type_name"));
     }
 
     public List<RailwayCarriageReferenceOption> findRailwayCarriages(String query, Integer limit) {
@@ -124,7 +138,7 @@ public class ReferenceDataService {
         if (request.carriageTypeId() != null && findRailwayCarriageKinds().stream().noneMatch(t -> t.id().equals(request.carriageTypeId()))) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_CARRIAGE_TYPE", "Выберите платформу 40 или 80 футов");
         }
-        int updated = jdbcTemplate.update("update railway_carriage set model_id = ?, load_capacity = ?, next_depot_repair_date = ?, carriage_type_id = ? where id = ?",
+        int updated = jdbcTemplate.update("update railway_carriage set model_id = ?, lifting_capacity = ?, date_depot_repair = ?, type_id = ? where id = ?",
                 request.modelId(), request.loadCapacity(), request.nextDepotRepairDate(), request.carriageTypeId(), id);
         if (updated != 1) throw new ApiException(HttpStatus.NOT_FOUND, "RAILWAY_CARRIAGE_NOT_FOUND", "Вагон не найден");
         return jdbcTemplate.queryForObject(CARRIAGE_SELECT + " where c.id = ?", (rs, row) -> carriage(rs), id);
@@ -170,7 +184,7 @@ public class ReferenceDataService {
         if (containers.size() > 2) throw new ApiException(HttpStatus.BAD_REQUEST,
                 "VEHICLE_CONTAINER_CAPACITY", "На одно авто можно поставить не более двух КТК стандарта 20");
         for (OrderContainerRequest container : containers) {
-            String type = jdbcTemplate.queryForObject("select type from container where id = ?",
+            String type = jdbcTemplate.queryForObject("select container_type from container where id = ?",
                     String.class, container.containerId());
             if (type == null) throw new ApiException(HttpStatus.BAD_REQUEST,
                     "CONTAINER_TYPE_REQUIRED", "У КТК не указан типоразмер");
@@ -187,10 +201,10 @@ public class ReferenceDataService {
         if (request.containers() == null) return;
         request.containers().forEach(container -> {
             ensureExists("container", container.containerId(), "CONTAINER_NOT_FOUND", "КТК не найден");
-            if (container.cargo() != null) {
+            for (var cargo : container.cargoItems()) {
                 ensureExists(
                         "etsng_code",
-                        container.cargo().etsngCodeId(),
+                        cargo.etsngCodeId(),
                         "ETSNG_CODE_NOT_FOUND",
                         "Код ЕТСНГ не найден"
                 );
@@ -204,20 +218,7 @@ public class ReferenceDataService {
         validateContract(request.clientId(), request.contractId());
         String terminalAreaCode = findTerminalAreaCode(request.terminalAreaId());
         FillingType fillingType = request.fillingType() == null ? FillingType.ALL : request.fillingType();
-        boolean supportedRailwayComposition = fillingType != FillingType.ALL
-                && fillingType != FillingType.VEHICLE_UNNUMBERED
-                && request.transportType() == TransportType.RAILWAY;
-        boolean supportedVehicleComposition = fillingType == FillingType.VEHICLE_UNNUMBERED
-                && request.transportType() == TransportType.VEHICLE;
-        if (fillingType != FillingType.ALL
-                && (!OrderScenarioPolicy.CONTAINER_AREA_CODE.equals(terminalAreaCode)
-                || (!supportedRailwayComposition && !supportedVehicleComposition))) {
-            throw new ApiException(
-                    HttpStatus.BAD_REQUEST,
-                    "INVALID_FILLING_TYPE_FOR_TRANSPORT",
-                    "Выбранный тип заполнения не поддерживается для этого транспорта"
-            );
-        }
+        if(fillingType!=FillingType.ALL) throw new ApiException(HttpStatus.BAD_REQUEST,"NUMBERED_COMPOSITION_REQUIRED","Поддерживается только номерной состав");
         orderScenarioPolicy.validate(terminalAreaCode, request.transportType());
     }
 
@@ -255,10 +256,10 @@ public class ReferenceDataService {
 
     private void validateNumberedContainer(OrderContainerRequest container) {
         ensureExists("container", container.containerId(), "CONTAINER_NOT_FOUND", "КТК не найден");
-        if (container.cargo() != null) {
+        for (var cargo : container.cargoItems()) {
             ensureExists(
                     "etsng_code",
-                    container.cargo().etsngCodeId(),
+                    cargo.etsngCodeId(),
                     "ETSNG_CODE_NOT_FOUND",
                     "Код ЕТСНГ не найден"
             );
@@ -288,6 +289,12 @@ public class ReferenceDataService {
             throw new ApiException(HttpStatus.NOT_FOUND, "TERMINAL_AREA_NOT_FOUND", "Площадка не найдена: " + id);
         }
         return codes.getFirst();
+    }
+
+    private List<ReferenceOption> findNamed(String table, String query, Integer requestedLimit) {
+        return jdbcTemplate.query("select id, name from " + table + " where lower(name) like lower(?) order by name limit ?",
+                (rs, row) -> new ReferenceOption(rs.getObject("id", UUID.class), rs.getString("name")),
+                "%" + (query == null ? "" : query.trim()) + "%", normalizedLimit(requestedLimit));
     }
 
     private List<ReferenceOption> find(String table, String query, Integer requestedLimit) {

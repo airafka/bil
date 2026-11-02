@@ -7,4 +7,4 @@ import ru.billing.app.order.TransportType;
 public record RouteSummary(UUID id, int code, RouteType routeType, OffsetDateTime departureAt,
         UUID terminalAreaId, String terminalAreaName, TransportType transportType,
         String carrier, String driverName, String vehicleNumber, String comment,
-        String status, int orderCount) {}
+        String status, int orderCount, java.util.List<Integer> orderNumbers) {}

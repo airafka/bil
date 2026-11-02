@@ -28,14 +28,14 @@ public class BillingService {
     // Called only by the transactional status operation, never by reads.
     @Transactional(propagation = Propagation.MANDATORY)
     public void complete(String resource, UUID orderId) {
-        if ("service-orders".equals(resource)) return;
+        if ("comprehensive-service-orders".equals(resource)) return;
         if ("shipping-orders".equals(resource)) {
-            var rows = jdbc.query("select service_order_id, source_receiving_order_id from shipping_order where id = ?",
+            var rows = jdbc.query("select comprehensive_service_order_id, source_receiving_order_id from shipping_order where id = ?",
                     (rs, n) -> new Shipping(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class)), orderId);
             Shipping shipping = rows.getFirst();
             if (shipping.serviceId() == null) return;
             var initial = jdbc.query("""
-                    select status, a_complex_service_id, accepted_container_count from receiving_order
+                    select order_status as status, a_complex_service_id, accepted_container_count from receiving_order
                     where id = ? and service_role = 'INITIAL_RECEIVING' for share
                     """, (rs, n) -> new Initial(rs.getString(1), rs.getObject(2, UUID.class), (Integer)rs.getObject(3)), shipping.receivingId());
             if (initial.isEmpty() || !"COMPLETED".equals(initial.getFirst().status()))
@@ -48,22 +48,22 @@ public class BillingService {
             for (UUID containerId : containers) charge(shipping.serviceId(), containerId, "A", snapshot.serviceId(), shipping.receivingId(), orderId, snapshot.count());
             return;
         }
-        var rows = jdbc.query("select service_order_id, service_role, source_shipping_order_id from receiving_order where id = ?",
+        var rows = jdbc.query("select comprehensive_service_order_id, service_role, source_shipping_order_id from receiving_order where id = ?",
                 (rs, n) -> new Receiving(rs.getObject(1, UUID.class), rs.getString(2), rs.getObject(3, UUID.class)), orderId);
         Receiving receiving = rows.getFirst();
         if (receiving.serviceId() == null) return;
         if ("INITIAL_RECEIVING".equals(receiving.role())) {
             Integer count = jdbc.queryForObject("""
-                    select count(distinct wc.container_id) from waybill w
+                    select count(distinct wc.container_id) from waybill_details w
                     join waybill_railway_carriage rc on rc.waybill_id=w.id
-                    join waybill_container wc on wc.waybill_railway_carriage_id=rc.id
+                    join waybill_container_details wc on wc.waybill_railway_carriage_id=rc.id
                     where w.receiving_order_id=?
                     """, Integer.class, orderId);
             UUID catalogId = catalog(purposeForCount(count));
             jdbc.update("update receiving_order set accepted_container_count=?, a_complex_service_id=?, acceptance_fixed_at=current_timestamp where id=?",
                     count, catalogId, orderId);
         } else {
-            var status = jdbc.queryForObject("select status from shipping_order where id = ? for share", String.class, receiving.shippingId());
+            var status = jdbc.queryForObject("select order_status from shipping_order where id = ? for share", String.class, receiving.shippingId());
             if (!"COMPLETED".equals(status)) throw error("SOURCE_SHIPPING_NOT_COMPLETED", "Сначала выполните исходный вывоз");
             UUID catalogId = catalog("B_AUTO_RETURN");
             for (UUID containerId : jdbc.query("select container_id from receiving_order_container where receiving_order_id=? order by container_id",
@@ -80,17 +80,17 @@ public class BillingService {
 
     private void charge(UUID parent, UUID container, String family, UUID catalogId, UUID receiving, UUID shipping, Integer count) {
         jdbc.update("""
-                insert into service_execution(id,service_order_id,container_id,family,complex_service_id,receiving_order_id,shipping_order_id,status,accepted_container_count)
-                values(?,?,?,?,?,?,?,'PLANNED',?) on conflict(service_order_id,container_id,family) do nothing
+                insert into service_execution(id,comprehensive_service_order_id,container_id,family,complex_service_id,receiving_order_id,shipping_order_id,status,accepted_container_count)
+                values(?,?,?,?,?,?,?,'PLANNED',?) on conflict(comprehensive_service_order_id,container_id,family) do nothing
                 """, UUID.randomUUID(),parent,container,family,catalogId,receiving,shipping,count);
-        UUID execution = jdbc.queryForObject("select id from service_execution where service_order_id=? and container_id=? and family=? for update",UUID.class,parent,container,family);
+        UUID execution = jdbc.queryForObject("select id from service_execution where comprehensive_service_order_id=? and container_id=? and family=? for update",UUID.class,parent,container,family);
         Integer exists = jdbc.queryForObject("select count(*) from billing_charge where service_execution_id=?",Integer.class,execution);
         if (exists != null && exists > 0) return;
         Boolean priced = jdbc.queryForObject("select priced_at is not null from service_execution where id=?",Boolean.class,execution);
         if (!Boolean.TRUE.equals(priced)) {
             var prices = jdbc.query("""
                     select t.id,t.coefficient,c.price_without_vat,c.price_with_vat
-                    from service_execution e join service_order s on s.id=e.service_order_id
+                    from service_execution e join comprehensive_service_order s on s.id=e.comprehensive_service_order_id
                     join complex_service_catalog c on c.id=e.complex_service_id
                     join complex_service_tariff t on t.complex_service_id=c.id and t.client_id=s.client_id and t.contract_id=s.contract_id
                     where e.id=? for share of c,t
@@ -106,7 +106,7 @@ public class BillingService {
         jdbc.update("""
                 insert into billing_charge(id,service_execution_id,client_id,contract_id,performed_at,quantity,price_without_vat,amount_without_vat,price_with_vat,amount_with_vat,currency)
                 select ?,e.id,s.client_id,s.contract_id,e.performed_at,1,e.price_without_vat,e.price_without_vat,e.price_with_vat,e.price_with_vat,'RUB'
-                from service_execution e join service_order s on s.id=e.service_order_id where e.id=?
+                from service_execution e join comprehensive_service_order s on s.id=e.comprehensive_service_order_id where e.id=?
                 on conflict(service_execution_id) do nothing
                 """, UUID.randomUUID(), execution);
     }

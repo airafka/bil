@@ -15,22 +15,29 @@ public class ReceivingOrderService {
     private final ReferenceDataService referenceDataService;
     private final ReceivingOrderStore store;
     private final RouteService routeService;
+    private final OrderContainerAdditionService additions;
 
     public ReceivingOrderService(
             OrderRequestValidator validator,
             ReferenceDataService referenceDataService,
             ReceivingOrderStore store,
-            RouteService routeService
+            RouteService routeService, OrderContainerAdditionService additions
     ) {
         this.validator = validator;
         this.referenceDataService = referenceDataService;
         this.store = store;
         this.routeService = routeService;
+        this.additions = additions;
     }
 
     @Transactional
     public CreatedOrderResponse create(CreateOrderRequest request) {
         validator.validate(request);
+        if (request.defaultContainerOwnerId() == null) {
+            throw new ru.billing.app.error.ApiException(org.springframework.http.HttpStatus.BAD_REQUEST,
+                "DEFAULT_CONTAINER_OWNER_REQUIRED", "Выберите собственника КТК по умолчанию в заявке на поставку");
+        }
+        referenceDataService.validateContainerAttributes(request.effectiveDefaultContainerOwnerId(),null,null);
         if (request.transportType() == TransportType.RAILWAY) {
             referenceDataService.validateCommonReferences(request);
             CreatedOrderResponse created = store.createRailway(request);
@@ -46,8 +53,10 @@ public class ReceivingOrderService {
 
     @Transactional
     public OrderDetails updateContainerAttributes(UUID id, UpdateOrderContainersRequest request) {
+        if(request.defaultContainerOwnerId()!=null) referenceDataService.validateContainerAttributes(request.defaultContainerOwnerId(),null,null);
         request.containers().forEach(c -> referenceDataService.validateContainerAttributes(c.ownerClientId(), c.sealTypeId(), c.hazardClassId()));
         store.updateContainerAttributes(id, request);
+        additions.add(true, id, request.additions());
         return store.findById(id);
     }
 

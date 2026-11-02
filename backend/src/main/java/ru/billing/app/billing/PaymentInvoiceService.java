@@ -43,7 +43,7 @@ public class PaymentInvoiceService {
             @NotEmpty @Size(max = 10000) List<@NotNull UUID> chargeIds,
             @NotNull UUID requestKey) {}
 
-    public record Line(UUID id, OffsetDateTime performedAt, UUID serviceOrderId, int serviceOrderCode,
+    public record Line(UUID id, OffsetDateTime performedAt, UUID comprehensiveServiceOrderId, int comprehensiveServiceOrderCode,
             String containerName, String serviceName, BigDecimal amountWithoutVat, BigDecimal amountWithVat) {}
     public record CandidatePage(List<Line> items, String timeZone) {}
     public record Invoice(UUID id, int code, UUID clientId, UUID contractId, String clientName,
@@ -58,11 +58,11 @@ public class PaymentInvoiceService {
             from payment_invoice
             """;
     private static final String CANDIDATE_SELECT = """
-            select b.id, b.performed_at, e.service_order_id, s.code as service_order_code,
+            select b.id, b.performed_at, e.comprehensive_service_order_id, s.code as comprehensive_service_order_code,
                    k.code as container_name, cat.name as service_name, b.amount_without_vat, b.amount_with_vat
             from billing_charge b
             join service_execution e on e.id=b.service_execution_id
-            join service_order s on s.id=e.service_order_id
+            join comprehensive_service_order s on s.id=e.comprehensive_service_order_id
             join container k on k.id=e.container_id
             join complex_service_catalog cat on cat.id=e.complex_service_id
             where b.client_id=? and b.contract_id=? and b.performed_at>=? and b.performed_at<?
@@ -89,7 +89,7 @@ public class PaymentInvoiceService {
 
     private Party party(UUID client, UUID contract) {
         var values = jdbc.query("""
-                select c.code, ct.name from contract ct join client c on c.id=ct.client_id
+                select c.name, ct.name from contract ct join client c on c.id=ct.client_id
                 where ct.id=? and c.id=?
                 """, (rs, row) -> new Party(rs.getString(1), rs.getString(2)), contract, client);
         if (values.isEmpty()) throw new ApiException(HttpStatus.BAD_REQUEST, "INVOICE_CONTRACT_MISMATCH", "Выберите договор указанного клиента");
@@ -145,10 +145,10 @@ public class PaymentInvoiceService {
                 """, id,request.requestKey(),request.clientId(),request.contractId(),party.clientName(),party.contractName(),
                 month.atDay(1),zone.getId(),withoutVat,withVat);
         for (Line line : lines) jdbc.update("""
-                insert into payment_invoice_line(id,invoice_id,billing_charge_id,performed_at,service_order_id,
-                    service_order_code,container_name,service_name,amount_without_vat,amount_with_vat)
+                insert into payment_invoice_line(id,invoice_id,billing_charge_id,performed_at,comprehensive_service_order_id,
+                    comprehensive_service_order_code,container_name,service_name,amount_without_vat,amount_with_vat)
                 values(?,?,?,?,?,?,?,?,?,?)
-                """, UUID.randomUUID(),id,line.id(),line.performedAt(),line.serviceOrderId(),line.serviceOrderCode(),
+                """, UUID.randomUUID(),id,line.id(),line.performedAt(),line.comprehensiveServiceOrderId(),line.comprehensiveServiceOrderCode(),
                 line.containerName(),line.serviceName(),line.amountWithoutVat(),line.amountWithVat());
         return details(id);
     }
@@ -163,7 +163,7 @@ public class PaymentInvoiceService {
         var headers = jdbc.query(HEADER_SELECT + " where id=?", PaymentInvoiceService::invoice, id);
         if (headers.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "INVOICE_NOT_FOUND", "Счёт не найден");
         var lines = jdbc.query("""
-                select billing_charge_id as id, performed_at, service_order_id, service_order_code,
+                select billing_charge_id as id, performed_at, comprehensive_service_order_id, comprehensive_service_order_code,
                        container_name,service_name,amount_without_vat,amount_with_vat
                 from payment_invoice_line where invoice_id=? order by performed_at,billing_charge_id
                 """, PaymentInvoiceService::line, id);
@@ -187,7 +187,7 @@ public class PaymentInvoiceService {
 
     private static Line line(ResultSet rs, int row) throws SQLException {
         return new Line(rs.getObject("id", UUID.class),rs.getObject("performed_at", OffsetDateTime.class),
-                rs.getObject("service_order_id", UUID.class),rs.getInt("service_order_code"),rs.getString("container_name"),
+                rs.getObject("comprehensive_service_order_id", UUID.class),rs.getInt("comprehensive_service_order_code"),rs.getString("container_name"),
                 rs.getString("service_name"),rs.getBigDecimal("amount_without_vat"),rs.getBigDecimal("amount_with_vat"));
     }
     private static Invoice invoice(ResultSet rs, int row) throws SQLException {

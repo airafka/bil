@@ -3,8 +3,8 @@ import type { InvoiceLine } from './invoices'
 import { invoiceDate, invoicePeriod, selectedInvoiceTotals } from './invoices'
 
 const lines: InvoiceLine[] = [
-  { id: 'charge-1', performedAt: '2026-05-02T10:00:00Z', serviceOrderId: 's1', serviceOrderCode: 1, containerName: 'SAME1234567', serviceName: 'Первая услуга', amountWithoutVat: 0.1, amountWithVat: 0.12 },
-  { id: 'charge-2', performedAt: '2026-05-02T10:00:00Z', serviceOrderId: 's1', serviceOrderCode: 1, containerName: 'SAME1234567', serviceName: 'Вторая услуга', amountWithoutVat: 0.2, amountWithVat: 0.24 },
+  { id: 'charge-1', performedAt: '2026-05-02T10:00:00Z', comprehensiveServiceOrderId: 's1', comprehensiveServiceOrderCode: 1, containerName: 'SAME1234567', serviceName: 'Первая услуга', amountWithoutVat: 0.1, amountWithVat: 0.12 },
+  { id: 'charge-2', performedAt: '2026-05-02T10:00:00Z', comprehensiveServiceOrderId: 's1', comprehensiveServiceOrderCode: 1, containerName: 'SAME1234567', serviceName: 'Вторая услуга', amountWithoutVat: 0.2, amountWithVat: 0.24 },
 ]
 describe('payment invoice selection', () => {
   it('selects charges individually even when the container and service order are the same', () => {

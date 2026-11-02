@@ -12,4 +12,6 @@ public record OrderWaybillContainerDetails(
         String etsngCodeName,
         UUID ownerClientId, String ownerClientName, String sealNumbers, UUID sealTypeId, String sealTypeName, String type, java.math.BigDecimal loadCapacity
 ) {
+    @com.fasterxml.jackson.annotation.JsonProperty("owner")
+    public String owner() { return ownerClientName; }
 }

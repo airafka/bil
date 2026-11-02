@@ -1,6 +1,6 @@
 export type BillingCharge = {
   id: string; performedAt: string; clientName: string; contractName: string
-  serviceOrderId: string; serviceOrderCode: number; containerName: string; serviceName: string; family: string
+  comprehensiveServiceOrderId: string; comprehensiveServiceOrderCode: number; containerName: string; serviceName: string; family: string
   receivingOrderId: string; receivingOrderCode: number; shippingOrderId: string; shippingOrderCode: number
   amountWithoutVat: number; amountWithVat: number; currency: string
 }

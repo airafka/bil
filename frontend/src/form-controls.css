@@ -43,7 +43,6 @@
 .ui-readonly-value { display: flex; align-items: center; min-width: 0; min-height: 40px; padding: 8px; border: 1px solid var(--ui-field-border); border-radius: 5px; background: var(--ui-field-blocked-fill); font-size: 14px; }
 .ui-readonly-value .status-badge { padding: 3px 8px; }
 .status-badge[data-status="DRAFT"] { color: #191a1f; background: #f2f4f7; }
-.status-badge[data-status="DRAFT"]::before { content: ''; width: 5px; height: 5px; align-self: center; margin-right: 5px; border-radius: 50%; background: #a6a5a8; }
 .details-grid { max-width: 1172px; grid-template-columns: repeat(2, minmax(0, 536px)); gap: 8px clamp(24px, 5vw, 100px); margin-top: 16px; }
 .details-grid > div { display: grid; grid-template-columns: 180px minmax(0,1fr); align-items: start; gap: 8px; min-height: 40px; padding: 0; border: 0; background: transparent; }
 .details-grid .details-wide { grid-column: auto; }

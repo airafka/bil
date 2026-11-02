@@ -3,10 +3,11 @@ import { UiInput, UiSelect } from '../components/FormControls'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { createWaybill, getReferenceOptions } from '../api'
-import type { ReferenceOption } from '../domain'
+import type { DangerProductOption, ReferenceOption } from '../domain'
 import {
   buildWaybillPayload,
-  hasLoadedContainers,
+  productRows,
+  totalNetWeight,
   initialWaybillFormState,
   validateWaybillForm,
   validateWaybillStep,
@@ -28,7 +29,7 @@ export function WaybillCreatePage() {
   const [form, setForm] = useState(initialWaybillFormState)
   const [carriages, setCarriages] = useState<ReferenceOption[]>([])
   const [containers, setContainers] = useState<ReferenceOption[]>([])
-  const [hazards, setHazards] = useState<ReferenceOption[]>([])
+  const [dangerProducts, setDangerProducts] = useState<DangerProductOption[]>([])
   const [cargoOptions, setCargoOptions] = useState<ReferenceOption[]>([])
   const [loadingReferences, setLoadingReferences] = useState(true)
   const [errors, setErrors] = useState<string[]>([])
@@ -42,12 +43,14 @@ export function WaybillCreatePage() {
     Promise.all([
       getReferenceOptions('railway-carriages'),
       getReferenceOptions('containers'),
-      getReferenceOptions('etsng-codes'), getReferenceOptions('hazard-classes'),
+      getReferenceOptions('etsng-codes'),
+      getReferenceOptions('danger-products'),
     ])
-      .then(([carriageOptions, containerOptions, etsngOptions, hazardOptions]) => {
+      .then(([carriageOptions, containerOptions, etsngOptions, dangerOptions]) => {
         setCarriages(carriageOptions)
         setContainers(containerOptions)
-        setCargoOptions(etsngOptions); setHazards(hazardOptions)
+        setCargoOptions(etsngOptions)
+        setDangerProducts(dangerOptions as DangerProductOption[])
       })
       .catch((error: unknown) => setRequestError(
         error instanceof Error ? error.message : 'Не удалось загрузить справочники',
@@ -173,7 +176,7 @@ export function WaybillCreatePage() {
         {step === 1 && <section className="waybill-section">
           <div className="form-section-heading"><h2>Основное</h2></div>
           <div className="waybill-main-grid">
-            <label className="field"><span>Номер накладной</span><UiInput value="Будет присвоен автоматически" readOnly aria-readonly="true" /></label>
+            <label className="field"><span>Номер накладной</span><UiInput value={form.number ?? ''} maxLength={255} onChange={event => setForm(current => ({ ...current, number: event.target.value }))} placeholder="Будет присвоен автоматически" /></label>
             <label className="field"><span>Станция отправления <b>*</b></span><UiSelect value={form.departureStation} onChange={(event) => setForm({ ...form, departureStation: event.target.value })}><option value="">Выберите станцию</option>{WAYBILL_DEPARTURE_STATIONS.map((station) => <option key={station.value} value={station.value}>{station.label}</option>)}</UiSelect></label>
             <label className="field"><span>Станция назначения <b>*</b></span><UiSelect value={form.destinationStation} onChange={(event) => setForm({ ...form, destinationStation: event.target.value })}><option value="">Выберите станцию</option>{WAYBILL_DESTINATION_STATIONS.map((station) => <option key={station.value} value={station.value}>{station.label}</option>)}</UiSelect></label>
             <label className="field"><span>Плательщик <b>*</b></span><UiSelect value={form.payer} onChange={(event) => setForm({ ...form, payer: event.target.value })}><option value="">Выберите плательщика</option>{WAYBILL_PAYERS.map((payer) => <option key={payer} value={payer}>{payer}</option>)}</UiSelect></label>
@@ -216,12 +219,12 @@ export function WaybillCreatePage() {
                         <label className="field"><span>КТК {containerIndex + 1}</span><UiSelect aria-label={`КТК ${containerIndex + 1} вагона ${carriageIndex + 1}`} value={container.containerId} onChange={event => setContainer(carriage, containerIndex, event.target.value)}><option value="">Выберите КТК</option>{containers.map(option => <option key={option.id} value={option.id} disabled={option.id !== container.containerId && form.railwayCarriages.some(row => row.containers.some(item => item.containerId === option.id))}>{option.name}</option>)}</UiSelect></label>
                         <label className="field"><span>Масса брутто, кг *</span><UiInput aria-label={`Масса брутто КТК ${containerIndex + 1} вагона ${carriageIndex + 1}`} inputMode="decimal" value={container.grossWeight} onChange={event => updateContainer(carriage, containerIndex, { grossWeight: event.target.value })} placeholder="Например: 25000" /></label>
                         <label className="field"><span>Масса тары, кг</span><UiInput aria-label={`Масса тары КТК ${containerIndex + 1} вагона ${carriageIndex + 1}`} readOnly value={container.containerId ? container.tareWeight : ''} /></label>
-                        <label className="field"><span>Масса груза, кг</span><UiInput aria-label={`Масса груза КТК ${containerIndex + 1} вагона ${carriageIndex + 1}`} readOnly value={netWeight(container) ?? '—'} /></label>
+                        <label className="field"><span>Масса нетто, кг</span><UiInput aria-label={`Масса нетто КТК ${containerIndex + 1} вагона ${carriageIndex + 1}`} inputMode="decimal" value={container.netWeightValue ?? netWeight(container) ?? ''} onChange={event => updateContainer(carriage, containerIndex, { netWeightValue: event.target.value })} /></label>
                         <button type="button" className="row-clear-button" onClick={() => removeContainer(carriage, containerIndex)} aria-label="Удалить КТК">×</button>
                       </div>
                     ))}
                   </div>
-                  <ReceivingContainerAttributes includeHazardClass={false}
+                  <ReceivingContainerAttributes ownerAsText includeHazardClass={false}
                     containers={carriage.containers.filter(row => row.containerId).map(row => ({ ...row, id: row.containerId, name: containers.find(option => option.id === row.containerId)?.name ?? row.containerId }))}
                     onChange={(id, change) => updateCarriage(carriage.key, { containers: carriage.containers.map(row => row.containerId === id ? { ...row, ...change } : row) })} />
                   <button type="button" className="text-action-button" onClick={() => addContainer(carriage)}>+ Добавить КТК</button>
@@ -232,8 +235,17 @@ export function WaybillCreatePage() {
         </section>}
 
         {step === 4 && <section className="waybill-section">
-          {hasLoadedContainers(form) && <label className="field horizontal-field"><span>Класс опасности груза</span><UiSelect aria-label="Класс опасности груза" value={form.hazardClassId ?? ''} onChange={event => setForm(current => ({ ...current, hazardClassId: event.target.value }))}><option value="">Не указан</option>{hazards.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</UiSelect></label>}
-          {hasLoadedContainers(form) ? <label className="field horizontal-field"><span>Груз по ЕТСНГ <b>*</b></span><UiSelect aria-label="Груз накладной по ЕТСНГ" value={form.etsngCodeId} onChange={event => setForm(current => ({ ...current, etsngCodeId: event.target.value }))}><option value="">Выберите груз</option>{cargoOptions.map(cargo => <option key={cargo.id} value={cargo.id}>{cargo.name}</option>)}</UiSelect></label> : <p className="composition-hint">Для порожних КТК груз не указывается.</p>}
+          <p className="composition-hint">Груз обязателен и для порожней накладной. Несколько грузов допустимы только при одном КТК. Массы сохраняются в накладной.</p>
+          {productRows(form).map((product, index) => <article className="waybill-carriage-card" key={index}>
+            <label className="field horizontal-field"><span>Груз по ЕТСНГ *</span><UiSelect aria-label={`Груз ${index + 1} по ЕТСНГ`} value={product.etsngCodeId} onChange={event => setForm(current => ({ ...current, products: productRows(current).map((p, i) => i === index ? { ...p, etsngCodeId: event.target.value } : p) }))}><option value="">Выберите груз</option>{cargoOptions.map(cargo => <option key={cargo.id} value={cargo.id}>{cargo.name}</option>)}</UiSelect></label>
+            <label className="field horizontal-field"><span>Масса груза, кг *</span><UiInput aria-label={`Масса груза ${index + 1}`} inputMode="decimal" value={product.weight} onChange={event => setForm(current => ({ ...current, products: productRows(current).map((p, i) => i === index ? { ...p, weight: event.target.value } : p) }))} /></label>
+            <label className="field horizontal-field"><span>Опасный груз</span><UiSelect aria-label={`Опасный груз ${index + 1}`} value={product.dangerProductId ?? dangerProducts.find(p => p.identifier === -1)?.id ?? ''} onChange={event => setForm(current => ({ ...current, products: productRows(current).map((p, i) => i === index ? { ...p, dangerProductId: event.target.value } : p) }))}>{dangerProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</UiSelect></label>
+            <label className="field horizontal-field"><span>Класс опасности</span><UiInput aria-label={`Класс опасности груза ${index + 1}`} readOnly value={dangerProducts.find(p => p.id === product.dangerProductId || (!product.dangerProductId && p.identifier === -1))?.dangerClassName ?? ''} /></label>
+            <label className="field horizontal-field"><span>Признак опасности</span><UiInput aria-label={`Признак опасности груза ${index + 1}`} maxLength={255} value={product.signDanger ?? ''} onChange={event => setForm(current => ({ ...current, products: productRows(current).map((p, i) => i === index ? { ...p, signDanger: event.target.value } : p) }))} /></label>
+            {productRows(form).length > 1 && <button type="button" className="text-action-button" onClick={() => setForm(current => ({ ...current, products: productRows(current).filter((_, i) => i !== index) }))}>Удалить груз</button>}
+          </article>)}
+          <button type="button" className="text-action-button" disabled={form.railwayCarriages.reduce((sum, c) => sum + c.containers.length, 0) !== 1} onClick={() => setForm(current => ({ ...current, products: [...productRows(current), { etsngCodeId: '', weight: '' }] }))}>+ Добавить груз</button>
+          <p className="composition-hint">Суммарное нетто КТК: {totalNetWeight(form)} кг</p>
           {form.railwayCarriages.flatMap(carriage => carriage.containers.map((container, index) => {
             const option = containers.find(item => item.id === container.containerId)
             const net = netWeight(container)

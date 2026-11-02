@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+COPY public ./public
 RUN npm run lint && npm run test && npm run build
 
 FROM nginx:1.29-alpine

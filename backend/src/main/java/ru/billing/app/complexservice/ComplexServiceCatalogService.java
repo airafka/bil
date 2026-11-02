@@ -40,12 +40,12 @@ public class ComplexServiceCatalogService {
                 "COMPLEX_SERVICE_NOT_FOUND", "Комплексная услуга не найдена");
         ComplexServiceSummary base = services.getFirst();
         List<ComplexServiceTariff> tariffs = jdbc.query("""
-                select t.id, t.client_id, c.code as client_name, t.contract_id,
+                select t.id, t.client_id, c.name as client_name, t.contract_id,
                        ct.name as contract_name, t.coefficient
                 from complex_service_tariff t
                 join client c on c.id = t.client_id
                 join contract ct on ct.id = t.contract_id
-                where t.complex_service_id = ? order by c.code, ct.name
+                where t.complex_service_id = ? order by c.name, ct.name
                 """, (rs, row) -> {
                     BigDecimal coefficient = rs.getBigDecimal("coefficient");
                     return new ComplexServiceTariff(rs.getObject("id", UUID.class),

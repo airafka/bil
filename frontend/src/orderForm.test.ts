@@ -11,7 +11,6 @@ import {
   setContainerCargo,
   setContainerEmpty,
   selectedWaybillTotals,
-  setVehicleShippingMode,
   toSelectedWaybill,
   toggleContainer,
   validateStep,
@@ -52,6 +51,7 @@ function validMainState(transportType: 'VEHICLE' | 'RAILWAY' = 'VEHICLE'): Order
   return {
     ...initialOrderFormState,
     clientId: 'client-1',
+    defaultContainerOwnerId: 'client-1',
     contractId: 'contract-1',
     terminalAreaId: 'area-from-api',
     transportType,
@@ -122,6 +122,7 @@ describe('order form state', () => {
     expect(validateStep(initialOrderFormState, 1)).toEqual([
       'Выберите клиента',
       'Выберите договор',
+      'Выберите собственника КТК по умолчанию',
       'Контейнерная площадка недоступна',
       'Выберите тип транспорта',
     ])
@@ -145,56 +146,9 @@ describe('order form state', () => {
     expect(validateStep(state, 3)).toEqual([])
   })
 
-  it('switches vehicle shipping to the unnumbered mode and clears numbered data', () => {
-    const numbered = withLoadedContainer(validMainState('VEHICLE'))
-    const unnumbered = setVehicleShippingMode(numbered, 'UNNUMBERED')
+  
 
-    expect(unnumbered.fillingType).toBe('VEHICLE_UNNUMBERED')
-    expect(unnumbered.containers).toEqual([])
-    expect(unnumbered.containerQuantities).toEqual([{
-      key: 1,
-      quantity: '',
-      type: '',
-      empty: true,
-      items: [],
-    }])
-    expect(validateStep(unnumbered, 2, 'shipping')).toContain('Выберите типоразмер КТК')
-
-    const numberedAgain = setVehicleShippingMode({
-      ...unnumbered,
-      containerQuantities: [{ ...unnumbered.containerQuantities[0], type: 'STANDARD_40' }],
-    }, 'NUMBERED')
-    expect(numberedAgain.fillingType).toBe('ALL')
-    expect(numberedAgain.containerQuantities).toEqual([])
-  })
-
-  it('builds an unnumbered vehicle shipping payload without KTK number or cargo', () => {
-    const state = {
-      ...setVehicleShippingMode(validMainState('VEHICLE'), 'UNNUMBERED'),
-      containerQuantities: [{
-        key: 1,
-        quantity: '3',
-        type: 'STANDARD_40' as const,
-        empty: true,
-        items: [],
-      }],
-    }
-
-    expect(validateStep(state, 2, 'shipping')).toEqual([])
-    expect(buildPayload(state, 'shipping')).toMatchObject({
-      transportType: 'VEHICLE',
-      fillingType: 'VEHICLE_UNNUMBERED',
-      containers: [],
-      railwayCarriages: [],
-      railwayCarriageQuantities: [],
-      containerQuantities: [{
-        quantity: 3,
-        type: 'STANDARD_40',
-        empty: true,
-        items: [],
-      }],
-    })
-  })
+  
 
   it('validates containers, cargo and positive weight', () => {
     let state = validMainState()
@@ -218,6 +172,7 @@ describe('order form state', () => {
     state = { ...state, containers: [...state.containers, emptyContainer] }
 
     expect(buildPayload(state)).toEqual({
+      defaultContainerOwnerId: 'client-1',
       clientId: 'client-1',
     contractId: 'contract-1',
       terminalAreaId: 'area-from-api',
@@ -246,6 +201,7 @@ describe('order form state', () => {
     }
 
     expect(buildPayload(state)).toEqual({
+      defaultContainerOwnerId: 'client-1',
       clientId: 'client-1',
     contractId: 'contract-1',
       terminalAreaId: 'area-from-api',
@@ -311,75 +267,11 @@ describe('order form state', () => {
     })
   })
 
-  it('builds RAILWAY_CARRIAGE with numbered wagons and container quantities', () => {
-    const state: OrderFormState = {
-      ...validMainState('RAILWAY'),
-      fillingType: 'RAILWAY_CARRIAGE',
-      railwayCarriages: [{ key: 1, railwayCarriageId: 'carriage-1', containers: [] }],
-      containerQuantities: [{
-        key: 1,
-        quantity: '2',
-        type: 'STANDARD_40',
-        empty: false,
-        items: [{ key: 1, etsngCodeId: 'cargo-1', weight: '30000.000' }],
-      }],
-    }
+  
 
-    expect(validateStep(state, 4, 'shipping')).toEqual([])
-    expect(buildPayload(state, 'shipping')).toMatchObject({
-      fillingType: 'RAILWAY_CARRIAGE',
-      containers: [],
-      railwayCarriages: [{ railwayCarriageId: 'carriage-1', containers: [] }],
-      railwayCarriageQuantities: [],
-      containerQuantities: [{
-        quantity: 2,
-        type: 'STANDARD_40',
-        empty: false,
-        items: [{ etsngCodeId: 'cargo-1', weight: 30000 }],
-      }],
-    })
-  })
+  
 
-  it('builds CONTAINER with carriage quantities and numbered containers', () => {
-    const state: OrderFormState = {
-      ...withLoadedContainer(validMainState('RAILWAY')),
-      fillingType: 'CONTAINER',
-      railwayCarriageQuantities: [{ key: 1, quantity: '4', typeId: '' }],
-    }
-
-    expect(validateStep(state, 4, 'shipping')).toEqual([])
-    expect(buildPayload(state, 'shipping')).toMatchObject({
-      fillingType: 'CONTAINER',
-      containers: [{ containerId: 'container-1' }],
-      railwayCarriages: [],
-      railwayCarriageQuantities: [{ quantity: 4, typeId: null }],
-      containerQuantities: [],
-    })
-  })
-
-  it('builds NONE and rejects invalid quantity or missing cargo', () => {
-    const invalid: OrderFormState = {
-      ...validMainState('RAILWAY'),
-      fillingType: 'NONE',
-      railwayCarriageQuantities: [{ key: 1, quantity: '0', typeId: '' }],
-      containerQuantities: [{ key: 1, quantity: '1', type: 'STANDARD_20', empty: false, items: [] }],
-    }
-    expect(validateStep(invalid, 2, 'shipping').join(' ')).toContain('больше нуля')
-    expect(validateStep(invalid, 2, 'shipping').join(' ')).not.toContain('Добавьте груз')
-    expect(validateStep(invalid, 4, 'shipping').join(' ')).toContain('Добавьте груз')
-
-    const valid: OrderFormState = {
-      ...invalid,
-      railwayCarriageQuantities: [{ key: 1, quantity: '3', typeId: '' }],
-      containerQuantities: [{ key: 1, quantity: '1', type: 'STANDARD_20', empty: true, items: [] }],
-    }
-    expect(validateStep(valid, 4, 'shipping')).toEqual([])
-    expect(buildPayload(valid, 'shipping')).toMatchObject({
-      fillingType: 'NONE',
-      railwayCarriageQuantities: [{ quantity: 3, typeId: null }],
-      containerQuantities: [{ quantity: 1, type: 'STANDARD_20', empty: true, items: [] }],
-    })
-  })
+  
 
   it('rejects duplicate or unselected KTK in railway shipping', () => {
     const duplicate: SelectedContainer = {
@@ -462,4 +354,29 @@ describe('contract selection', () => {
     expect(payload).not.toHaveProperty('driverFullName')
     expect(payload).not.toHaveProperty('vehicleNumber')
   })
+})
+
+describe('собственник КТК по умолчанию', () => {
+  it('берёт собственника только из отдельного поля, независимо от клиента', () => {
+    const state: OrderFormState = { ...initialOrderFormState, clientId: 'client', transportType: 'VEHICLE' }
+    expect(buildPayload(state, 'receiving').defaultContainerOwnerId).toBe('')
+    expect(validateStep(state, 1)).toContain('Выберите собственника КТК по умолчанию')
+    expect(buildPayload({ ...state, clientId: 'changed', defaultContainerOwnerId: 'another' }, 'receiving').defaultContainerOwnerId).toBe('another')
+    expect(buildPayload({ ...state, defaultContainerOwnerId: 'another' }, 'receiving').defaultContainerOwnerId).toBe('another')
+    expect(buildPayload({ ...state, defaultContainerOwnerId: 'another' }, 'shipping')).not.toHaveProperty('defaultContainerOwnerId')
+  })
+})
+
+it('rejects every mode that replaces numbers with quantities', () => {
+  for (const fillingType of ['RAILWAY_CARRIAGE', 'CONTAINER', 'NONE', 'VEHICLE_UNNUMBERED'] as const) {
+    const state = { ...initialOrderFormState, fillingType }
+    expect(validateStep(state, 1, 'shipping')).toContain('В MVP доступны только заявки с номерами КТК и, для ЖД, вагонов')
+    expect(() => buildPayload({ ...state, transportType: 'VEHICLE' }, 'shipping')).toThrow('только заявки с номерами')
+  }
+})
+
+it('rejects quantities even when fillingType is ALL', () => {
+  const state: OrderFormState = { ...initialOrderFormState, transportType: 'RAILWAY', railwayCarriageQuantities: [{ key: 1, quantity: '1', typeId: '' }] }
+  expect(validateStep(state, 1, 'shipping')).toHaveLength(1)
+  expect(() => buildPayload(state, 'shipping')).toThrow('только заявки с номерами')
 })

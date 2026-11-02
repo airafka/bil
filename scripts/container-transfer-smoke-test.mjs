@@ -12,10 +12,10 @@ for(const type of ['STANDARD_40','STANDARD_20']) {
   const c=containers.find(x=>x.type===type);assert.ok(c,'Test seed must have '+type)
   const attributes={ownerClientId:clients[0].id,sealNumbers:'000123, 000456',sealTypeId:seals[0].id}
   const bill=await call('/api/waybills',{departureStation:11111,destinationStation:999999,payer:'TRANSFER-'+type+'-'+Date.now(),railwayCarriages:[{railwayCarriageId:cars[0].id,containers:[{containerId:c.id,grossWeight:String(c.tareWeight),...attributes}]}]},201)
-  let service=await call('/api/service-orders',{clientId:contract.clientId,contractId:contract.id,waybillIds:[bill.id]},201)
+  let service=await call('/api/comprehensive-service-orders',{clientId:contract.clientId,contractId:contract.id,waybillIds:[bill.id]},201)
   if(type==='STANDARD_20') {
     assert.equal(service.shippingOrders.length,0)
-    service=await call('/api/service-orders/'+service.order.id+'/shipping-orders',{containerIds:[c.id]},201)
+    service=await call('/api/comprehensive-service-orders/'+service.order.id+'/shipping-orders',{containerIds:[c.id]},201)
   }
   assert.equal(service.shippingOrders.length,1)
   const shipId=service.shippingOrders[0].id

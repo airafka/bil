@@ -20,7 +20,7 @@ public record OrderDetails(
         List<ContainerQuantityDetails> containerQuantities,
         UUID contractId,
         String contractName,
-        UUID serviceOrderId,
+        UUID comprehensiveServiceOrderId,
         UUID sourceReceivingOrderId,
         UUID routeId,
         UUID sourceShippingOrderId,
@@ -28,6 +28,8 @@ public record OrderDetails(
         LocalDateTime arrivalAt,
         String consignor,
         LocalDateTime departureAt,
-        String consignee
+        String consignee,
+        UUID defaultContainerOwnerId,
+        String defaultContainerOwnerName
 ) {
 }

@@ -39,7 +39,7 @@ class PaymentInvoiceServiceTest {
         when(rs.getObject("id", UUID.class)).thenReturn(charge);
         when(rs.getObject("client_id", UUID.class)).thenReturn(client);
         when(rs.getObject("contract_id", UUID.class)).thenReturn(contract);
-        when(rs.getObject("service_order_id", UUID.class)).thenReturn(UUID.randomUUID());
+        when(rs.getObject("comprehensive_service_order_id", UUID.class)).thenReturn(UUID.randomUUID());
         when(rs.getObject("performed_at", OffsetDateTime.class)).thenReturn(performed);
         when(rs.getObject("created_at", OffsetDateTime.class)).thenReturn(performed);
         when(rs.getObject("billing_month", LocalDate.class)).thenReturn(LocalDate.of(2026, 5, 1));

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createPaymentInvoice, deletePaymentInvoice, getContracts, getInvoiceCandidates, getPaymentInvoice, getPaymentInvoices, getReferenceOptions } from '../api'
 import type { PagedResponse, ReferenceOption } from '../domain'
-import type { ContractOption } from '../serviceOrder'
+import type { ContractOption } from '../comprehensiveServiceOrder'
 import type { InvoiceCandidates, InvoiceDetails, InvoiceFilters, InvoiceLine, PaymentInvoice } from '../invoices'
 import { invoiceDate, invoiceMoney, invoicePeriod, selectedInvoiceTotals } from '../invoices'
 import { UiInput, UiSelect } from '../components/FormControls'
@@ -27,9 +27,9 @@ function LinesTable({ items, timeZone, selected, onToggle, disabled = false }: {
   return <div className="table-wrap service-compact-table"><table>
     <thead><tr>{onToggle && <th scope="col">Выбрать</th>}<th scope="col">Дата оказания</th><th scope="col">Заявка на услугу</th><th scope="col">КТК</th><th scope="col">Услуга</th><th scope="col">Без НДС, ₽</th><th scope="col">С НДС, ₽</th></tr></thead>
     <tbody>{items.map(item => <tr key={item.id}>
-      {onToggle && <td><UiInput type="checkbox" checked={selected?.has(item.id) ?? false} disabled={disabled} onChange={() => onToggle(item.id)} aria-label={`Выбрать ${item.serviceName}, КТК ${item.containerName}, заявка ${item.serviceOrderCode}, ${invoiceDate(item.performedAt, timeZone)}`} /></td>}
+      {onToggle && <td><UiInput type="checkbox" checked={selected?.has(item.id) ?? false} disabled={disabled} onChange={() => onToggle(item.id)} aria-label={`Выбрать ${item.serviceName}, КТК ${item.containerName}, заявка ${item.comprehensiveServiceOrderCode}, ${invoiceDate(item.performedAt, timeZone)}`} /></td>}
       <td>{invoiceDate(item.performedAt, timeZone)}</td>
-      <td><Link to={`/service-orders/${item.serviceOrderId}`} target={onToggle ? '_blank' : undefined} rel={onToggle ? 'noreferrer' : undefined}>{item.serviceOrderCode}</Link></td>
+      <td><Link to={`/comprehensive-service-orders/${item.comprehensiveServiceOrderId}`} target={onToggle ? '_blank' : undefined} rel={onToggle ? 'noreferrer' : undefined}>{item.comprehensiveServiceOrderCode}</Link></td>
       <td>{item.containerName}</td><td>{item.serviceName}</td><td>{invoiceMoney(item.amountWithoutVat)}</td><td>{invoiceMoney(item.amountWithVat)}</td>
     </tr>)}</tbody>
   </table></div>

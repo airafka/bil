@@ -1,4 +1,4 @@
-import type { ServiceProgress } from '../serviceOrder'
+import type { ServiceProgress } from '../comprehensiveServiceOrder'
 
 export function ServiceProgressCards({ progress }: { progress: ServiceProgress }) {
   return <div className="service-progress">

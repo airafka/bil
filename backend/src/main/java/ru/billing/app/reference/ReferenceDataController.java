@@ -27,6 +27,11 @@ public class ReferenceDataController {
         return referenceDataService.findHazardClasses(q, limit);
     }
 
+    @GetMapping("/danger-products")
+    public List<DangerProductOption> dangerProducts(@RequestParam(required = false) String q, @RequestParam(required = false) Integer limit) {
+        return referenceDataService.findDangerProducts(q, limit);
+    }
+
     @GetMapping("/clients")
     public List<ReferenceOption> clients(
             @RequestParam(required = false) String q,

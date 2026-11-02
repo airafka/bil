@@ -1,0 +1,20 @@
+import type { CreatedOrder, OrderDetails } from './domain'
+
+export type ContractOption = { id: string; clientId: string; name: string }
+export type ComprehensiveServiceOrderSummary = {
+  id: string; code: number; clientId: string; clientName: string
+  contractId: string; contractName: string; status: string; shippingOrderCount: number
+}
+export type ComprehensiveServiceOrderDetails = {
+  progress: ServiceProgress
+  order: ComprehensiveServiceOrderSummary; receivingOrder: OrderDetails; shippingOrders: Array<CreatedOrder & { containerNames: string[]; returnReceivingOrderId: string | null }>; selectableContainers: Array<{ containerId: string; containerName: string; type: string }>; returnOrders: Array<{ id: string; code: number; status: string; containerNames: string[] }>
+}
+
+export type ServiceProgress = {
+  initialServiceName: string | null; returnServiceName: string | null
+  accepted: number; shippingCreated: number; shippingCompleted: number
+  returnCreated: number; returnCompleted: number
+  total: number; shippingMissing: number
+  shippingOrderCount: number; shippingOrdersCompleted: number
+  returnOrderCount: number; returnOrdersCompleted: number
+}
