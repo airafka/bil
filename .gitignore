@@ -21,3 +21,6 @@ backups/
 
 # Shared database snapshot explicitly requested for device transfer
 !database/billing-snapshot.dump
+
+# Current bil-next snapshot explicitly requested for device transfer
+!database/billing-next-snapshot.dump

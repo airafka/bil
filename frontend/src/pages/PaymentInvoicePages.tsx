@@ -24,11 +24,14 @@ function Pages({ page, totalPages, onChange }: { page: number; totalPages: numbe
   </div>
 }
 
-function LinesTable({ items, timeZone, selected, onToggle, invoiceId, disabled = false }: {
+function LinesTable({ items, timeZone, selected, onToggle, onToggleAll, allSelected = false, partiallySelected = false, invoiceId, disabled = false }: {
   items: InvoiceLine[]; timeZone: string; invoiceId?: string; selected?: Set<string>; onToggle?: (id: string) => void; disabled?: boolean
+  onToggleAll?: () => void; allSelected?: boolean; partiallySelected?: boolean
 }) {
+  const allCheckbox = useRef<HTMLInputElement>(null)
+  useEffect(() => { if (allCheckbox.current) allCheckbox.current.indeterminate = partiallySelected && !allSelected }, [partiallySelected, allSelected])
   return <div className="table-wrap service-compact-table"><table className="invoice-lines-table" data-responsive-min-width={960}>
-    <thead><tr>{onToggle && <th scope="col" className="registry-index" aria-label="Выбор услуг" />}<th scope="col" className="invoice-date-column">Дата оказания</th><th scope="col" className="invoice-order-column">Заявка на услугу</th><th scope="col" className="invoice-container-column">КТК</th><th scope="col">Услуга</th>{invoiceId && <th scope="col" className="invoice-tariff-column">Тариф</th>}<th scope="col">Без НДС, ₽</th><th scope="col">С НДС, ₽</th></tr></thead>
+    <thead><tr>{onToggle && <th scope="col" className="registry-index" aria-label="Выбор услуг">{onToggleAll && <UiInput ref={allCheckbox} type="checkbox" checked={allSelected} disabled={disabled || !items.length} onChange={onToggleAll} aria-label="Выбрать все услуги по текущим фильтрам" title="Выбрать или снять выбор всех услуг по текущим фильтрам, на всех страницах" />}</th>}<th scope="col" className="invoice-date-column">Дата оказания</th><th scope="col" className="invoice-order-column">Заявка на услугу</th><th scope="col" className="invoice-container-column">КТК</th><th scope="col">Услуга</th>{invoiceId && <th scope="col" className="invoice-tariff-column">Тариф</th>}<th scope="col">Без НДС, ₽</th><th scope="col">С НДС, ₽</th></tr></thead>
     <tbody>{items.map(item => <tr key={item.id}>
       {onToggle && <td className="registry-index"><UiInput type="checkbox" checked={selected?.has(item.id) ?? false} disabled={disabled} onChange={() => onToggle(item.id)} aria-label={`Выбрать ${item.serviceName}, КТК ${item.containerName}, заявка ${item.comprehensiveServiceOrderCode}, ${invoiceDate(item.performedAt, timeZone)}`} /></td>}
       <td>{invoiceDate(item.performedAt, timeZone)}</td>
@@ -156,7 +159,17 @@ function InvoiceSelection({ filters, data, onBusy, actionHost, initial, onSaved 
   const saveLock = useRef(false)
   const requestKey = useRef(crypto.randomUUID())
   const totals = selectedInvoiceTotals(data?.items ?? [], selected)
+  const allSelected = data.items.length > 0 && data.items.every(item => selected.has(item.id))
   function changeSelection(next: Set<string>) { requestKey.current = crypto.randomUUID(); setSelected(next) }
+  function toggleAll() {
+    if (saving) return
+    if (!allSelected && data.items.length > 10000) {
+      setError('В один счёт можно включить не более 10 000 услуг. Уточните фильтр КТК или выберите услуги по отдельности.')
+      return
+    }
+    setError('')
+    changeSelection(allSelected ? new Set() : new Set(data.items.map(item => item.id)))
+  }
   async function save() {
     if (!selected.size || saveLock.current) return
     saveLock.current = true; setSaving(true); onBusy(true); setError('')
@@ -172,7 +185,7 @@ function InvoiceSelection({ filters, data, onBusy, actionHost, initial, onSaved 
     {error && <Notification kind="error">{error}</Notification>}
     {data && <>
       {data.items.length ? <>
-        <LinesTable items={data.items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)} timeZone={data.timeZone} selected={selected} disabled={saving} onToggle={id => {
+        <LinesTable items={data.items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)} timeZone={data.timeZone} selected={selected} disabled={saving} onToggleAll={toggleAll} allSelected={allSelected} partiallySelected={selected.size > 0} onToggle={id => {
           const next = new Set(selected)
           if (next.has(id)) next.delete(id)
           else if (next.size < 10000) next.add(id)

@@ -1,49 +1,52 @@
-# Внимание: исторический снимок
+# Перенос bil-next на другой компьютер
 
-Снимок billing-snapshot.dump ниже относится к прежней схеме V1–V44. После рефакторинга 31.10.2026 его нельзя напрямую восстанавливать поверх текущей схемы. Автоматически он не восстанавливается. Для нового переноса сохраните свежий dump текущей базы; перед заменой обязательно сохраните данные устройства-получателя. См. [BACKEND_ALIGNMENT.md](../BACKEND_ALIGNMENT.md).
+Актуальный снимок: `billing-next-snapshot.dump`, 05.11.2026, PostgreSQL16, схемаV26. Содержит схему, все данные приложения, последовательности номеров и историю Flyway. Контрольная сумма SHA256 и результаты проверки: [billing-next-snapshot.json](billing-next-snapshot.json).
 
----
+Снимок переносит данные на момент экспорта. Дальнейшая работа на компьютерах автоматически не синхронизируется. Настройки подключения и роли PostgreSQL не переносятся; Docker Compose создаёт локального пользователя по `.env`.
 
-# Перенос текущих данных MVP
+## Windows: развёртывание с данными
 
-`billing-snapshot.dump` — полный снимок локальной PostgreSQL 16 от 29 октября 2026 года: схема, данные, последовательности номеров и история Flyway. Включает клиентов, договоры, КТК, услуги, тарифы, заявки, накладные, рейсы и начисления. Это разовая копия; дальнейшая работа на устройствах автоматически не синхронизируется.
+Нужны Git, Docker Desktop с Linux containers и Docker Compose v2. Java, Node.js и PostgreSQL на компьютере устанавливать отдельно не требуется. Запустите Docker Desktop. Порты3001/8081/5433 должны быть свободны.
 
-Снимок проверен восстановлением в отдельную базу. В нём 9 заявок на услугу, 17 поставок, 15 вывозов, 9 накладных и 10 начислений.
-
-## Восстановление на другом устройстве
-
-Открой терминал в корне проекта, где находится `compose.yaml`. Команды подходят для стандартных настроек проекта (база и пользователь `billing`). При изменённых `POSTGRES_DB` / `POSTGRES_USER` в `.env` подставь свои значения в параметры `-d` / `-U`.
-
-**Восстановление заменяет текущие данные базы на этом устройстве данными из снимка.** Если там уже есть нужные данные, сначала сохрани их по инструкции ниже.
-
-```sh
-git pull --ff-only origin main
-docker compose stop backend frontend
-docker compose up -d --wait db
-docker compose cp database/billing-snapshot.dump db:/tmp/billing-snapshot.dump
-docker compose exec -T db pg_restore -U billing -d billing --clean --if-exists --no-owner --no-acl --single-transaction --exit-on-error /tmp/billing-snapshot.dump
-docker compose up -d --build --wait
+```powershell
+git clone --branch bil-next --single-branch https://github.com/airafka/bil.git bil-next
+cd bil-next
+Copy-Item .env.example .env
+powershell -NoProfile -ExecutionPolicy Bypass -File .\restore-snapshot.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\start.ps1
 ```
 
-Выполняй команды последовательно. Если восстановление сообщило об ошибке, не переходи к запуску приложения: транзакция восстановления откатится. Не удаляй Docker volume.
+Выполняйте команды последовательно: после ошибки не переходите к следующей. **Сначала восстановите снимок, затем запускайте приложение.** Иначе Flyway создаст таблицы и скрипт импорта откажется их заменять.
 
-После запуска открой http://localhost:3000. Восстановленные данные и номера заявок должны отображаться сразу. Flyway использует историю из снимка, поэтому повторно начальные данные не добавляет.
+`restore-snapshot.ps1` проверяет SHA256, отказывается работать при запущенных backend/frontend, запускает только db и восстанавливает снимок одной транзакцией исключительно в пустую `billing_next`. Существующие таблицы и данные он не удаляет. Повторное восстановление в уже заполненную БД завершается отказом. Если на компьютере уже есть проект billing-next с нужными данными, используйте отдельное окружение; не удаляйте его volume для повторения инструкции.
 
-Проверка количества записей:
+Скрипты находят Docker через PATH или стандартные пути установки; имя пользователя Windows и расположение клона могут быть любыми. При занятом порте измените `FRONTEND_PORT`, `BACKEND_PORT`, `DB_PORT` в `.env` перед восстановлением. Имя БД оставьте `billing_next`. Локальный пароль можно изменить в `.env` до первого создания volume; файл `.env` не публикуется.
+
+## Проверка запуска
+
+- Интерфейс: http://localhost:3001
+- Backend health: http://localhost:8081/actuator/health — после запуска ожидается `UP`.
+- Контейнеры: `docker compose -p billing-next ps`.
+- Остановка: `.\stop.ps1`; последующие запуски: `.\start.ps1`. Они сохраняют БД и не восстанавливают снимок автоматически.
+
+Первый запуск собирает приложения и может занять несколько минут. Compose использует отдельные сеть `billing-next_default` и volume `billing-next_postgres-data`. С исходным проектом `billing` на портах3000/8080/5432 он не смешивается.
+
+## Linux / macOS
+
+После клонирования ветки bil-next скопируйте `.env.example` в `.env`. В **новом пустом окружении**, до запуска backend/frontend:
 
 ```sh
-docker compose exec -T db psql -U billing -d billing -c "select (select count(*) from service_order) as services, (select count(*) from receiving_order) as receiving, (select count(*) from shipping_order) as shipping, (select count(*) from waybill) as waybills, (select count(*) from billing_charge) as charges;"
+docker compose -p billing-next up -d --wait db
+docker compose -p billing-next exec -T db psql -X -U billing -d billing_next -At -c "select count(*) from pg_tables where schemaname='public';"
+# Продолжать только если результат 0. При существующих таблицах остановиться.
+docker compose -p billing-next cp database/billing-next-snapshot.dump db:/tmp/billing-next-snapshot.dump
+docker compose -p billing-next exec -T db pg_restore -U billing -d billing_next --no-owner --no-acl --single-transaction --exit-on-error /tmp/billing-next-snapshot.dump
+# Только после успешного восстановления:
+docker compose -p billing-next up -d --build
 ```
 
-Ожидаемый результат: `9 | 17 | 15 | 9 | 10`.
+Параметр `-U billing` соответствует `.env.example`; при смене POSTGRES_USER укажите выбранное имя. Не используйте `--clean` и не запускайте исторические seed/cleanup/renumber-скрипты.
 
-## Сохранить данные второго устройства перед заменой
+## Старые снимки
 
-После остановки backend/frontend и запуска db, но **до** команды `pg_restore`:
-
-```sh
-docker compose exec -T db pg_dump -U billing -d billing --format=custom --no-owner --no-acl --file=/tmp/before-import.dump
-docker compose cp db:/tmp/before-import.dump ./before-import.dump
-```
-
-Убедись, что файл `before-import.dump` появился на компьютере. Он исключён из Git. При необходимости его можно восстановить тем же способом, заменив путь к исходному снимку.
+`billing-snapshot.dump` от29.10.2026 — историческая версия V1–V44, несовместимая с текущей схемой. Для этого переноса не использовать. Локальный `billing-next-initial.dump` от04.11.2026 также не является актуальным снимком и не публикуется. Используйте только `billing-next-snapshot.dump` вместе с кодом ветки bil-next.

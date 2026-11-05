@@ -1,0 +1,205 @@
+{
+  "file": "billing-next-snapshot.dump",
+  "exportedAt": "2026-11-05T12:20:14+03:00",
+  "postgresMajor": 16,
+  "schemaVersion": 26,
+  "database": "billing_next",
+  "bytes": 278975,
+  "sha256": "a0d2edcf6d97a736ecca20f882940b3292df9d492d3aa76e8d2dbff057a91ab5",
+  "verification": {
+    "restoredInIsolatedDatabase": true,
+    "allTableContentsAndSequencesMatch": true,
+    "backendHealth": "UP",
+    "validatedFlywayMigrations": 26
+  },
+  "tables": {
+    "billing_charge": {
+      "rows": 88,
+      "contentMd5": "73c5bca0076fa98fd5055f1b3cc54ed5"
+    },
+    "client": {
+      "rows": 6,
+      "contentMd5": "044257dbf8e4cff32eb65b1936ee44ab"
+    },
+    "client_driver": {
+      "rows": 12,
+      "contentMd5": "ad4641249ef659fdea22a5d14d12aadc"
+    },
+    "client_related_entity": {
+      "rows": 22,
+      "contentMd5": "8251ed57e8ea889c93dbba50215149f6"
+    },
+    "client_vehicle": {
+      "rows": 12,
+      "contentMd5": "8c082616536b89e5dbc154fd204f1dbc"
+    },
+    "complex_service_catalog": {
+      "rows": 2,
+      "contentMd5": "86885a6b5f5b14ee541d4426b93acc0d"
+    },
+    "complex_service_tariff": {
+      "rows": 8,
+      "contentMd5": "84316d816dfd63bf2d18f9d1cfdeb643"
+    },
+    "comprehensive_service_order": {
+      "rows": 8,
+      "contentMd5": "62ebb9275cc6fa981efd304e76cbfa05"
+    },
+    "comprehensive_service_order_tariff": {
+      "rows": 8,
+      "contentMd5": "9740862592fde86474a677197a7fbf9e"
+    },
+    "container": {
+      "rows": 135,
+      "contentMd5": "2db11731ecf7f36efb0d51305fef03a2"
+    },
+    "container_movement": {
+      "rows": 264,
+      "contentMd5": "f8ad0314d90a37cb627d87dabcdbcb6e"
+    },
+    "container_owner": {
+      "rows": 88,
+      "contentMd5": "2b87dd4557ce5ce119c404c171f88425"
+    },
+    "container_owner_history": {
+      "rows": 528,
+      "contentMd5": "c7d5072b49b3604ebd11a3a62aa6fe8d"
+    },
+    "contract": {
+      "rows": 6,
+      "contentMd5": "af5b52d06de65e6bb6da8128446f3def"
+    },
+    "danger_class": {
+      "rows": 2,
+      "contentMd5": "b969669fe70c89219d3e7897994844dc"
+    },
+    "danger_product": {
+      "rows": 1,
+      "contentMd5": "0d2dc99585a43ce590277ac8fcb3c6ad"
+    },
+    "etsng_code": {
+      "rows": 6,
+      "contentMd5": "3353d1bc349b5587545f33bc43fdae7a"
+    },
+    "flyway_schema_history": {
+      "rows": 26,
+      "contentMd5": "e09e3e2a90015d1dbc28daa51aaf3dea"
+    },
+    "outbound_data": {
+      "rows": 1,
+      "contentMd5": "4b3b44b38732425f504b4af531135a2f"
+    },
+    "payer": {
+      "rows": 2,
+      "contentMd5": "64f03746fee955ff6d7673b8ef7ff018"
+    },
+    "payment_invoice": {
+      "rows": 3,
+      "contentMd5": "78036e71b3409a8deaefcfe8ade48e05"
+    },
+    "payment_invoice_line": {
+      "rows": 16,
+      "contentMd5": "a7b15e72a97cb221a87a50544d05204d"
+    },
+    "railway_carriage": {
+      "rows": 99,
+      "contentMd5": "b5213ae56710f19e6863b45c692acfa3"
+    },
+    "railway_carriage_model": {
+      "rows": 3,
+      "contentMd5": "3731dac6914eb647e84f93bfe6b16395"
+    },
+    "railway_carriage_type": {
+      "rows": 3,
+      "contentMd5": "7e7596c6d65d612f99790f46d5f53a48"
+    },
+    "railway_station": {
+      "rows": 2,
+      "contentMd5": "fc337b8ff2edd033cc868449d07fe747"
+    },
+    "receiving_order": {
+      "rows": 91,
+      "contentMd5": "4e716a4be721e9d43e1a091debe81e2c"
+    },
+    "receiving_order_container": {
+      "rows": 93,
+      "contentMd5": "f1d825c11cba3da2361de7c3b2c993b4"
+    },
+    "receiving_order_container_item": {
+      "rows": 0,
+      "contentMd5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "route": {
+      "rows": 169,
+      "contentMd5": "9cf7bdc42d306d281522bfe3d9e183f7"
+    },
+    "seal_type": {
+      "rows": 2,
+      "contentMd5": "ef5cc4578cf3690ccd9edd5f97a430a9"
+    },
+    "service_execution": {
+      "rows": 88,
+      "contentMd5": "1b04322c593930e4d839874783a97f96"
+    },
+    "service_order": {
+      "rows": 0,
+      "contentMd5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "service_order_container": {
+      "rows": 0,
+      "contentMd5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "shipping_order": {
+      "rows": 83,
+      "contentMd5": "2a15719f20988892ae50a800dbe0f107"
+    },
+    "shipping_order_container": {
+      "rows": 93,
+      "contentMd5": "ab6748bbb83cb2645838e32e92d4c4d9"
+    },
+    "shipping_order_container_item": {
+      "rows": 93,
+      "contentMd5": "52fd067d21f1b8c11b84d87ac0e3129f"
+    },
+    "shipping_order_railway_carriage": {
+      "rows": 0,
+      "contentMd5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "shipping_order_source_container": {
+      "rows": 93,
+      "contentMd5": "037af149c953d91535a17320fc713ae0"
+    },
+    "terminal_area_catalog": {
+      "rows": 1,
+      "contentMd5": "1c4fd9a1a88c28a2d34b5b01d1fe2521"
+    },
+    "waybill": {
+      "rows": 16,
+      "contentMd5": "e6a5ee15c7cad785cea0d04e6bb2b0f5"
+    },
+    "waybill_container": {
+      "rows": 120,
+      "contentMd5": "c9fb27ee909ec74276fa52287e8d9a5a"
+    },
+    "waybill_product": {
+      "rows": 16,
+      "contentMd5": "587a9df1eb4f6d5f8e9c24d728a47d39"
+    },
+    "waybill_railway_carriage": {
+      "rows": 104,
+      "contentMd5": "60ea89770396f9c42993d12a27a29427"
+    },
+    "waybill_zpu": {
+      "rows": 112,
+      "contentMd5": "d856f59ba935066e4d563fa07a9c259b"
+    }
+  },
+  "sequences": {
+    "comprehensive_service_order_number_seq": "2858|t",
+    "order_code_seq": "12|t",
+    "payment_invoice_code_seq": "8|t",
+    "route_code_seq": "21520|t",
+    "transport_order_number_seq": "28773|t",
+    "waybill_number_seq": "1743125949|t"
+  }
+}

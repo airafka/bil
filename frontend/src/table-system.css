@@ -87,7 +87,6 @@ html { scrollbar-gutter: stable; }
 
 /* Inline ETRAN selection uses the shared table contract. */
 .waybill-selection-table { table-layout: fixed; min-width: 900px; }
-.waybill-selection-choice { width: var(--table-index-width); }
 .app-shell .waybill-selection-table :is(th, td):first-child { text-align: center; }
 .app-shell .waybill-selection-table tbody tr.waybill-selection-selected { background: #f5f9ff; }
 .waybill-selection-footer { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; font-size: 13px; }

@@ -41,13 +41,12 @@ export function WaybillSelectionTable({ selected, onChange, disabled = false }: 
   return <section className="form-section waybill-selection-section" aria-label="Выбор накладных ЭТРАН">
     {error && <Notification kind="error">{error} <button type="button" className="secondary-button" onClick={() => { setError(''); setLoading(true); setAttempt(value => value + 1) }}>Повторить</button></Notification>}
     <div className="table-wrap order-composition-wrap"><table className="waybill-selection-table" aria-label="Свободные накладные ЭТРАН" aria-busy={loading}>
-      <colgroup><col className="waybill-selection-choice" /><col /><col /><col /><col /></colgroup>
-      <thead><tr><th scope="col"><input ref={allCheckbox} className="ui-choice" type="checkbox" checked={allSelected} disabled={busy || !selectable.length} onChange={togglePage} aria-label="Выбрать доступные накладные на странице" /></th><th scope="col">Номер накладной</th><th scope="col">Дата создания в ЭТРАН</th><th scope="col">Вид отправки</th><th scope="col">Статус</th></tr></thead>
+      <thead><tr><th scope="col" className="composition-index"><input ref={allCheckbox} className="ui-choice" type="checkbox" checked={allSelected} disabled={busy || !selectable.length} onChange={togglePage} aria-label="Выбрать доступные накладные на странице" /></th><th scope="col">Номер накладной</th><th scope="col">Дата создания в ЭТРАН</th><th scope="col">Вид отправки</th><th scope="col">Статус</th></tr></thead>
       <tbody>{loading ? <tr><td colSpan={5}>Загружаем накладные…</td></tr> : error ? <tr><td colSpan={5}>Накладные не загружены</td></tr> : rows.length ? rows.map(row => {
         const bill = row.waybill, checked = ids.has(bill.id), blocked = !!selected[0] && selected[0].groupKey !== row.groupKey
         const toggleLabel = checked ? 'Снять выбор' : 'Выбрать'
         return <tr key={bill.id}>
-          <td><UiInput type="checkbox" aria-label={toggleLabel + ' накладную ' + bill.number} checked={checked} disabled={disabled || blocked} onChange={() => toggle(row)} /></td>
+          <td className="composition-index"><UiInput type="checkbox" aria-label={toggleLabel + ' накладную ' + bill.number} checked={checked} disabled={disabled || blocked} onChange={() => toggle(row)} /></td>
           <td>{bill.number}</td>
           <td>{bill.createdAt ? new Date(bill.createdAt).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Не указана'}</td>
           <td>{bill.shipmentType === 'CONTAINER' ? 'Контейнерная' : bill.shipmentType || 'Не указан'}</td>
