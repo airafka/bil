@@ -9,7 +9,6 @@
 .service-compact-table table { width: 100%; min-width: 520px; }
 .service-receiving-table table { min-width: 940px; }
 .service-compact-table th { background: #f9fafc; color: var(--ui-field-label); font-weight: 500; border-block: 1px solid var(--ui-field-border); }
-.service-compact-table th, .service-compact-table td { padding: 14px 16px; font-size: 13px; line-height: 20px; vertical-align: middle; }
 .service-compact-table td { border-bottom: 1px solid var(--ui-field-border); }
 .service-compact-table tbody tr:last-child td { border-bottom: 0; }
 .service-compact-table tbody tr:hover { background: #fafbfe; }
@@ -24,3 +23,7 @@
 .service-pending-containers .service-compact-table { border: 1px solid var(--ui-field-border); border-radius: 5px; }
 .service-pending-containers th:first-child, .service-pending-containers td:first-child { width: 90px; text-align: center; }
 .service-pending-containers .notice { margin-top: 12px; }
+
+/* Separate the service documents and the unassigned-container selection. */
+.service-table-page > .service-pending-card { margin-top: 20px; }
+.service-pending-card .bulk-return-heading { padding: 0 0 16px; }

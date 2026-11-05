@@ -40,9 +40,15 @@ public class ReferenceDataController {
         return referenceDataService.findClients(q, limit);
     }
 
+    @GetMapping("/tariff-clients")
+    public List<ReferenceOption> tariffClients() {
+        return referenceDataService.findTariffClients();
+    }
+
     @GetMapping("/contracts")
-    public List<ContractOption> contracts(@RequestParam(required = false) java.util.UUID clientId) {
-        return referenceDataService.findContracts(clientId);
+    public List<ContractOption> contracts(@RequestParam(required = false) java.util.UUID clientId,
+            @RequestParam(defaultValue = "false") boolean activeTariffsOnly) {
+        return referenceDataService.findContracts(clientId, activeTariffsOnly);
     }
 
     @GetMapping("/containers")

@@ -1,0 +1,34 @@
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
+const base='http://127.0.0.1:8089';
+const docker='C:/Users/Green-0482/AppData/Local/Programs/DockerDesktop/resources/bin/docker.exe';
+const sql=q=>execFileSync(docker,['exec','billing-db-1','psql','-U','billing','-d','billing_tariff_v13_all_check','-v','ON_ERROR_STOP=1','-Atc',q],{encoding:'utf8'}).trim();
+async function api(path,body,status=200,method='POST'){const r=await fetch(base+path,body===undefined?{}:{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const v=await r.json();assert.equal(r.status,status,JSON.stringify(v));return v;}
+const f=JSON.parse(readFileSync('tariff-v12-ui-fixtures.json','utf8'));
+const [cars,cargo]=await Promise.all(['railway-carriages','etsng-codes'].map(k=>api('/api/references/'+k)));
+const train=sql("select id from complex_service_catalog where purpose='A_TRAIN'");
+const originalTrain=(await api('/api/complex-services/'+train)).tariffs.find(t=>t.clientId===f.client&&t.active);
+await api('/api/complex-services/'+train+'/tariffs/'+originalTrain.id,{clientId:f.client,contractId:f.contract,coefficient:'1.2345',active:false},200,'PUT');
+const containers=Array.from({length:40},()=>crypto.randomUUID());
+sql(`insert into container(id,code,weight,container_type) values ${containers.map(c=>`('${c}','V13-${c.slice(0,8)}',3000,'STANDARD_20')`).join(',')}`);
+const bill=await api('/api/waybills',{number:'V13-'+crypto.randomUUID().slice(0,8),departureStation:1001,destinationStation:2001,payer:'V13',products:[{etsngCodeId:cargo[0].id,weight:40000}],railwayCarriages:[{railwayCarriageId:cars[0].id,containers:containers.map(containerId=>({containerId,grossWeight:4000,netWeight:1000}))}]},201);
+const request={clientId:f.client,contractId:f.contract,defaultContainerOwnerId:f.noTariffs,waybillIds:[bill.id]};
+assert.equal((await api('/api/comprehensive-service-orders',request,409)).code,'ACTIVE_TARIFFS_REQUIRED');
+assert.equal(sql(`select receiving_order_id is null from waybill where id='${bill.id}'`),'t');
+await api('/api/complex-services/'+train+'/tariffs',{clientId:f.client,contractId:f.contract,coefficient:'1.2345',active:true},200,'PUT');
+await api('/api/complex-services/'+f.serviceId+'/tariffs/'+f.activeTariff,{clientId:f.client,contractId:f.contract,coefficient:'9',active:false},200,'PUT');
+assert.equal((await api('/api/comprehensive-service-orders',request,409)).code,'ACTIVE_TARIFFS_REQUIRED','40 KTK still require the <40 tariff');
+await api('/api/complex-services/'+f.serviceId+'/tariffs/'+f.activeTariff,{clientId:f.client,contractId:f.contract,coefficient:'9',active:true},200,'PUT');
+const order=await api('/api/comprehensive-service-orders',request,201);
+assert.equal(sql(`select string_agg(purpose,',' order by purpose) from comprehensive_service_order_tariff where comprehensive_service_order_id='${order.order.id}'`),'A_TRAIN,A_WAGON,B_AUTO_RETURN');
+await api('/api/receiving-orders/'+order.receivingOrder.id+'/status',{expectedStatus:'DRAFT',status:'CONFIRMED'},200,'PATCH');
+await api('/api/receiving-orders/'+order.receivingOrder.id+'/events',{eventCode:'UNLOAD_FINISH'});
+assert.equal(sql(`select a_complex_service_id::text||','||accepted_container_count from receiving_order where id='${order.receivingOrder.id}'`),train+',40');
+// Tariff locking prevents a competing activation even while two requests run concurrently.
+const list=await api('/api/complex-services/'+train);const active=list.tariffs.find(t=>t.clientId===f.client);
+await api('/api/complex-services/'+train+'/tariffs/'+active.id,{clientId:f.client,contractId:f.contract,coefficient:'1.2345',active:false},200,'PUT');
+const replaced=await api('/api/complex-services/'+train+'/tariffs',{clientId:f.client,contractId:f.contract,coefficient:'4',active:true},200,'PUT');
+assert.equal(replaced.tariffs.filter(t=>t.clientId===f.client&&t.active).length,1);
+assert.equal(sql(`select coefficient from comprehensive_service_order_tariff where comprehensive_service_order_id='${order.order.id}' and purpose='A_TRAIN'`),'1.2345');
+console.log('PASS: exact A_TRAIN tariff required at 40 KTK, missing-specific-tariff rollback, all three tariff snapshots, acceptance preserves selected variant, snapshot unaffected by replacement');

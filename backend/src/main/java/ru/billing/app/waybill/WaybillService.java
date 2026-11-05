@@ -31,6 +31,11 @@ public class WaybillService {
     }
 
     @Transactional(readOnly = true)
+    public AvailableWaybillPage findAvailablePage(String search, int page, int size) {
+        return groupedStore.findAvailablePage(search, page, size);
+    }
+
+    @Transactional(readOnly = true)
     public GroupedWaybillPage findGroupedPage(GroupedWaybillRequest request) {
         return groupedStore.findPage(request == null
                 ? new GroupedWaybillRequest(null, null, null, null, false)

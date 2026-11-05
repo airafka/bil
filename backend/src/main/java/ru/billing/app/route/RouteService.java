@@ -19,7 +19,8 @@ import ru.billing.app.order.TransportType;
 public class RouteService {
     private final JdbcTemplate jdbc;
 
-    public RouteService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    private final ru.billing.app.reference.TransportCatalogService catalogs;
+    public RouteService(JdbcTemplate jdbc, ru.billing.app.reference.TransportCatalogService catalogs) { this.jdbc = jdbc; this.catalogs = catalogs; }
 
     private static String orderTable(RouteType type) {
         return type == RouteType.RECEIVING ? "receiving_order" : "shipping_order";
@@ -36,15 +37,7 @@ public class RouteService {
         if (request.comment() != null && request.comment().length() > 200) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "ROUTE_COMMENT_TOO_LONG", "Комментарий не должен превышать 200 символов");
         }
-        String carrier = text(request.carrier());
-        String driver = text(request.driverName());
-        String vehicle = text(request.vehicleNumber());
-        if (request.transportType() == TransportType.VEHICLE
-                && (carrier == null || carrier.isBlank() || driver == null || driver.isBlank()
-                || vehicle == null || vehicle.isBlank())) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "ROUTE_VEHICLE_DETAILS_REQUIRED",
-                    "Для авторейса укажите перевозчика, водителя и номер машины");
-        }
+        validateReferences(request.transportType(),request.carrierId(),request.driverId(),request.vehicleId(),null);
         List<String> areas = jdbc.query("select code from terminal_area_catalog where id = ?",
                 (rs, row) -> rs.getString("code"), request.terminalAreaId());
         if (areas.isEmpty()) throw new ApiException(HttpStatus.BAD_REQUEST, "ROUTE_AREA_NOT_FOUND", "Площадка не найдена");
@@ -59,9 +52,31 @@ public class RouteService {
                                   client_related_entity_id, client_driver_id, client_vehicle_id, comment)
                 values (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, id, request.routeType().name(), request.departureAt(), request.terminalAreaId(),
-                request.transportType().name(), ru.billing.app.reference.PartyReferences.party(jdbc, carrier),
-                ru.billing.app.reference.PartyReferences.driver(jdbc, driver), ru.billing.app.reference.PartyReferences.vehicle(jdbc, vehicle), text(request.comment()));
+                request.transportType().name(), request.carrierId(), request.driverId(), request.vehicleId(), text(request.comment()));
         for (UUID orderId : unique) jdbc.update("update " + table + " set route_id = ? where id = ?", id, orderId);
+        return findById(id);
+    }
+
+    private void validateReferences(TransportType type, UUID carrier, UUID driver, UUID vehicle, RouteSummary old) {
+        if(type==TransportType.RAILWAY){
+            if(carrier!=null||driver!=null||vehicle!=null)throw new ApiException(HttpStatus.BAD_REQUEST,"RAILWAY_VEHICLE_DETAILS","Для ЖД-рейса нельзя указывать перевозчика, водителя и ТС");
+            return;
+        }
+        catalogs.requireSelectable("carriers",carrier,old==null?null:old.carrierId());
+        catalogs.requireSelectable("drivers",driver,old==null?null:old.driverId());
+        catalogs.requireSelectable("vehicles",vehicle,old==null?null:old.vehicleId());
+    }
+    @Transactional
+    public RouteDetails update(UUID id, UpdateRouteRequest request) {
+        var rows=jdbc.query(summarySql()+" where r.id=? for update of r",(rs,n)->summary(rs),id);
+        if(rows.isEmpty())throw new ApiException(HttpStatus.NOT_FOUND,"ROUTE_NOT_FOUND","Рейс не найден");
+        RouteSummary old=rows.getFirst();
+        if(!old.status().equals("DRAFT"))throw new ApiException(HttpStatus.CONFLICT,"ROUTE_NOT_DRAFT","Редактирование доступно только для черновика рейса");
+        validateReferences(old.transportType(),request.carrierId(),request.driverId(),request.vehicleId(),old);
+        Set<UUID> orders=validateOrders(old.routeType(),old.transportType(),old.terminalAreaId(),request.orderIds());
+        jdbc.update("update route set data_time=?,client_related_entity_id=?,client_driver_id=?,client_vehicle_id=?,comment=? where id=?",
+            request.departureAt(),request.carrierId(),request.driverId(),request.vehicleId(),text(request.comment()),id);
+        for(UUID order:orders)jdbc.update("update "+orderTable(old.routeType())+" set route_id=? where id=?",id,order);
         return findById(id);
     }
 
@@ -138,12 +153,14 @@ public class RouteService {
                        a.name as area_name, r.transport_type, (select name from client_related_entity where id=r.client_related_entity_id) as carrier,
                        (select code from client_driver where id=r.client_driver_id) as driver_name,
                        (select code from client_vehicle where id=r.client_vehicle_id) as vehicle_number,
-                       r.comment, r.status,
+                       r.comment, r.status, r.client_related_entity_id, r.client_driver_id, r.client_vehicle_id,
+                       d.phone_number,d.poa_number,d.poa_valid_to,v.insurance_number,v.with_trailer,v.trailer_number,
                        (select count(*) from receiving_order o where o.route_id = r.id)
                        + (select count(*) from shipping_order o where o.route_id = r.id) as order_count,
                        array(select o.number from receiving_order o where o.route_id=r.id
                              union all select o.number from shipping_order o where o.route_id=r.id order by number) as order_numbers
                 from route r join terminal_area_catalog a on a.id = r.terminal_area_catalog_id
+                left join client_driver d on d.id=r.client_driver_id left join client_vehicle v on v.id=r.client_vehicle_id
                 """;
     }
 
@@ -156,7 +173,10 @@ public class RouteService {
                 rs.getObject("terminal_area_catalog_id", UUID.class), rs.getString("area_name"),
                 TransportType.valueOf(rs.getString("transport_type")), rs.getString("carrier"),
                 rs.getString("driver_name"), rs.getString("vehicle_number"), rs.getString("comment"),
-                rs.getString("status"), rs.getInt("order_count"), orderNumbers);
+                rs.getString("status"), rs.getInt("order_count"), orderNumbers, rs.getObject("client_related_entity_id",UUID.class),
+                rs.getObject("client_driver_id",UUID.class),rs.getObject("client_vehicle_id",UUID.class),
+                rs.getString("phone_number"),rs.getString("poa_number"),rs.getObject("poa_valid_to",java.time.LocalDate.class),
+                rs.getString("insurance_number"),rs.getObject("with_trailer",Boolean.class),rs.getString("trailer_number"));
     }
 
     private record OrderCandidate(String status, UUID areaId, String transportType, UUID routeId) {}

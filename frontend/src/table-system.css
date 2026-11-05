@@ -1,0 +1,125 @@
+/* Shared table contract. Column geometry and hierarchy remain in each component. */
+:root {
+  --table-row-height: 36px;
+  --table-control-height: 30px;
+  --table-cell-padding: 7px 12px;
+  --table-header-font: 13px;
+  --table-body-font: 14px;
+  --table-line-height: 20px;
+  --table-index-width: 44px;
+  --table-action-width: 44px;
+  --table-border: #eef1f6;
+  --table-hover: #f9fafc;
+}
+/* Reserve the page scrollbar so tab changes cannot shift the workspace. */
+html { scrollbar-gutter: stable; }
+.app-shell table { width: 100%; border-collapse: collapse; background: white; }
+.app-shell table :is(th, td) {
+  box-sizing: border-box; height: var(--table-row-height); padding: var(--table-cell-padding);
+  font-size: var(--table-body-font); line-height: var(--table-line-height);
+  vertical-align: middle; color: var(--text); border-color: var(--table-border);
+}
+.app-shell table thead th {
+  height: var(--table-row-height); background: var(--app-header);
+  font-size: var(--table-header-font); font-weight: 500; white-space: nowrap;
+}
+.app-shell table tbody :is(th, td) { font-weight: 400; }
+.app-shell table tbody tr { background: white; }
+.app-shell table tbody tr:hover { background: var(--table-hover); }
+.app-shell table tbody :is(.composition-group, .composition-subgroup) th { background: inherit; }
+.app-shell table :is(.composition-group, .composition-subgroup) button {
+  min-height: 20px; padding-top: 0; padding-bottom: 0; line-height: var(--table-line-height); font-size: var(--table-body-font);
+}
+.app-shell table .composition-value { min-height: 20px; line-height: var(--table-line-height); }
+.app-shell table :is(.composition-index, .registry-index) { width: var(--table-index-width); padding-left: 8px; padding-right: 8px; text-align: center; }
+.app-shell .order-container-table .container-col-index { width: var(--table-index-width); }
+.app-shell table :is(.registry-actions, .cargo-editor-actions),
+.app-shell .order-container-table .container-col-action { width: var(--table-action-width); }
+/* A 30px control fits the same 36px row as text; preserve horizontal indentation. */
+.app-shell table :is(th, td):has(:is(.ui-control, .row-actions-button, .secondary-button, .row-clear-button, .status-badge, .container-status-badge)) {
+  padding-top: 2px; padding-bottom: 2px;
+}
+.app-shell .content table .ui-control {
+  height: var(--table-control-height); min-height: var(--table-control-height);
+  padding-top: 4px; padding-bottom: 4px; font-size: var(--table-body-font); line-height: 20px;
+}
+.app-shell table :is(.row-actions-button, .row-clear-button, .secondary-button) {
+  min-height: var(--table-control-height); height: var(--table-control-height); padding-top: 4px; padding-bottom: 4px; line-height: 20px;
+}
+.app-shell table .row-actions-button { width: 30px; }
+.app-shell table .ui-choice { width: 16px; height: 16px; margin: 0; vertical-align: middle; }
+.app-shell table .field { margin: 0; }
+.app-shell :is(.table-wrap, .order-container-scroll, .route-picker-scroll) { max-width: 100%; min-width: 0; overflow-x: auto; scrollbar-width: thin; }
+.app-shell :is(.order-composition-wrap, .order-container-scroll, .route-picker-scroll) { border: 1px solid var(--table-border); border-radius: var(--app-radius); }
+/* Grid-based editors use the same density as native tables. */
+.app-shell :is(.ktk-table-header, .cargo-table-header, .quantity-table-header, .quantity-cargo-header, .shipping-railway-container-header, .selected-waybill-header, .view-data-header) {
+  box-sizing: border-box; min-height: var(--table-row-height); padding-top: 7px; padding-bottom: 7px;
+  font-size: var(--table-header-font); line-height: 20px; font-weight: 500; background: var(--app-header);
+}
+.app-shell :is(.ktk-table-row, .cargo-row, .quantity-table-row, .quantity-cargo-row, .shipping-railway-container-row, .selected-waybill-row, .view-data-row) {
+  box-sizing: border-box; min-height: var(--table-row-height); padding-top: 2px; padding-bottom: 2px;
+  font-size: var(--table-body-font); line-height: 20px; background: white; border-color: var(--table-border);
+}
+.app-shell :is(.ktk-table-row, .cargo-row, .quantity-table-row, .quantity-cargo-row, .shipping-railway-container-row, .selected-waybill-row, .view-data-row):hover { background: var(--table-hover); }
+.app-shell :is(.ktk-table-row, .cargo-row, .quantity-table-row, .quantity-cargo-row, .shipping-railway-container-row) .ui-control {
+  height: var(--table-control-height); min-height: var(--table-control-height); font-size: var(--table-body-font); line-height: 20px; padding-top: 4px; padding-bottom: 4px;
+}
+.app-shell :is(.ktk-table-row, .cargo-row, .quantity-table-row, .quantity-cargo-row) > .field { padding-top: 0; padding-bottom: 0; }
+/* Expanded details and multi-line content retain their natural height. */
+.app-shell table .waybill-expanded-row > td { height: auto; padding: 12px; }
+.app-shell table .table-message { height: var(--table-row-height); }
+
+/* Keep the action slot and column geometry stable when entering edit mode. */
+.app-shell table.order-container-table { table-layout: fixed; }
+.app-shell table.order-container-table--physical { min-width: 1900px; }
+.app-shell table .container-readonly { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 20px; }
+.app-shell table .order-code { min-height: 20px; }
+.app-shell table .composition-group-index { vertical-align: top; }
+.app-shell .route-picker-table { min-width: 760px; }
+.app-shell .route-picker-table .route-picker-choice { width: 44px; }
+.app-shell .route-picker-table .route-picker-code { width: 140px; }
+.app-shell .route-picker-table .route-picker-date { width: 200px; }
+
+.app-shell table :is(.composition-group, .composition-subgroup) button { display: flex; }
+.app-shell .table-bottom-toolbar { margin-top: 12px; margin-bottom: 0; }
+
+.app-shell .table-bottom-hint { margin: 12px 0 0; }
+
+/* Inline ETRAN selection uses the shared table contract. */
+.waybill-selection-table { table-layout: fixed; min-width: 900px; }
+.waybill-selection-choice { width: var(--table-index-width); }
+.app-shell .waybill-selection-table :is(th, td):first-child { text-align: center; }
+.app-shell .waybill-selection-table tbody tr.waybill-selection-selected { background: #f5f9ff; }
+.waybill-selection-footer { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; font-size: 13px; }
+.waybill-selection-footer .pagination { margin-left: auto; border: 0; padding: 0; }
+.waybill-transit-status { color: #0065ff; background: #eef8ff; }
+.waybill-transit-status::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; margin-right: 6px; }
+
+.app-shell table .record-row { cursor: pointer; }
+
+/* Receiving/shipping registries share column order and table geometry. */
+.app-shell .transport-order-registry { min-width: 1180px; }
+.transport-order-date { white-space: nowrap; }
+.transport-order-comment { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.app-shell table tbody tr.composition-data, .app-shell table tbody tr.composition-group, .app-shell table tbody tr.composition-subgroup { background:#fff; }
+
+/* Service creation and cards follow the receiving-order table layout. */
+.app-shell :is(.service-table-page, .complex-service-page) :is(.table-wrap, .order-container-scroll) {
+  border:1px solid var(--table-border); border-radius:var(--app-radius); overflow-x:auto;
+}
+.app-shell :is(.service-table-page, .complex-service-page) table tbody :is(th, td) {
+  border-right:1px solid var(--table-border); border-bottom:1px solid var(--table-border);
+}
+.app-shell :is(.service-table-page, .complex-service-page) table tbody tr > :last-child { border-right:0; }
+.app-shell .service-table-page .service-compact-table table { min-width:760px; }
+.app-shell .service-table-page .service-receiving-table table { min-width:940px; }
+.app-shell .service-table-page .service-compact-table :is(th, td) { white-space:nowrap; }
+.app-shell .service-table-page .service-cargo-item { display:block; margin:0; line-height:20px; white-space:normal; overflow-wrap:anywhere; }
+.app-shell .service-table-page .service-cargo-item + .service-cargo-item { margin-top:4px; }
+.app-shell .service-table-page .service-compact-table .order-code { font-weight:400; }
+
+/* Inline service order metadata keeps the same columns in view/edit modes. */
+.app-shell .service-table-page table.service-metadata-table { table-layout: fixed; min-width: 1144px; }
+.service-metadata-table .service-metadata-party { overflow: hidden; text-overflow: ellipsis; }
+.service-metadata-table .service-metadata-date { white-space: nowrap; }

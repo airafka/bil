@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { InvoiceLine } from './invoices'
-import { invoiceDate, invoicePeriod, selectedInvoiceTotals } from './invoices'
+import { invoiceDate, invoicePeriod, selectedInvoiceTotals, filterInvoiceContainers } from './invoices'
 
 const lines: InvoiceLine[] = [
   { id: 'charge-1', performedAt: '2026-05-02T10:00:00Z', comprehensiveServiceOrderId: 's1', comprehensiveServiceOrderCode: 1, containerName: 'SAME1234567', serviceName: 'Первая услуга', amountWithoutVat: 0.1, amountWithVat: 0.12 },
@@ -19,5 +19,16 @@ describe('payment invoice selection', () => {
     expect(invoiceDate('2026-05-31T20:59:59Z', 'Europe/Moscow')).toBe('31.05.2026')
     expect(invoiceDate('2026-05-31T21:00:00Z', 'Europe/Moscow')).toBe('01.06.2026')
     expect(invoicePeriod('2026-05')).toContain('май')
+  })
+})
+
+describe('optional invoice container filter', () => {
+  const other = { ...lines[0], id: 'other', containerName: 'OTHER1234567' }
+  const all = [...lines, other]
+  it('keeps all services when no containers are selected', () => { expect(filterInvoiceContainers(all, [])).toEqual(all) })
+  it('keeps every charge for any selected container', () => {
+    expect(filterInvoiceContainers(all, ['SAME1234567'])).toEqual(lines)
+    expect(filterInvoiceContainers(all, ['SAME1234567', 'OTHER1234567'])).toEqual(all)
+    expect(filterInvoiceContainers(all, ['missing'])).toEqual([])
   })
 })

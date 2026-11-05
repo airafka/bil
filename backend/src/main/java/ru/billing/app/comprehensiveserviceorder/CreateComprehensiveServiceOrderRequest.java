@@ -9,7 +9,8 @@ public record CreateComprehensiveServiceOrderRequest(
         @NotNull(message = "Клиент обязателен") UUID clientId,
         @NotNull(message = "Договор обязателен") UUID contractId,
         @NotEmpty(message = "Выберите хотя бы одну накладную") List<@NotNull UUID> waybillIds,
-        UUID defaultContainerOwnerId
+        UUID defaultContainerOwnerId,
+        @NotNull(message = "Выберите услугу") UUID complexServiceId
 ) {
-    public CreateComprehensiveServiceOrderRequest(UUID clientId,UUID contractId,List<UUID> waybillIds) {this(clientId,contractId,waybillIds,null);}
+    public CreateComprehensiveServiceOrderRequest(UUID clientId,UUID contractId,List<UUID> waybillIds) {this(clientId,contractId,waybillIds,null,null);}
 }

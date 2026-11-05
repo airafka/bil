@@ -70,6 +70,9 @@ export type WaybillContainerSummary = Omit<ReceivingContainerAttributes, 'hazard
 }
 
 export type WaybillLink = {
+  createdAt?: string | null
+  shipmentType?: string
+  status?: string
   containers?: WaybillContainerSummary[]
   railwayCarriages?: WaybillCarriageSummary[]
   id: string
@@ -116,6 +119,11 @@ export type GroupedWaybillFilter = {
 }
 
 export type OrderSummary = {
+  plannedAt?: string | null
+  routeId?: string | null
+  routeNumber?: number | null
+  comprehensiveServiceOrderNumber?: number | null
+  comment?: string | null
   contractId: string | null
   contractName: string | null
   comprehensiveServiceOrderId: string | null
@@ -235,6 +243,13 @@ export type ContainerQuantityDetails = {
 }
 
 export type OrderDetails = {
+  createdAt?: string | null
+  transportWaybillNumber?: string | null
+  authorizedRepresentative?: string | null
+  phone?: string | null
+  email?: string | null
+  comment?: string | null
+  contractType?: string | null
   defaultContainerOwnerId?: string | null
   defaultContainerOwnerName?: string | null
   arrivalAt: string | null
@@ -298,7 +313,7 @@ export const orderConfigs: Record<OrderKind, OrderConfig> = {
 }
 
 export function statusLabel(status: string) {
-  return ({ DRAFT: 'Черновик', CONFIRMED: 'Подтверждено', COMPLETED: 'Выполнено' } as Record<string, string>)[status] ?? status
+  return ({ DRAFT: 'Черновик', PAID: 'Оплачен', CONFIRMED: 'Подтверждено', COMPLETED: 'Выполнено' } as Record<string, string>)[status] ?? status
 }
 
 export function transportTypeLabel(transportType: TransportType | null) {

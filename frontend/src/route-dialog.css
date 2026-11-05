@@ -1,0 +1,39 @@
+/* Dialogs are outside tables: no row heights, nowrap or table-control sizing. */
+#app-overlay-root { display: contents; }
+#app-overlay-root :is(.route-side-dialog, .route-picker-dialog) {
+  box-sizing: border-box; width: min(560px, 100vw); max-width: 100vw;
+  height: 100dvh; max-height: 100dvh; min-width: 0; padding: 0;
+  overflow: hidden; white-space: normal; text-align: left; font-weight: 400;
+}
+#app-overlay-root .route-side-dialog > form { height: 100%; min-height: 0; display: flex; flex-direction: column; }
+#app-overlay-root .route-picker-dialog { display: flex; flex-direction: column; }
+#app-overlay-root .route-dialog-heading {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px; flex: 0 0 auto; padding: 20px 24px; border-bottom: 1px solid var(--line);
+}
+#app-overlay-root .route-dialog-heading h2 { flex: 1 1 150px; min-width: 0; margin: 0; font-size: 20px; line-height: 28px; overflow-wrap: anywhere; }
+#app-overlay-root .route-dialog-heading .header-actions { flex: 0 0 auto; margin-left: auto; gap: 8px; }
+#app-overlay-root .route-dialog-heading .primary-button { height: 40px; min-height: 40px; white-space: nowrap; }
+#app-overlay-root .route-dialog-heading .close-button { flex: 0 0 40px; width: 40px; min-width: 40px; height: 40px; min-height: 40px; padding: 0; font-size: 25px; line-height: 1; }
+#app-overlay-root .route-drawer-body, #app-overlay-root .route-picker-dialog > form {
+  display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; overscroll-behavior: contain; padding: 16px 24px 24px; gap: 16px;
+}
+#app-overlay-root .route-drawer-body > *, #app-overlay-root .route-picker-dialog > form > * { flex: 0 0 auto; min-width: 0; }
+#app-overlay-root .route-picker-dialog > p { flex: 0 0 auto; margin: 12px 24px 0; }
+#app-overlay-root .form-fields-grid { grid-template-columns: minmax(0,1fr); gap: 16px; margin-top: 16px; }
+#app-overlay-root .form-fields-column { gap: 16px; }
+#app-overlay-root :is(.field, .horizontal-field, .route-drawer-body label) {
+  display: grid; grid-template-columns: minmax(0,1fr); gap: 6px; min-width: 0; max-width: none; margin: 0;
+}
+#app-overlay-root .field > span:first-child { padding-top: 0; white-space: normal; overflow-wrap: anywhere; }
+#app-overlay-root .ui-readonly-value { min-width: 0; overflow-wrap: anywhere; }
+#app-overlay-root .ui-form-section { padding: 0; margin: 8px 0; min-height: auto; }
+#app-overlay-root .form-section-heading { margin: 0; display: block; font-size: 18px; line-height: 26px; }
+@media (max-width: 380px) {
+  #app-overlay-root .route-dialog-heading { padding: 16px; }
+  #app-overlay-root .route-dialog-heading h2 { flex-basis: 100%; }
+  #app-overlay-root .route-drawer-body, #app-overlay-root .route-picker-dialog > form { padding: 16px; }
+}
+
+#app-overlay-root .route-reference-context { display: grid; gap: 16px; margin-top: 16px; }

@@ -1,6 +1,7 @@
 package ru.billing.app.order;
 
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 public record OrderSummary(
         UUID id,
@@ -13,6 +14,11 @@ public record OrderSummary(
         String status,
         UUID contractId,
         String contractName,
-        UUID comprehensiveServiceOrderId
+        UUID comprehensiveServiceOrderId,
+        LocalDateTime plannedAt,
+        UUID routeId,
+        Integer routeNumber,
+        Integer comprehensiveServiceOrderNumber,
+        String comment
 ) {
 }

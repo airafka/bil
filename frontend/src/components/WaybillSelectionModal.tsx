@@ -1,3 +1,4 @@
+import { Notification } from './Notification'
 import { UiInput } from './FormControls'
 import { useEffect, useState } from 'react'
 import { getGroupedWaybills } from '../api'
@@ -65,11 +66,10 @@ export function WaybillSelectionModal({ selected, onConfirm, onClose }: Props) {
       <section className="waybill-picker" role="dialog" aria-modal="true" aria-labelledby="waybill-picker-title">
         <header className="waybill-picker-header">
           <div><h2 id="waybill-picker-title">Выбор накладных</h2><p>Доступны только накладные, ещё не включённые в заявку.</p></div>
-          <button type="button" className="close-button" onClick={onClose} aria-label="Закрыть">×</button>
+          <div className="header-actions"><button type="button" className="secondary-button" onClick={onClose}>Отмена</button><button type="button" className="primary-button" onClick={() => onConfirm(draft)}>Добавить</button></div><button type="button" className="close-button" onClick={onClose} aria-label="Закрыть">×</button>
         </header>
 
-        {error && <div className="notice error" role="alert">{error}</div>}
-        {selectedGroupKey && <div className="picker-group-hint">Выбрана одна группа. Очистите выбор, чтобы перейти к другому маршруту.</div>}
+        {error && <Notification kind="error">{error}</Notification>}
 
         <div className="waybill-picker-list">
           {loading && <div className="table-message">Загружаем свободные накладные…</div>}
@@ -114,7 +114,7 @@ export function WaybillSelectionModal({ selected, onConfirm, onClose }: Props) {
             <span>Страница {page + 1}{data?.totalPages ? ` из ${data.totalPages}` : ''}</span>
             <button disabled={loading || page + 1 >= (data?.totalPages ?? 0)} onClick={() => { setLoading(true); setError(''); setPage((current) => current + 1) }}>Далее</button>
           </div>
-          <div className="picker-actions"><span>Выбрано: {draft.length}</span><button type="button" className="secondary-button" onClick={onClose}>Отмена</button><button type="button" className="primary-button" onClick={() => onConfirm(draft)}>Добавить</button></div>
+
         </footer>
       </section>
     </div>

@@ -25,6 +25,14 @@ public class WaybillController {
         return service.create(request);
     }
 
+    @org.springframework.web.bind.annotation.GetMapping("/available")
+    public AvailableWaybillPage available(
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "") String search,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int page,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "20") int size) {
+        return service.findAvailablePage(search, page, size);
+    }
+
     @PostMapping("/grouped/page")
     public GroupedWaybillPage groupedPage(@RequestBody(required = false) GroupedWaybillRequest request) {
         return service.findGroupedPage(request);

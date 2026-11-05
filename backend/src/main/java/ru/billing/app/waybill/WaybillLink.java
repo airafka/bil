@@ -10,6 +10,7 @@ public record WaybillLink(
         long containerCount,
         List<WaybillProductSummary> products,
         List<WaybillContainerSummary> containers,
-        List<WaybillCarriageSummary> railwayCarriages
+        List<WaybillCarriageSummary> railwayCarriages,
+        java.time.OffsetDateTime createdAt, String shipmentType, String status
 ) {
 }

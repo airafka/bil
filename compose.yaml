@@ -1,19 +1,19 @@
-name: billing
+name: billing-next
 
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-billing}
+      POSTGRES_DB: ${POSTGRES_DB:-billing_next}
       POSTGRES_USER: ${POSTGRES_USER:-billing}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-billing}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${DB_PORT:-5433}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-billing} -d ${POSTGRES_DB:-billing}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-billing} -d ${POSTGRES_DB:-billing_next}"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -25,13 +25,13 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: 5432
-      DB_NAME: ${POSTGRES_DB:-billing}
+      DB_NAME: ${POSTGRES_DB:-billing_next}
       DB_USER: ${POSTGRES_USER:-billing}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-billing}
-      FRONTEND_URL: http://localhost:${FRONTEND_PORT:-3000}
+      FRONTEND_URL: http://localhost:${FRONTEND_PORT:-3001}
       SPRING_PROFILES_ACTIVE: dev
     ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      - "${BACKEND_PORT:-8081}:8080"
     depends_on:
       db:
         condition: service_healthy
@@ -47,7 +47,7 @@ services:
       context: ./frontend
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      - "${FRONTEND_PORT:-3001}:80"
     depends_on:
       backend:
         condition: service_healthy

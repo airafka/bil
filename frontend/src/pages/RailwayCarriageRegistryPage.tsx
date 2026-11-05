@@ -1,3 +1,4 @@
+import { Notification } from '../components/Notification'
 import { useEffect, useState } from 'react'
 import { getRailwayCarriagePage, getReferenceOptions, updateRailwayCarriage } from '../api'
 import type { ReferenceOption } from '../domain'
@@ -26,7 +27,7 @@ export function RailwayCarriageRegistryPage() {
   const loading = loadedPage !== page
   return <section className="registry-page">
     <div className="page-header"><h1>Справочник вагонов</h1></div>
-    {error && <div className="notice error" role="alert">{error}</div>}
+    {error && <Notification kind="error">{error}</Notification>}
     <div className="table-card"><div className="table-wrap"><table aria-label="Справочник вагонов">
       <thead><tr><th>№</th><th>Номер вагона</th><th>Модель вагона</th><th>Грузоподъёмность, кг</th><th>Дата следующего ДР</th><th>Род вагона</th><th aria-label="Действия" /></tr></thead>
       <tbody>{loading ? <tr><td colSpan={7}>Загружаем вагоны…</td></tr> : rows.length ? rows.map((row, index) =>
@@ -63,6 +64,6 @@ function CarriageRow({ initial, index, models, kinds }: { initial: RailwayCarria
     <td>{editing ? <UiInput aria-label={'Грузоподъёмность — ' + row.name} inputMode="decimal" value={draft.loadCapacity ?? ''} disabled={saving} onChange={e => setDraft(d => ({ ...d, loadCapacity: e.target.value || null }))} /> : row.loadCapacity?.toLocaleString('ru-RU') ?? '—'}</td>
     <td>{editing ? <UiInput aria-label={'Дата следующего ДР — ' + row.name} type="date" value={draft.nextDepotRepairDate ?? ''} disabled={saving} onChange={e => setDraft(d => ({ ...d, nextDepotRepairDate: e.target.value || null }))} /> : row.nextDepotRepairDate?.split('-').reverse().join('.') || '—'}</td>
     <td>{editing ? select('carriageTypeId', 'Род вагона', kinds) : row.carriageTypeName || '—'}</td>
-    <td>{editing ? <><button className="primary-button" disabled={saving} onClick={save}>Сохранить</button><button className="secondary-button" disabled={saving} onClick={() => { setDraft(toDraft(row)); setError(''); setEditing(false) }}>Отмена</button></> : <RowActions label={'Действия с вагоном ' + row.name} actions={[{ label: 'Редактировать', onClick: () => setEditing(true) }]} />}{error && <div role="alert">{error}</div>}</td>
+    <td>{editing ? <><button className="primary-button" disabled={saving} onClick={save}>Сохранить</button><button className="secondary-button" disabled={saving} onClick={() => { setDraft(toDraft(row)); setError(''); setEditing(false) }}>Отмена</button></> : <RowActions label={'Действия с вагоном ' + row.name} actions={[{ label: 'Редактировать', onClick: () => setEditing(true) }]} />}{error && <Notification kind="error">{error}</Notification>}</td>
   </tr>
 }

@@ -1,3 +1,4 @@
+import { Notification } from './Notification'
 import { useRef, useState } from 'react'
 import { changeOrderStatus, finishContainerOrder } from '../api'
 import { statusLabel } from '../domain'
@@ -11,7 +12,8 @@ export function OrderStatusAction({ apiPath, id, status, onChanged }: {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const index = statuses.indexOf(status)
-  const next = index >= 0 ? statuses[index + 1] : undefined
+  const transport = apiPath === '/api/receiving-orders' || apiPath === '/api/shipping-orders'
+  const next = transport && status === 'DRAFT' ? undefined : index >= 0 ? statuses[index + 1] : undefined
   async function advance() {
     if (!next || lock.current) return
     lock.current = true
@@ -31,8 +33,8 @@ export function OrderStatusAction({ apiPath, id, status, onChanged }: {
     }
   }
   return <div className="order-status-control">
-    {next && <button type="button" className="primary-button" disabled={busy} onClick={advance}>{busy ? 'Сохраняем…' : next === 'CONFIRMED' ? 'Подтвердить' : apiPath === '/api/receiving-orders' ? 'Завершить разгрузку' : apiPath === '/api/shipping-orders' ? 'Завершить погрузку' : 'Выполнить'}</button>}
-    {error && <div className="notice error" role="alert">{error}</div>}
-    <span className="service-sr-only" role="status">{message}</span>
+    {next && <button type="button" className="primary-button" disabled={busy} onClick={advance}>{busy ? 'Сохраняем…' : next === 'CONFIRMED' ? 'Подтвердить' : 'Выполнить'}</button>}
+    {error && <Notification kind="error">{error}</Notification>}
+    {message && <Notification kind="success">{message}</Notification>}
   </div>
 }

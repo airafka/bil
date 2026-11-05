@@ -12,6 +12,7 @@ export type ComplexServiceTariff = {
   clientName: string
   contractId: string
   contractName: string
+  active: boolean
   coefficient: number
   priceWithoutVat: number
   priceWithVat: number
@@ -31,6 +32,7 @@ export type ComplexServicePayload = {
 export type ComplexServiceTariffPayload = {
   clientId: string
   contractId: string
+  active: boolean
   coefficient: string
 }
 

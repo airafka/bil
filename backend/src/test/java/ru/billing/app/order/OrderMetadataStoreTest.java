@@ -28,17 +28,33 @@ class OrderMetadataStoreTest {
     void storesArrivalAndConsignorOnReceivingHeader() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(42);
+        when(jdbc.queryForList(contains("select name from client"), eq(String.class), any(Object[].class))).thenAnswer(call -> List.of(call.getArgument(2, String.class)));
         CreateOrderRequest request = request();
         new ReceivingOrderStore(jdbc).createVehicle(request.withDefaultContainerOwner(request.clientId()));
         verify(jdbc).queryForObject(contains("order_status, plan_receiving_date_time, consignor"), eq(Integer.class),
                 any(UUID.class), eq(request.clientId()), eq(request.terminalAreaId()), eq("VEHICLE"),
-                eq(request.contractId()), eq(arrival), eq("Отправитель"), eq(request.clientId()));
+                eq(request.contractId()), eq(arrival), eq("Отправитель"), eq(request.clientId()), isNull(), isNull(), isNull(), isNull(), isNull());
+    }
+
+    @Test
+    void validatesAndPreservesReceivingContactsWhenSelectingOwner() {
+        CreateOrderRequest base = request();
+        CreateOrderRequest contact = new CreateOrderRequest(base.clientId(), base.contractId(), base.terminalAreaId(),
+                TransportType.VEHICLE, List.of(), List.of(), List.of(), FillingType.ALL, List.of(), List.of(),
+                null, arrival, "Отправитель", null, null, base.clientId(), "  Иванов  ", " +7 999 123-45-67 ", " bad-email ", " Комментарий ");
+        assertThat(contact.withDefaultContainerOwner(UUID.randomUUID()).authorizedRepresentative()).isEqualTo("Иванов");
+        assertThat(contact.phone()).isEqualTo("+7 999 123-45-67");
+        assertThat(contact.comment()).isEqualTo("Комментарий");
+        try (var factory = Validation.buildDefaultValidatorFactory()) {
+            assertThat(factory.getValidator().validate(contact)).extracting(v -> v.getPropertyPath().toString()).containsExactly("email");
+        }
     }
 
     @Test
     void storesDepartureAndConsigneeOnShippingHeader() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(43);
+        when(jdbc.queryForList(contains("select name from client"), eq(String.class), any(Object[].class))).thenAnswer(call -> List.of(call.getArgument(2, String.class)));
         CreateOrderRequest request = request();
         new ShippingOrderStore(jdbc).create(request);
         verify(jdbc).queryForObject(contains("order_status, planned_shipping_date_time, consignee_id"), eq(Integer.class),

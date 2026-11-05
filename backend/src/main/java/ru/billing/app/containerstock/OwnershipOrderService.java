@@ -16,7 +16,7 @@ public class OwnershipOrderService {
     private final ContainerStockService stock;
     public OwnershipOrderService(JdbcTemplate jdbc,ContainerStockService stock){this.jdbc=jdbc;this.stock=stock;}
     public enum ServiceType { CHANGE_OWNER }
-    public record Create(@NotNull UUID clientId,@NotNull ServiceType service,@Size(max=1000)String comment) {}
+    public record Create(@NotNull UUID clientId,@NotNull ServiceType service,@Size(max=1000)String comment,@NotEmpty(message="Выберите хотя бы один КТК") List<@NotNull UUID> containerOwnerIds) {}
     public record Update(@NotNull UUID id,@NotNull ServiceType service,@Size(max=1000)String comment) {}
     public record Selection(UUID id,UUID containerOwnerId) {}
     public record Link(UUID id,UUID containerOwnerId,UUID containerId,String containerName,String containerType,
@@ -46,10 +46,11 @@ public class OwnershipOrderService {
         return PagedResponse.of(jdbc.query(HEADER+filter+" order by s.number desc limit ? offset ?",(rs,n)->header(rs),query,query,status,status,size,page*size),page,size,count);
     }
     @Transactional public Details create(Create request){
+        if(request.containerOwnerIds()==null || request.containerOwnerIds().isEmpty())throw error(HttpStatus.BAD_REQUEST,"SERVICE_ORDER_CONTAINERS_REQUIRED","Выберите хотя бы один КТК");
         if(jdbc.queryForObject("select count(*) from client where id=?",Integer.class,request.clientId())==0)throw error(HttpStatus.NOT_FOUND,"CLIENT_NOT_FOUND","Клиент не найден");
         UUID id=UUID.randomUUID();
         jdbc.update("insert into service_order(id,client_id,service,comment) values(?,?,?,?)",id,request.clientId(),request.service().name(),request.comment());
-        return details(id);
+        return select(id,request.containerOwnerIds().stream().map(ownerId -> new Selection(null,ownerId)).toList());
     }
     @Transactional(readOnly=true)public Details details(UUID id){
         var rows=jdbc.query(HEADER+" where s.id=?",(rs,n)->header(rs),id);
@@ -92,8 +93,22 @@ public class OwnershipOrderService {
             (rs,n)->link(rs),id,h.clientId(),query,query,id,size,page*size);
         return PagedResponse.of(rows,page,size,count);
     }
+    @Transactional(readOnly=true)public PagedResponse<Link> availableForCreate(UUID clientId,String query,int page,int size){
+        page=Math.max(0,page);size=Math.max(1,Math.min(100,size));
+        String from="""
+            from container_owner o join container c on c.id=o.container_id join client cl on cl.id=o.client_id
+            where o.client_id<>? and (?='' or position(lower(?) in lower(c.code||' '||cl.name))>0)
+            and not exists(select 1 from service_order_container other join service_order so on so.id=other.service_order_id
+                where other.container_id=o.container_id and so.status='DRAFT')
+            """;
+        long count=jdbc.queryForObject("select count(*) "+from,Long.class,clientId,query,query);
+        var rows=jdbc.query("select null::uuid as link_id,o.id as owner_id,o.container_id,c.code as container_name,c.container_type,o.client_id,cl.name as client_name,o.status "+from+" order by c.code limit ? offset ?",
+            (rs,n)->link(rs),clientId,query,query,size,page*size);
+        return PagedResponse.of(rows,page,size,count);
+    }
     @Transactional public Details select(UUID id,List<Selection> selected){
         Header h=locked(id);draft(h);
+        if(selected==null || selected.isEmpty())throw error(HttpStatus.BAD_REQUEST,"SERVICE_ORDER_CONTAINERS_REQUIRED","Выберите хотя бы один КТК");
         var existing=links(id);Map<UUID,Link> byLink=new HashMap<>();existing.forEach(l->byLink.put(l.id(),l));
         Set<UUID> containers=new TreeSet<>();
         for(var value:selected){

@@ -10,6 +10,7 @@ export function receivingWaybillRows(waybills: SelectedWaybill[], defaultOwnerId
       if (result.has(c.containerId)) continue
       result.set(c.containerId, { key:c.containerId, containerId:c.containerId, name:c.number, empty:c.netWeight===0,
         ownerClientId:defaultOwnerId, ownerClientName:clients.find(client => client.id===defaultOwnerId)?.name,
+        containerType:c.type, loadCapacity:c.loadCapacity, tareWeight:c.tareWeight, grossWeight:c.grossWeight,
         sealNumbers:c.sealNumbers, sealTypeId:c.sealTypeId, sealTypeName:c.sealTypeName,
         hazardClassId:classes.length===1 ? classes[0].hazardClassId : null,
         hazardClassName:classes.length===1 ? classes[0].hazardClassName : null })

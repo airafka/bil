@@ -9,6 +9,7 @@ import {
   findContainerArea,
   initialOrderFormState,
   setContainerCargo,
+  setContainerCargoItems,
   setContainerEmpty,
   selectedWaybillTotals,
   toSelectedWaybill,
@@ -379,4 +380,49 @@ it('rejects quantities even when fillingType is ALL', () => {
   const state: OrderFormState = { ...initialOrderFormState, transportType: 'RAILWAY', railwayCarriageQuantities: [{ key: 1, quantity: '1', typeId: '' }] }
   expect(validateStep(state, 1, 'shipping')).toHaveLength(1)
   expect(() => buildPayload(state, 'shipping')).toThrow('только заявки с номерами')
+})
+
+// Multiple cargo rows must survive submission in both vehicle order flows.
+describe('vehicle cargo rows', () => {
+  it('serializes every cargo row for receiving and shipping', () => {
+    const state = setContainerCargoItems(toggleContainer(validMainState(), container), container.id, [
+      { etsngCodeId: 'cargo-1', weight: '12,345' },
+      { etsngCodeId: 'cargo-2', weight: '67' },
+    ])
+    for (const kind of ['receiving', 'shipping'] as const) {
+      expect(validateStep(state, 3, kind)).toEqual([])
+      expect(buildPayload(state, kind).containers[0].cargoItems).toEqual([
+        { etsngCodeId: 'cargo-1', weight: 12.345 }, { etsngCodeId: 'cargo-2', weight: 67 },
+      ])
+    }
+  })
+
+  it('validates each row, including the absence of rows', () => {
+    const state = toggleContainer(validMainState(), container)
+    expect(validateStep(setContainerCargoItems(state, container.id, []), 3)).toContain('Выберите груз для KTK-0001')
+    expect(validateStep(setContainerCargoItems(state, container.id, [
+      { etsngCodeId: 'cargo-1', weight: '12' }, { etsngCodeId: '', weight: '0' },
+    ]), 3)).toHaveLength(2)
+  })
+
+  it('clears all cargo when a container becomes empty', () => {
+    const state = setContainerCargoItems(toggleContainer(validMainState(), container), container.id, [
+      { etsngCodeId: 'cargo-1', weight: '12' }, { etsngCodeId: 'cargo-2', weight: '34' },
+    ])
+    const empty = setContainerEmpty(state, container.id, true)
+    expect(buildPayload(empty).containers[0].cargo).toBeNull()
+    expect(buildPayload(empty).containers[0].cargoItems ?? []).toEqual([])
+    expect(validateStep(empty, 3)).toEqual([])
+    expect(validateStep(setContainerEmpty(empty, container.id, false), 3)).toHaveLength(2)
+  })
+})
+
+
+describe('receiving contact information', () => {
+  it('sends trimmed contacts and a multiline comment for receiving and shipping', () => {
+    const state = { ...validMainState(), authorizedRepresentative: '  Иванов И.И. ', phone: ' +7 (999) 123-45-67 ', email: ' test@example.com ', comment: ' Первая строка\nВторая строка ' }
+    expect(buildPayload(state, 'receiving')).toMatchObject({ authorizedRepresentative: 'Иванов И.И.', phone: '+7 (999) 123-45-67', email: 'test@example.com', comment: 'Первая строка\nВторая строка' })
+    expect(buildPayload(state, 'shipping')).toMatchObject({ authorizedRepresentative: 'Иванов И.И.', phone: '+7 (999) 123-45-67', email: 'test@example.com', comment: 'Первая строка\nВторая строка' })
+    expect(buildPayload(validMainState(), 'receiving')).not.toHaveProperty('email')
+  })
 })

@@ -30,6 +30,7 @@ public record OrderDetails(
         LocalDateTime departureAt,
         String consignee,
         UUID defaultContainerOwnerId,
-        String defaultContainerOwnerName
+        String defaultContainerOwnerName,
+        String authorizedRepresentative, String phone, String email, String comment, String contractType, java.time.OffsetDateTime createdAt, String transportWaybillNumber
 ) {
 }

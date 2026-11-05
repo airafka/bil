@@ -1,0 +1,10 @@
+{
+  "archivedAt": "2026-11-03",
+  "reason": "Consolidation after V20; originals preserved byte-for-byte",
+  "sha256": {
+    "README.md": "eda403104d70f7607e037f1236620dd86f87ede460aba89d9189e20cb8db7398",
+    "HANDOFF.md": "5c62543d07e04c507dd961a439e8a4d406b10477a7b66b4135765a48e137fca5",
+    "DESIGN.md": "3175852d2d80d9c6c411b7c67284b48784f8411107dfd6f823a83022da859aa7",
+    "BACKEND_ALIGNMENT.md": "5d660f6522ac81b13e0055e1d3f848495b624d4053d7a1cd7609e73dab63c772"
+  }
+}

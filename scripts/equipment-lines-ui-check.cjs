@@ -1,0 +1,18 @@
+const fs=require('fs'),path=require('path'),assert=require('node:assert/strict'),{spawn}=require('node:child_process');
+const dir=__dirname,profile=path.join(dir,'route-layout-test-profile-'+Date.now());fs.mkdirSync(profile);
+const chrome=spawn('C:/Program Files/Google/Chrome/Application/chrome.exe',['--headless=new','--disable-gpu','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{windowsHide:true,stdio:'ignore'});
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{
+let port;for(let i=0;i<80;i++){try{port=fs.readFileSync(path.join(profile,'DevToolsActivePort'),'utf8').split('\n')[0];break}catch{}await pause(100)}assert.ok(port,'Headless browser startup');
+const target=(await(await fetch('http://127.0.0.1:'+port+'/json/list')).json()).find(x=>x.type==='page');const ws=new WebSocket(target.webSocketDebuggerUrl);await new Promise((r,j)=>{ws.addEventListener('open',r,{once:true});ws.addEventListener('error',j,{once:true})});
+let seq=0;const pending=new Map();ws.addEventListener('message',e=>{const m=JSON.parse(e.data);if(pending.has(m.id)){const {resolve,reject}=pending.get(m.id);pending.delete(m.id);m.error?reject(Error(JSON.stringify(m.error))):resolve(m.result)}});
+function send(method,params={}){return new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});ws.send(JSON.stringify({id,method,params}))})}
+async function evaljs(expression){const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result.value}
+async function wait(expression){for(let i=0;i<70;i++){if(await evaljs(expression))return;await pause(100)}throw Error('Timeout: '+expression)}
+await send('Page.enable');await send('Runtime.enable');await send('Emulation.setDeviceMetricsOverride',{width:1280,height:900,deviceScaleFactor:1,mobile:false});
+
+const base=process.env.NUMBER_UI_BASE||'http://localhost:3028';
+await send('Page.navigate',{url:base+'/comprehensive-service-orders/135a3df7-14cf-4a43-9cec-592011710bf2'});await wait(`[...document.querySelectorAll('button')].some(b=>b.textContent.trim()==='Заявки на вывоз')`);await evaljs(`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Заявки на вывоз').click()`);await wait(`document.querySelectorAll('.service-cargo-item').length>1`);
+for(const width of [1440,1024,640]){await send('Emulation.setDeviceMetricsOverride',{width,height:960,deviceScaleFactor:1,mobile:false});await pause(100);const result=await evaljs(`(()=>{const cell=[...document.querySelectorAll('td')].find(c=>c.querySelectorAll('.service-cargo-item').length===2);const spans=[...cell.querySelectorAll('.service-cargo-item')].map(e=>{const r=e.getBoundingClientRect();return {top:r.top,bottom:r.bottom,right:r.right,text:e.textContent}});return {spans,right:cell.getBoundingClientRect().right,bottom:cell.getBoundingClientRect().bottom,page:document.documentElement.scrollWidth,viewport:innerWidth}})()`);assert.ok(result.spans[1].top>=result.spans[0].bottom);assert.ok(result.spans[1].bottom<=result.bottom);for(const x of result.spans){assert.ok(x.right<=result.right);assert.match(x.text,/^TKRU\d{7}$/)}assert.ok(result.page<=result.viewport);console.log('PASS separate container lines',width,result.spans.map(x=>x.text));fs.writeFileSync(path.join(dir,'equipment-ktk-lines-'+width+'.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));}
+await send('Browser.close').catch(()=>{});ws.close();
+})().catch(e=>{console.error(e);process.exitCode=1}).finally(()=>{chrome.kill()});

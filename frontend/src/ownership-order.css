@@ -1,0 +1,27 @@
+.ownership-page .ownership-toolbar { display: flex; justify-content: flex-end; padding: 12px 16px; }
+.ownership-page .ownership-toolbar .ui-control, .ownership-tabs-toolbar > .ui-control { width: 280px; max-width: 100%; }
+.ownership-tabs-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.ownership-tabs-toolbar .stepper { margin-bottom: 0; }
+.ownership-page .ui-form-section { min-height: 0; }
+.ownership-page .ui-form-section + .ui-form-section { margin-top: 24px; }
+.ownership-page .ownership-comment { grid-template-columns: 180px minmax(0, 1fr); }
+.ownership-comment textarea { min-height: 80px; resize: vertical; }
+.ownership-comment-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ownership-status { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 4px; font-size: 12px; line-height: 18px; color: #667085; background: #f2f4f7; white-space: nowrap; }
+.ownership-status::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.ownership-status-done { color: #039855; background: #ecfdf3; }
+.ownership-status-field { min-height: 40px; display: flex; align-items: center; }
+.ownership-registry-table { min-width: 980px; }
+.ownership-container-table { min-width: 600px; }
+@media (max-width: 760px) {
+  .ownership-tabs-toolbar { flex-wrap: wrap; }
+  .ownership-page .ownership-comment { grid-template-columns: 1fr; }
+}
+.ownership-preview { width: min(800px, calc(100vw - 48px)); max-height: calc(100vh - 48px); overflow: auto; padding: 24px; border: 1px solid var(--app-border); border-radius: var(--app-radius); color: var(--text); }
+.ownership-preview::backdrop { background: rgb(16 24 40 / 35%); }
+.ownership-preview h2 { margin: 0; font-size: 20px; }
+.ownership-page .link-button { display: inline; padding: 0; margin: 0; border: 0; background: none; color: var(--blue); font: inherit; line-height: 20px; cursor: pointer; }
+.ownership-page .link-button:hover { text-decoration: underline; }
+.ownership-page .ownership-comment { width: 100%; max-width: none; }
+.ownership-page .ownership-comment textarea { width: 100%; max-width: none; }
+.ownership-page .ownership-service-field { grid-column: 1; }

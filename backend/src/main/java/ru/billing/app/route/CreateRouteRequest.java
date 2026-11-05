@@ -11,9 +11,9 @@ public record CreateRouteRequest(
         @NotNull OffsetDateTime departureAt,
         @NotNull UUID terminalAreaId,
         @NotNull TransportType transportType,
-        String carrier,
-        String driverName,
-        String vehicleNumber,
+        UUID carrierId,
+        UUID driverId,
+        UUID vehicleId,
         String comment,
         @NotNull List<UUID> orderIds
 ) {}

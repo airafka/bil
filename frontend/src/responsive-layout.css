@@ -1,0 +1,48 @@
+/* Adapt to the workspace left after navigation, not just the browser viewport. */
+.content { container: workspace / inline-size; }
+.content > :is(.registry-page, .form-page, .view-page) { width: 100%; max-width: none; min-width: 0; }
+.content :is(.form-workspace, .table-card, .form-fields-column, .field, .details-grid > div, .view-title) { min-width: 0; }
+.content :is(.page-header, .service-header, .view-header-actions, .service-header-actions, .ownership-tabs-toolbar, .route-form-actions, .invoice-selection-footer) { flex-wrap: wrap; }
+.content :is(.page-header, .service-header) h1 { min-width: 0; overflow-wrap: anywhere; }
+.content :is(.view-header-actions, .service-header-actions) { max-width: 100%; }
+.content .pagination { flex-wrap: wrap; gap: 8px 12px; }
+.content .pagination button { width: auto; min-width: 32px; white-space: nowrap; flex-shrink: 0; }
+
+@container workspace (max-width: 1100px) {
+  .content :is(.form-fields-grid, .waybill-main-grid, .details-grid, .route-information-grid, .service-main-columns, .invoice-create-page .invoice-filters) {
+    grid-template-columns: minmax(0, 1fr); max-width: 100%;
+  }
+  .content .service-main-columns { gap: 12px; }
+  .content .service-order-main-grid > .form-fields-column { max-width: 728px; }
+  .app-shell .service-order-main-grid > .form-fields-column:nth-child(2) > .field.horizontal-field { grid-template-columns: 180px minmax(0, 1fr); }
+}
+@container workspace (max-width: 640px) {
+  .app-shell .content .field:has(> span:first-child:not(.sr-only):not(.service-sr-only)):not(.service-search),
+  .app-shell .content :is(.horizontal-field, .details-grid > div, .route-information-grid > div) {
+    grid-template-columns: minmax(0, 1fr); gap: 4px;
+  }
+  .content :is(.registry-filters, .waybill-mass-row) { grid-template-columns: minmax(0, 1fr); }
+  .content .details-grid { row-gap: 12px; }
+  .content .details-grid :is(dt, dd) { padding-top: 0; padding-bottom: 0; min-height: 0; }
+  .content .service-tab-charge-totals { width: 100%; margin-left: 0; }
+  .content .service-tab-charge-totals .service-charge-totals > div { grid-template-columns: minmax(0, 150px) minmax(0, 1fr); }
+}
+/* Tablet records use two labelled columns; wide/grouped content retains the whole row. */
+@container workspace (min-width: 640px) {
+  .app-shell table.responsive-table--records > tbody > tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app-shell table.responsive-table--records > tbody > tr > :is([data-responsive-wide="true"], .composition-index, .registry-index, .registry-actions, .cargo-editor-actions) { grid-column: 1 / -1; }
+}
+
+/* Compact labelled registry rows on narrow workspaces: label beside its value. */
+@container workspace (max-width: 639px) {
+  .app-shell .registry-page table.responsive-table--records > tbody > tr > td:not([data-responsive-wide="true"]) {
+    display: grid; grid-template-columns: minmax(90px, .85fr) minmax(0, 1.15fr); gap: 4px 12px;
+    align-items: center; text-align: left;
+  }
+  .app-shell .registry-page table.responsive-table--records > tbody > tr > td[data-responsive-label]::before { margin: 0; }
+  .app-shell .registry-page table.responsive-table--records > tbody > tr > td > :is(a, button, .status-badge, .container-status-badge) { justify-self: start; }
+}
+
+@container workspace (max-width: 900px) {
+  .content .service-progress { grid-template-columns: minmax(0, 1fr); }
+}

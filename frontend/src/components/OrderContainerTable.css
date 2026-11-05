@@ -8,10 +8,13 @@
 .order-container-table .container-col-empty { width: 80px; }
 .order-container-table .container-col-status { width: 165px; }
 .order-container-table .container-col-action { width: 34px; }
-.order-container-table th { height: 34px; background: #edf3ff; padding: 7px 8px; text-align: left; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.order-container-table th { background: #edf3ff; text-align: left; font-weight: 500; white-space: nowrap; }
 .order-container-table th b { color: #e05160; }
-.order-container-table td { height: 40px; padding: 4px 6px; border-top: 1px solid #edf0f6; vertical-align: middle; overflow-wrap: anywhere; }
-.order-container-table tbody tr:nth-child(even) { background: #f7f9fd; }
+.order-container-table td { border-top: 1px solid #edf0f6; overflow-wrap: anywhere; }
+.order-container-table tbody tr,
+.order-container-table tbody tr:nth-child(even) { background: white; }
+.order-container-table tbody tr:hover,
+.order-container-table tbody tr:nth-child(even):hover { background: var(--app-background); }
 .order-container-table th:first-child, .order-container-table td:first-child, .order-container-table .container-empty-cell { text-align: center; }
 .order-container-table .ui-control { height: 30px; min-height: 30px; width: 100%; padding-top: 4px; padding-bottom: 4px; font-size: 11px; }
 .order-container-table .container-readonly { display: block; line-height: 1.4; }

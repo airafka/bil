@@ -1,0 +1,23 @@
+.waybill-hierarchy-editor { border: 0; padding: 0; margin: 0; min-width: 0; }
+.waybill-hierarchy-toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+.waybill-hierarchy-group-actions { display: flex; align-items: center; justify-content: flex-start; gap: 24px; }
+.waybill-hierarchy-group-actions .secondary-button { white-space: nowrap; }
+.waybill-draft-table { table-layout: fixed; }
+.waybill-draft-wagons { min-width: 1080px; }
+.waybill-draft-cargo { min-width: 900px; }
+.composition-outline.waybill-draft-containers { table-layout: fixed; min-width: 1740px; }
+.waybill-draft-table .waybill-hierarchy-number { width: 300px; }
+.waybill-draft-cargo .waybill-hierarchy-number { width: 380px; }
+.waybill-draft-table .ui-control { width: 100%; min-width: 0; }
+.waybill-draft-table :is(td, th) { overflow-wrap: anywhere; }
+.waybill-hierarchy-view { min-width: 0; }
+.waybill-hierarchy-view > .stepper { margin: 0 0 16px; }
+.waybill-hierarchy-view .form-section { margin: 0; padding: 0; border: 0; }
+.waybill-main-fields { max-width: none; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 800px) { .waybill-main-fields { grid-template-columns: minmax(0, 1fr); } }
+.app-shell .waybill-hierarchy-group-actions .secondary-button { border: 1px solid var(--table-border); border-radius: var(--app-radius); padding: 4px 10px; background: white; font-weight: 400; }
+
+.waybill-hierarchy-view .composition-cargo { min-width: 900px; }
+.waybill-hierarchy-view .composition-cargo > thead > tr > th:nth-child(2) { width: 180px; }
+.waybill-hierarchy-view .composition-cargo > thead > tr > th:nth-child(3) { width: 260px; }
+.waybill-hierarchy-view .composition-wagons { min-width: 1100px; }

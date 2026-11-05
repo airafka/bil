@@ -8,6 +8,11 @@ import './service-table.css'
 import './routes.css'
 import './complex-service.css'
 import './design-system.css'
+import './route-dialog.css'
+import './table-system.css'
+import './responsive-tables.css'
+import './select-controls.css'
+import './responsive-layout.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

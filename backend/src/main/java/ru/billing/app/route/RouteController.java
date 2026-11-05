@@ -11,7 +11,8 @@ import ru.billing.app.order.TransportType;
 @RequestMapping("/api/routes")
 public class RouteController {
     private final RouteService service;
-    public RouteController(RouteService service) { this.service = service; }
+    private final ru.billing.app.order.OrderStatusService statuses;
+    public RouteController(RouteService service, ru.billing.app.order.OrderStatusService statuses) { this.service = service; this.statuses = statuses; }
 
     @GetMapping
     public List<RouteSummary> findAll() { return service.findAll(); }
@@ -28,6 +29,12 @@ public class RouteController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public RouteDetails create(@Valid @RequestBody CreateRouteRequest request) { return service.create(request); }
+
+    @PutMapping("/{id}")
+    public RouteDetails update(@PathVariable UUID id, @Valid @RequestBody UpdateRouteRequest request) { return service.update(id,request); }
+
+    @PostMapping("/{id}/confirm")
+    public RouteDetails confirm(@PathVariable UUID id) { statuses.confirmRoute(id); return service.findById(id); }
 
     @PostMapping("/{id}/orders")
     public RouteDetails assign(@PathVariable UUID id, @Valid @RequestBody AssignRouteOrdersRequest request) {

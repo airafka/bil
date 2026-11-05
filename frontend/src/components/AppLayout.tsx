@@ -1,3 +1,4 @@
+import { useResponsiveTables } from './useResponsiveTables'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 
@@ -5,6 +6,9 @@ const navigationGroups = [
   { title: 'Справочники', icon: 'list', items: [
     { path: '/railway-carriages', title: 'Вагоны', icon: 'list' },
     { path: '/containers', title: 'КТК', icon: 'list' },
+    { path: '/transport-carriers', title: 'Перевозчики / экспедиторы', icon: 'list' },
+    { path: '/transport-drivers', title: 'Водители-экспедиторы', icon: 'list' },
+    { path: '/transport-vehicles', title: 'Транспортные средства', icon: 'list' },
     { path: '/routes', title: 'Рейсы', icon: 'list' },
     { path: '/waybills', title: 'Накладные ЭТРАН', icon: 'list' },
     { path: '/complex-services', title: 'Комплексные услуги', icon: 'billing' },
@@ -13,8 +17,8 @@ const navigationGroups = [
   { title: 'Заявки', icon: 'documents', items: [
     { path: '/receiving-orders', title: 'Заявки на поставку', icon: 'paper' },
     { path: '/shipping-orders', title: 'Заявки на вывоз', icon: 'paper' },
-    { path: '/service-orders', title: 'Смена собственника КТК', icon: 'paper' },
-    { path: '/comprehensive-service-orders', title: 'Заявки на комплексные услуги', icon: 'billing' },
+    { path: '/service-orders', title: 'Заявка на смену собственника', icon: 'paper' },
+    { path: '/comprehensive-service-orders', title: 'Заявка на услугу', icon: 'billing' },
   ] },
   { title: 'Биллинг', icon: 'billing', items: [
     { path: '/billing-charges', title: 'Оказанные услуги', icon: 'billing' },
@@ -24,6 +28,7 @@ const navigationGroups = [
 const navigation = navigationGroups.flatMap(group => group.items)
 
 export function AppLayout({ children }: { children: ReactNode }) {
+  useResponsiveTables()
   const { pathname } = useLocation()
   const [expanded, setExpanded] = useState(() => { try { return localStorage.getItem('billing-menu') === 'expanded' } catch { return false } })
   useEffect(() => { try { localStorage.setItem('billing-menu', expanded ? 'expanded' : 'collapsed') } catch { /* Storage may be unavailable. */ } }, [expanded])
@@ -38,7 +43,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     })
   }
   const current = navigation.find(item => pathname.startsWith(item.path))
-  const isCreating = pathname.endsWith('/new') || pathname.endsWith('/create')
+  const isCreating = pathname.endsWith('/new') || pathname.endsWith('/create') || pathname === '/waybills/generate'
   const isViewing = !isCreating && pathname.split('/').filter(Boolean).length > 1
   return <div className="app-shell" data-menu-expanded={expanded}>
     <a className="skip-link" href="#main-content">Перейти к содержимому</a>
@@ -72,6 +77,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </header>
       <main id="main-content" className="content" tabIndex={-1}>{children}</main>
     </div>
+    <div id="app-overlay-root" />
   </div>
 }
 

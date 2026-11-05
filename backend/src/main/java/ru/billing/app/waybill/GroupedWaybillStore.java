@@ -27,6 +27,23 @@ public class GroupedWaybillStore {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    public AvailableWaybillPage findAvailablePage(String search, int requestedPage, int requestedSize) {
+        int page = Math.max(0, requestedPage), size = Math.max(1, Math.min(100, requestedSize));
+        String query = search == null ? "" : search.strip();
+        String condition = "w.receiving_order_id is null and position(lower(?) in lower(w.number)) > 0";
+        long total = jdbcTemplate.queryForObject("select count(*) from waybill w where " + condition, Long.class, query);
+        List<UUID> ids = jdbcTemplate.query("select w.id from waybill w where " + condition + " order by w.number, w.id limit ? offset ?",
+                (rs, row) -> rs.getObject("id", UUID.class), query, size, (long) page * size);
+        if (ids.isEmpty()) return new AvailableWaybillPage(List.of(), total, (int) Math.ceil((double) total / size), page, size);
+        BatchFilter filter = new BatchFilter("w.receiving_order_id is null and w.id in (" + String.join(",", java.util.Collections.nCopies(ids.size(), "?")) + ")", new ArrayList<Object>(ids));
+        var products = loadProducts(filter);
+        var groups = loadWaybills(filter, products.byWaybill());
+        Map<UUID, AvailableWaybillPage.Row> rows = new LinkedHashMap<>();
+        groups.forEach((key, bills) -> bills.forEach(bill -> rows.put(bill.id(), new AvailableWaybillPage.Row(
+                key.departureStation() + "|" + key.destinationStation() + "|" + key.payer(), key.departureStation(), key.destinationStation(), key.payer(), bill))));
+        return new AvailableWaybillPage(ids.stream().map(rows::get).filter(java.util.Objects::nonNull).toList(), total, (int) Math.ceil((double) total / size), page, size);
+    }
+
     public GroupedWaybillPage findPage(GroupedWaybillRequest request) {
         int page = request.pageInfo() == null || request.pageInfo().page() == null
                 ? 0 : Math.max(0, request.pageInfo().page());
@@ -127,13 +144,13 @@ public class GroupedWaybillStore {
         ContainerIndex containers = loadContainers(batchFilter);
         Map<UUID, List<WaybillCarriageSummary>> carriages = loadCarriages(batchFilter, containers.byCarriage());
         jdbcTemplate.query(
-                "select w.id, w.number, w.departure_station, w.destination_station, w.payer, "
+                "select w.id, w.number, w.departure_station, w.destination_station, w.payer, b.created_at, b.shipment_type, b.status, "
                         + "(select count(*) from waybill_railway_carriage wrc where wrc.waybill_id = w.id) "
                         + "as railway_carriage_count, "
                         + "(select count(*) from waybill_container_details wc "
                         + "join waybill_railway_carriage wrc on wrc.id = wc.waybill_railway_carriage_id "
                         + "where wrc.waybill_id = w.id) as container_count "
-                        + "from waybill_details w where "
+                        + "from waybill_details w join waybill b on b.id=w.id where "
                         + batchFilter.sql() + " order by w.number, w.id",
                 resultSet -> {
                     GroupKey key = new GroupKey(
@@ -148,7 +165,8 @@ public class GroupedWaybillStore {
                             resultSet.getLong("container_count"),
                             productsByWaybill.getOrDefault(resultSet.getObject("id", UUID.class), List.of()),
                             containers.byWaybill().getOrDefault(resultSet.getObject("id", UUID.class), List.of()),
-                            carriages.getOrDefault(resultSet.getObject("id", UUID.class), List.of())
+                            carriages.getOrDefault(resultSet.getObject("id", UUID.class), List.of()),
+                            resultSet.getObject("created_at", java.time.OffsetDateTime.class), resultSet.getString("shipment_type"), resultSet.getString("status")
                     ));
                 },
                 batchFilter.parameters().toArray()
@@ -226,16 +244,21 @@ public class GroupedWaybillStore {
             Map<UUID, List<WaybillContainerSummary>> containers) {
         Map<UUID, List<WaybillCarriageSummary>> result = new LinkedHashMap<>();
         jdbcTemplate.query("""
-                select w.id as waybill_id, rc.id, c.code as number
+                select w.id as waybill_id, rc.id, c.code as number, t.name as type_name, m.code as model_name,
+                       c.lifting_capacity, c.date_depot_repair
                   from waybill_railway_carriage rc
                   join railway_carriage c on c.id = rc.railway_carriage_id
+                  left join railway_carriage_model m on m.id = c.model_id
+                  left join railway_carriage_type t on t.id = c.type_id
                   join waybill_details w on w.id = rc.waybill_id
                  where
                 """ + filter.sql() + " order by w.number, c.code, rc.id",
                 (org.springframework.jdbc.core.RowCallbackHandler) rs -> {
                     UUID id = rs.getObject("id", UUID.class);
                     result.computeIfAbsent(rs.getObject("waybill_id", UUID.class), key -> new ArrayList<>())
-                            .add(new WaybillCarriageSummary(id, rs.getString("number"), containers.getOrDefault(id, List.of())));
+                            .add(new WaybillCarriageSummary(id, rs.getString("number"), containers.getOrDefault(id, List.of()),
+                                    rs.getString("type_name"), rs.getString("model_name"), rs.getBigDecimal("lifting_capacity"),
+                                    rs.getObject("date_depot_repair", java.time.LocalDate.class)));
                 }, filter.parameters().toArray());
         return result;
     }

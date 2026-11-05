@@ -10,7 +10,11 @@ import ru.billing.app.order.PagedResponse;
 @RequestMapping("/api/comprehensive-service-orders")
 public class ComprehensiveServiceOrderController {
     private final ComprehensiveServiceOrderService service;
-    public ComprehensiveServiceOrderController(ComprehensiveServiceOrderService service) { this.service = service; }
+    private final ServiceTransportMetadataService metadata;
+    public ComprehensiveServiceOrderController(ComprehensiveServiceOrderService service, ServiceTransportMetadataService metadata) { this.service = service; this.metadata=metadata; }
+
+    @PatchMapping("/{id}/transport-metadata")
+    public ComprehensiveServiceOrderDetails updateMetadata(@PathVariable UUID id,@Valid @RequestBody UpdateServiceTransportMetadataRequest request){return metadata.update(id,request);}
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -22,6 +26,9 @@ public class ComprehensiveServiceOrderController {
             @Valid @RequestBody CreateServiceShippingRequest request) {
         return service.createShippingForTwentyFootContainers(id, request.containerIds());
     }
+
+    @GetMapping("/available-services")
+    public java.util.List<ComprehensiveServiceOrderService.AvailableService> availableServices() { return service.availableServices(); }
 
     @GetMapping
     public PagedResponse<ComprehensiveServiceOrderSummary> findPage(@RequestParam(defaultValue = "0") int page,

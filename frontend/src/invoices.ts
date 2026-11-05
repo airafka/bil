@@ -1,11 +1,12 @@
 export type InvoiceFilters = { clientId: string; contractId: string; period: string }
 export type InvoiceLine = {
   id: string; performedAt: string; comprehensiveServiceOrderId: string; comprehensiveServiceOrderCode: number
+  tariffId?: string | null
   containerName: string; serviceName: string; amountWithoutVat: number; amountWithVat: number
 }
 export type PaymentInvoice = InvoiceFilters & {
   id: string; code: number; clientName: string; contractName: string; timeZone: string
-  status: 'DRAFT'; currency: string; amountWithoutVat: number; amountWithVat: number; createdAt: string
+  status: 'DRAFT' | 'PAID'; version: number; paidAt: string | null; currency: string; amountWithoutVat: number; amountWithVat: number; createdAt: string
 }
 export type InvoiceDetails = { invoice: PaymentInvoice; items: InvoiceLine[] }
 export type InvoiceCandidates = { items: InvoiceLine[]; timeZone: string }
@@ -23,4 +24,17 @@ export function selectedInvoiceTotals(items: InvoiceLine[], selected: Set<string
     count++
   }
   return { count, withoutVat: withoutVat / 100, withVat: withVat / 100, vat: (withVat - withoutVat) / 100 }
+}
+
+export function filterInvoiceContainers(items: InvoiceLine[], containerNames: string[]) {
+  if (!containerNames.length) return items
+  const selected = new Set(containerNames)
+  return items.filter(item => selected.has(item.containerName))
+}
+
+export type AppliedInvoiceTariff = {
+  tariffId: string; complexServiceId: string; serviceName: string; clientName: string; contractName: string
+  containerName: string; invoiceCode: number; comprehensiveServiceOrderCode: number; comprehensiveServiceOrderId: string
+  performedAt: string; coefficient: number; basePriceWithoutVat: number; basePriceWithVat: number
+  priceWithoutVat: number; priceWithVat: number; timeZone: string
 }

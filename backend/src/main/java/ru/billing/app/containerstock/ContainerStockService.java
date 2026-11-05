@@ -66,7 +66,14 @@ public class ContainerStockService {
         String table=receiving?"receiving_order_container":"shipping_order_container";
         String column=receiving?"receiving_order_id":"shipping_order_id";
         record Row(UUID container,UUID owner) {}
-        var rows=jdbc.query("select container_id,owner_container_id from "+table+" where "+column+"=? order by container_id",
+        boolean railway=receiving && "RAILWAY".equals(jdbc.queryForObject("select transport_type from receiving_order where id=?",String.class,order));
+        String source=railway ? """
+            select distinct wc.container_id,wc.owner_container_id as owner_container_id
+            from receiving_order r join waybill w on w.receiving_order_id=r.id
+            join waybill_railway_carriage rc on rc.waybill_id=w.id join waybill_container wc on wc.waybill_railway_carriage_id=rc.id
+            where r.id=? order by wc.container_id
+            """ : "select container_id,owner_container_id from "+table+" where "+column+"=? order by container_id";
+        var rows=jdbc.query(source,
             (rs,n)->new Row(rs.getObject(1,UUID.class),rs.getObject(2,UUID.class)),order);
         // Legacy empty orders have no physical KTK to reserve.
         if(rows.isEmpty()) {

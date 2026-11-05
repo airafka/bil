@@ -1,0 +1,43 @@
+-- Explicitly requested fictional Russian demo data; not a startup migration.
+BEGIN;
+INSERT INTO client_related_entity(id,name,active) VALUES('18000000-0000-4000-8000-000000000001','ООО "Волжский транспорт"',true) ON CONFLICT DO NOTHING;
+INSERT INTO client_driver(id,code,active,phone_number,poa_number,poa_valid_to) VALUES('18000001-0000-4000-8000-000000000001','Иванов Алексей Сергеевич',true,'+79001234501','ДВ-2026/001','2027-12-31') ON CONFLICT DO NOTHING;
+INSERT INTO client_vehicle(id,code,active,insurance_number,with_trailer,trailer_number) VALUES('18000002-0000-4000-8000-000000000001','А123ВС716',true,'ХХХ 1000000001',true,'АВ1001716') ON CONFLICT DO NOTHING;
+INSERT INTO client_related_entity(id,name,active) VALUES('18000000-0000-4000-8000-000000000002','ООО "Камский экспедитор"',true) ON CONFLICT DO NOTHING;
+INSERT INTO client_driver(id,code,active,phone_number,poa_number,poa_valid_to) VALUES('18000001-0000-4000-8000-000000000002','Петров Дмитрий Андреевич',true,'+79001234502','ДВ-2026/002','2027-12-31') ON CONFLICT DO NOTHING;
+INSERT INTO client_vehicle(id,code,active,insurance_number,with_trailer,trailer_number) VALUES('18000002-0000-4000-8000-000000000002','В234ЕК777',true,'ХХХ 1000000002',false,NULL) ON CONFLICT DO NOTHING;
+INSERT INTO client_related_entity(id,name,active) VALUES('18000000-0000-4000-8000-000000000003','ООО "Невская логистика"',true) ON CONFLICT DO NOTHING;
+INSERT INTO client_driver(id,code,active,phone_number,poa_number,poa_valid_to) VALUES('18000001-0000-4000-8000-000000000003','Сидоров Михаил Викторович',true,'+79001234503','ДВ-2026/003','2027-12-31') ON CONFLICT DO NOTHING;
+INSERT INTO client_vehicle(id,code,active,insurance_number,with_trailer,trailer_number) VALUES('18000002-0000-4000-8000-000000000003','Е345КМ178',true,'ХХХ 1000000003',true,'АВ1003178') ON CONFLICT DO NOTHING;
+INSERT INTO client_related_entity(id,name,active) VALUES('18000000-0000-4000-8000-000000000004','ООО "Донской транзит"',true) ON CONFLICT DO NOTHING;
+INSERT INTO client_driver(id,code,active,phone_number,poa_number,poa_valid_to) VALUES('18000001-0000-4000-8000-000000000004','Смирнов Сергей Николаевич',true,'+79001234504','ДВ-2026/004','2027-12-31') ON CONFLICT DO NOTHING;
+INSERT INTO client_vehicle(id,code,active,insurance_number,with_trailer,trailer_number) VALUES('18000002-0000-4000-8000-000000000004','К456МН161',true,'ХХХ 1000000004',false,NULL) ON CONFLICT DO NOTHING;
+INSERT INTO client_related_entity(id,name,active) VALUES('18000000-0000-4000-8000-000000000005','ООО "Уральский маршрут"',true) ON CONFLICT DO NOTHING;
+INSERT INTO client_driver(id,code,active,phone_number,poa_number,poa_valid_to) VALUES('18000001-0000-4000-8000-000000000005','Кузнецов Андрей Павлович',true,'+79001234505','ДВ-2026/005','2027-12-31') ON CONFLICT DO NOTHING;
+INSERT INTO client_vehicle(id,code,active,insurance_number,with_trailer,trailer_number) VALUES('18000002-0000-4000-8000-000000000005','М567ОР196',true,'ХХХ 1000000005',true,'АВ1005196') ON CONFLICT DO NOTHING;
+INSERT INTO client_related_entity(id,name,active) VALUES('18000000-0000-4000-8000-000000000006','ООО "Сибирская доставка"',true) ON CONFLICT DO NOTHING;
+INSERT INTO client_driver(id,code,active,phone_number,poa_number,poa_valid_to) VALUES('18000001-0000-4000-8000-000000000006','Попов Николай Александрович',true,'+79001234506','ДВ-2026/006','2027-12-31') ON CONFLICT DO NOTHING;
+INSERT INTO client_vehicle(id,code,active,insurance_number,with_trailer,trailer_number) VALUES('18000002-0000-4000-8000-000000000006','Н678РС154',true,'ХХХ 1000000006',false,NULL) ON CONFLICT DO NOTHING;
+INSERT INTO client_related_entity(id,name,active) VALUES('18000000-0000-4000-8000-000000000007','ООО "Кубанские перевозки"',true) ON CONFLICT DO NOTHING;
+INSERT INTO client_driver(id,code,active,phone_number,poa_number,poa_valid_to) VALUES('18000001-0000-4000-8000-000000000007','Васильев Павел Олегович',true,'+79001234507','ДВ-2026/007','2027-12-31') ON CONFLICT DO NOTHING;
+INSERT INTO client_vehicle(id,code,active,insurance_number,with_trailer,trailer_number) VALUES('18000002-0000-4000-8000-000000000007','О789СТ123',true,'ХХХ 1000000007',true,'АВ1007123') ON CONFLICT DO NOTHING;
+INSERT INTO client_related_entity(id,name,active) VALUES('18000000-0000-4000-8000-000000000008','ООО "Прикамский терминал"',true) ON CONFLICT DO NOTHING;
+INSERT INTO client_driver(id,code,active,phone_number,poa_number,poa_valid_to) VALUES('18000001-0000-4000-8000-000000000008','Соколов Игорь Михайлович',true,'+79001234508','ДВ-2026/008','2027-12-31') ON CONFLICT DO NOTHING;
+INSERT INTO client_vehicle(id,code,active,insurance_number,with_trailer,trailer_number) VALUES('18000002-0000-4000-8000-000000000008','Р890ТУ116',true,'ХХХ 1000000008',false,NULL) ON CONFLICT DO NOTHING;
+INSERT INTO client_related_entity(id,name,active) VALUES('18000000-0000-4000-8000-000000000009','ООО "Окская транспортная компания"',true) ON CONFLICT DO NOTHING;
+INSERT INTO client_driver(id,code,active,phone_number,poa_number,poa_valid_to) VALUES('18000001-0000-4000-8000-000000000009','Михайлов Олег Владимирович',true,'+79001234509','ДВ-2026/009','2027-12-31') ON CONFLICT DO NOTHING;
+INSERT INTO client_vehicle(id,code,active,insurance_number,with_trailer,trailer_number) VALUES('18000002-0000-4000-8000-000000000009','С901УХ152',true,'ХХХ 1000000009',true,'АВ1009152') ON CONFLICT DO NOTHING;
+INSERT INTO client_related_entity(id,name,active) VALUES('18000000-0000-4000-8000-000000000010','ООО "Байкальский экспресс"',true) ON CONFLICT DO NOTHING;
+INSERT INTO client_driver(id,code,active,phone_number,poa_number,poa_valid_to) VALUES('18000001-0000-4000-8000-000000000010','Новиков Виктор Петрович',true,'+79001234510','ДВ-2026/010','2027-12-31') ON CONFLICT DO NOTHING;
+INSERT INTO client_vehicle(id,code,active,insurance_number,with_trailer,trailer_number) VALUES('18000002-0000-4000-8000-000000000010','Т112ХА138',true,'ХХХ 1000000010',false,NULL) ON CONFLICT DO NOTHING;
+INSERT INTO client_related_entity(id,name,active) VALUES('18000000-0000-4000-8000-000000000011','ООО "Северный маршрут"',true) ON CONFLICT DO NOTHING;
+INSERT INTO client_driver(id,code,active,phone_number,poa_number,poa_valid_to) VALUES('18000001-0000-4000-8000-000000000011','Фёдоров Александр Ильич',true,'+79001234511','ДВ-2026/011','2027-12-31') ON CONFLICT DO NOTHING;
+INSERT INTO client_vehicle(id,code,active,insurance_number,with_trailer,trailer_number) VALUES('18000002-0000-4000-8000-000000000011','У223АВ29',true,'ХХХ 1000000011',true,'АВ101129') ON CONFLICT DO NOTHING;
+INSERT INTO client_related_entity(id,name,active) VALUES('18000000-0000-4000-8000-000000000012','ООО "Приморский перевозчик"',true) ON CONFLICT DO NOTHING;
+INSERT INTO client_driver(id,code,active,phone_number,poa_number,poa_valid_to) VALUES('18000001-0000-4000-8000-000000000012','Морозов Евгений Борисович',true,'+79001234512','ДВ-2026/012','2027-12-31') ON CONFLICT DO NOTHING;
+INSERT INTO client_vehicle(id,code,active,insurance_number,with_trailer,trailer_number) VALUES('18000002-0000-4000-8000-000000000012','Х334ВЕ125',true,'ХХХ 1000000012',false,NULL) ON CONFLICT DO NOTHING;
+-- User explicitly requested populating existing routes too. Preserve numbers, dates, statuses and orders.
+WITH numbered AS (SELECT id, ((row_number() OVER(ORDER BY number)-1)%12+1)::int AS n FROM route WHERE transport_type='VEHICLE')
+UPDATE route r SET client_related_entity_id=('18000000-0000-4000-8000-'||lpad(n.n::text,12,'0'))::uuid,client_driver_id=('18000001-0000-4000-8000-'||lpad(n.n::text,12,'0'))::uuid,client_vehicle_id=('18000002-0000-4000-8000-'||lpad(n.n::text,12,'0'))::uuid FROM numbered n WHERE n.id=r.id;
+UPDATE route SET client_related_entity_id=NULL,client_driver_id=NULL,client_vehicle_id=NULL WHERE transport_type='RAILWAY';
+COMMIT;

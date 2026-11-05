@@ -23,3 +23,21 @@ it('renders actual cargo under its container with separate ETSNG code and name',
   expect(html).toContain('<td>ПШЕНИЦА</td>')
   expect(html).toContain('<td>250</td>')
 })
+
+it('groups all cargoItems under one KTK even when the legacy cargo field is absent', () => {
+  const html = renderToStaticMarkup(<VehicleReceivingCargoTable containers={[
+    {containerId:'c1',containerName:'KTK001',empty:false,cargo:null,cargoItems:[
+      {etsngCodeId:'p1',etsngCodeName:'011005 — ПШЕНИЦА',weight:250},
+      {etsngCodeId:'p2',etsngCodeName:'021001 — ГРУЗ',weight:100},
+    ]},
+    {containerId:'empty',containerName:'EMPTY001',empty:true,cargo:null},
+  ]} />)
+  expect(html.match(/<table /g)).toHaveLength(1)
+  expect(html.match(/class="composition-group"/g)).toHaveLength(1)
+  expect(html.match(/class="composition-item"/g)).toHaveLength(2)
+  expect(html).toContain('rowSpan="3"')
+  expect(html).toContain('aria-controls=')
+  expect(html).toContain('composition-chevron')
+  expect(html).toContain('Масса брутто, кг')
+  expect(html).not.toContain('EMPTY001')
+})

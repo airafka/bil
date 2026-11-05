@@ -9,15 +9,16 @@ export function RailwayReceivingHierarchy({waybills,containers,defaultOwnerId,on
   onChange?:(id:string,change:ReceivingContainerAttributes)=>void
 }) {
   if(!waybills.length)return <div className="inline-empty">Накладные не найдены</div>
-  const groups:ContainerTableGroup[]=waybills.flatMap(bill=>bill.railwayCarriages.map(wagon=>({
-    key:bill.id+'-'+wagon.id,label:'Вагон № '+wagon.number,hint:'Накладная ЭТРАН № '+bill.number,
+  const groups:ContainerTableGroup[]=waybills.map(bill=>({key:bill.id,label:'Накладная № '+bill.number,rows:[],children:bill.railwayCarriages.map(wagon=>({
+    key:bill.id+'-'+wagon.id,label:'Вагон № '+wagon.number,
     rows:wagon.containers.map(source=>{
       const row=containers.find(item=>item.containerId===source.containerId)
-      return {...row,key:source.containerId,containerId:source.containerId,name:row?.containerName??source.number,
-        empty:row?.empty??source.netWeight===0,readOnly:!row,
-        sealNumbers:row?row.sealNumbers:source.sealNumbers,sealTypeName:row?row.sealTypeName:source.sealTypeName,
+      return {...row,key:source.containerId,containerId:source.containerId,name:source.number,
+        empty:source.netWeight===0,readOnly:!row,
+        sealNumbers:source.sealNumbers,sealTypeName:source.sealTypeName,
+        hazardClassName:[...new Set(bill.products.map(p=>p.hazardClassName).filter(Boolean))].join(', ') || null,
         containerType:source.type,loadCapacity:source.loadCapacity,tareWeight:source.tareWeight,grossWeight:source.grossWeight}
     })
-  })))
-  return <section className="form-section" aria-label="КТК по накладным и вагонам"><OrderContainerTable rows={groups.flatMap(group=>group.rows)} groups={groups} showPhysicalAttributes defaultOwnerId={defaultOwnerId} onChange={onChange}/></section>
+  }))}))
+  return <section className="form-section composition-section" aria-label="КТК по накладным и вагонам"><OrderContainerTable rows={groups.flatMap(group=>group.children?.flatMap(wagon=>wagon.rows)??group.rows)} groups={groups} attributesReadOnly showPhysicalAttributes defaultOwnerId={defaultOwnerId} onChange={onChange}/></section>
 }

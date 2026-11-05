@@ -17,18 +17,18 @@ export type CompositionWaybill = {
 
 const headings: Record<CompositionTab, string[]> = {
   wagons: ['Номер вагона', 'Род вагона', 'Модель вагона', 'Грузоподъёмность, кг', 'Дата следующего ДР'],
-  containers: ['Номер КТК', 'Тип КТК', 'Масса тары, кг', 'Масса брутто, кг', 'Грузоподъёмность, кг', 'Собственник КТК', 'Номера ЗПУ', 'Тип ЗПУ'],
-  cargo: ['Код ЕТСНГ', 'Наименование груза', 'Масса брутто, кг', 'Опасный груз', 'Класс опасности', 'Признак опасности'],
+  containers: ['Номер КТК', 'Тип КТК', 'Масса тары, кг', 'Масса брутто, кг', 'Грузоподъёмность, кг', 'Номера ЗПУ', 'Тип ЗПУ'],
+  cargo: ['Код ЕТСНГ', 'Наименование груза', 'Масса брутто, кг', 'Класс опасности груза'],
 }
 const titles: Record<CompositionTab, string> = { wagons: 'Вагоны', containers: 'КТК', cargo: 'Груз' }
 const weight = (value: number | null) => value == null ? 'Не указана' : value.toLocaleString('ru-RU', { maximumFractionDigits: 3 })
 
-export function WaybillCompositionTable({ waybills, tab, draft = false, wagonAttributes = false }: {
-  waybills: CompositionWaybill[]; tab: CompositionTab; draft?: boolean; wagonAttributes?: boolean
+export function WaybillCompositionTable({ waybills, tab, draft = false, wagonAttributes = false, showNetWeight = false }: {
+  waybills: CompositionWaybill[]; tab: CompositionTab; draft?: boolean; wagonAttributes?: boolean; showNetWeight?: boolean
 }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const prefix = useId()
-  const columns = tab === 'wagons' && !wagonAttributes ? ['Номер вагона'] : headings[tab]
+  const columns = tab === 'wagons' && !wagonAttributes ? ['Номер вагона'] : tab === 'containers' && showNetWeight ? [...headings.containers.slice(0, 4), 'Масса нетто, кг', ...headings.containers.slice(4)] : headings[tab]
   const toggle = (key: string) => setCollapsed(current => {
     const next = new Set(current)
     if (next.has(key)) next.delete(key); else next.add(key)
@@ -40,12 +40,12 @@ export function WaybillCompositionTable({ waybills, tab, draft = false, wagonAtt
     </td>)}</tr>
   }
   function containers(rows: WaybillContainerSummary[], key: string) {
-    return rows.map(item => cells([item.number, item.type ? containerTypeLabel(item.type) : '—', weight(item.tareWeight), weight(item.grossWeight), item.loadCapacity == null ? '—' : weight(item.loadCapacity), (item.owner ?? item.ownerClientName) || '—', item.sealNumbers || '—', item.sealTypeName || '—'], `${key}-${item.containerId}`))
+    return rows.map(item => cells([item.number, item.type ? containerTypeLabel(item.type) : '—', weight(item.tareWeight), weight(item.grossWeight), ...(showNetWeight ? [weight(item.netWeight)] : []), item.loadCapacity == null ? '—' : weight(item.loadCapacity), item.sealNumbers || '—', item.sealTypeName || '—'], `${key}-${item.containerId}`))
   }
   function empty(text: string, key: string) { return <tr key={key}><td colSpan={columns.length} className="composition-empty">{text}</td></tr> }
 
   return <section className="form-section composition-section" aria-label={titles[tab]}>
-    {draft && <p className="composition-hint">Состав получен из выбранных накладных. Чтобы изменить его, вернитесь на вкладку «Накладные».</p>}
+
     <div className="table-wrap order-composition-wrap"><table className={`composition-table composition-outline composition-${tab} ${draft ? 'composition-draft' : ''}`} aria-label={`${titles[tab]} по накладным`}>
       <thead><tr><th scope="col" className="composition-index">№</th>{columns.map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
       {waybills.length === 0 && <tbody><tr><td colSpan={columns.length + 1} className="composition-empty">Накладные не выбраны</td></tr></tbody>}
@@ -71,7 +71,7 @@ export function WaybillCompositionTable({ waybills, tab, draft = false, wagonAtt
           } else {
             rows.push(...(bill.products.length ? bill.products.map(product => {
               const [code, ...name] = 'etsngCode' in product ? product.etsngCode.split(/\s+[—–-]\s+/) : [product.code, product.name]
-              return cells([code, name.join(' — ') || '—', weight(product.grossWeight ?? null), product.dangerProductName || '—', product.hazardClassName || '—', product.signDanger || '—'], product.id)
+              return cells([code, name.join(' — ') || '—', weight(product.weight), product.hazardClassName || '—'], product.id)
             }) : [empty('Грузов нет', bill.id)]))
           }
         }
@@ -86,10 +86,11 @@ export function WaybillCompositionTable({ waybills, tab, draft = false, wagonAtt
         </tbody>
       })}
     </table></div>
+    {draft && <p className="composition-hint table-bottom-hint">Состав получен из выбранных накладных. Чтобы изменить его, вернитесь на вкладку «Накладные».</p>}
   </section>
 }
 
-function DisclosureChevron() {
+export function DisclosureChevron() {
   return <svg className="composition-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
     <path d="M6 4 L10 8 L6 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>

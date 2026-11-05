@@ -105,4 +105,61 @@ class PaymentInvoiceServiceTest {
             assertThat(factory.getValidator().validate(invalid)).hasSize(5);
         }
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void appliedTariffUsesExecutionSnapshotAndScopesChargeToInvoice() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        UUID invoice = UUID.randomUUID();
+        UUID historicalTariff = UUID.randomUUID();
+        ResultSet rs = mock(ResultSet.class);
+        when(rs.getObject("tariff_id", UUID.class)).thenReturn(historicalTariff);
+        when(rs.getBigDecimal("coefficient")).thenReturn(new BigDecimal("0.9000"));
+        when(rs.getBigDecimal("price_with_vat")).thenReturn(new BigDecimal("108.00"));
+        when(jdbc.query(anyString(), any(RowMapper.class), eq(invoice), eq(charge))).thenAnswer(call -> {
+            String sql = call.getArgument(0);
+            assertThat(sql).contains("e.coefficient", "e.base_price_without_vat", "e.price_with_vat", "l.invoice_id=? and l.billing_charge_id=?");
+            assertThat(sql).doesNotContain("join complex_service_tariff", "join complex_service_catalog", "active=true");
+            RowMapper<?> mapper = call.getArgument(1);
+            return List.of(mapper.mapRow(rs, 0));
+        });
+        var result = new PaymentInvoiceService(jdbc, "Europe/Moscow").appliedTariff(invoice, charge);
+        assertThat(result.tariffId()).isEqualTo(historicalTariff);
+        assertThat(result.coefficient()).isEqualByComparingTo("0.9");
+        assertThat(result.priceWithVat()).isEqualByComparingTo("108.00");
+        verify(jdbc, never()).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void refusesTariffForChargeOutsideInvoice() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        assertThatThrownBy(() -> new PaymentInvoiceService(jdbc, "Europe/Moscow")
+                .appliedTariff(UUID.randomUUID(), UUID.randomUUID()))
+                .isInstanceOf(ApiException.class).hasMessageContaining("Тариф для этой строки счёта не найден");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void paidInvoiceRejectsEditingAndDeletion() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        UUID id = UUID.randomUUID();
+        var invoice = new PaymentInvoiceService.Invoice(id, 1, client, contract, "Клиент", "Договор", "2026-05", "Europe/Moscow", "PAID", "RUB", BigDecimal.ONE, BigDecimal.ONE, performed, 3, performed);
+        when(jdbc.query(contains("for update"), any(RowMapper.class), eq(id))).thenReturn(List.of(invoice));
+        var service = new PaymentInvoiceService(jdbc, "Europe/Moscow");
+        assertThatThrownBy(() -> service.update(id, new PaymentInvoiceService.UpdateRequest(client, contract, "2026-05", List.of(charge), 3))).isInstanceOf(ApiException.class).hasMessageContaining("Оплаченный");
+        assertThatThrownBy(() -> service.delete(id)).isInstanceOf(ApiException.class).hasMessageContaining("Оплаченный");
+        verify(jdbc, never()).update(anyString(), any(Object[].class));
+    }
+    @Test
+    @SuppressWarnings("unchecked")
+    void staleInvoiceVersionRejectsSaveAndPayment() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        UUID id = UUID.randomUUID();
+        var invoice = new PaymentInvoiceService.Invoice(id, 1, client, contract, "Клиент", "Договор", "2026-05", "Europe/Moscow", "DRAFT", "RUB", BigDecimal.ONE, BigDecimal.ONE, performed, 3, null);
+        when(jdbc.query(contains("for update"), any(RowMapper.class), eq(id))).thenReturn(List.of(invoice));
+        var service = new PaymentInvoiceService(jdbc, "Europe/Moscow");
+        assertThatThrownBy(() -> service.update(id, new PaymentInvoiceService.UpdateRequest(client, contract, "2026-05", List.of(charge), 2))).isInstanceOf(ApiException.class).hasMessageContaining("другой вкладке");
+        assertThatThrownBy(() -> service.pay(id, new PaymentInvoiceService.PayRequest(2))).isInstanceOf(ApiException.class).hasMessageContaining("другой вкладке");
+        verify(jdbc, never()).update(anyString(), any(Object[].class));
+    }
 }

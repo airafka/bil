@@ -32,16 +32,16 @@ body, .app-shell { background: var(--app-background); }
 .table-toolbar strong { font-size: 14px; }
 .table-wrap { scrollbar-width: thin; }
 table { background: var(--app-surface); }
-th, .service-compact-table th { height: 36px; padding: 8px 12px; color: var(--text); background: var(--app-header); font-size: 13px; font-weight: 500; line-height: 20px; border: 0; border-bottom: 1px solid var(--app-border); white-space: nowrap; }
-td, .service-compact-table td { height: 36px; padding: 8px 12px; font-size: 14px; line-height: 20px; color: var(--text); border: 0; border-bottom: 1px solid var(--app-border); vertical-align: middle; }
+th, .service-compact-table th { color: var(--text); background: var(--app-header); font-weight: 500; border: 0; border-bottom: 1px solid var(--app-border); white-space: nowrap; }
+td, .service-compact-table td { color: var(--text); border: 0; border-bottom: 1px solid var(--app-border); }
 tbody tr:nth-child(even) { background: var(--app-background); }
 tbody tr:hover, .service-compact-table tbody tr:hover { background: #f2f7ff; }
 .order-code { color: var(--blue); }
 .table-wrap td a { color: var(--blue); }
 .table-wrap td a:hover { text-decoration: underline; text-underline-offset: 3px; }
-.billing-charges-panel > .details-grid { padding: 16px; margin: 0; }
+.service-dashboard > .billing-charges-panel > .service-charge-totals { padding: 16px; margin: 0; }
 .billing-charges-panel td:nth-child(4), .billing-charges-panel td:nth-child(7), .billing-charges-panel td:nth-child(8) { white-space: nowrap; }
-.billing-charges-panel td:nth-child(7), .billing-charges-panel td:nth-child(8) { text-align: right; font-variant-numeric: tabular-nums; }
+.billing-charges-panel td:nth-child(7), .billing-charges-panel td:nth-child(8) { text-align: left; font-variant-numeric: tabular-nums; }
 .status-badge { align-items: center; justify-content: center; min-width: 0; min-height: 24px; padding: 3px 8px; font-size: 12px; font-weight: 400; line-height: 18px; border-radius: 5px; white-space: nowrap; }
 .status-badge[data-status="DRAFT"] { color: #191a1f; background: #f2f4f7; }
 .status-badge[data-status="CONFIRMED"] { color: #175cd3; background: #eff8ff; }
@@ -187,8 +187,6 @@ tbody th { position: static; }
  .registry-tools .primary-button, .registry-tools .secondary-button { flex: 1; }
 }
 
-.return-stock-choice { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; }
-.return-stock-choice .ui-choice { width: 18px; height: 18px; }
 
 /* Composition tabs: one header, waybill groups, nested wagon rows. */
 .composition-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
@@ -198,10 +196,9 @@ tbody th { position: static; }
 .composition-toggle-all:disabled { color: var(--muted); cursor: default; }
 .composition-hint { margin: 0 0 12px; color: var(--muted); font-size: 13px; line-height: 20px; }
 .composition-table { min-width: 640px; }
-.composition-table th, .composition-table td { padding: 6px 12px; height: 34px; }
 .composition-table .composition-index { width: 44px; color: var(--muted); text-align: center; font-size: 12px; font-weight: 400; }
 .composition-table .composition-number { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.composition-table .composition-group th { padding: 8px 12px; background: white; white-space: normal; text-align: left; border-top: 1px solid var(--app-border); }
+.composition-table .composition-group th { background: white; white-space: normal; text-align: left; border-top: 1px solid var(--app-border); }
 .composition-group button, .composition-subgroup button { display: inline-flex; align-items: center; gap: 8px; padding: 2px 0; border: 0; background: transparent; color: var(--text); font-size: 13px; font-weight: 500; cursor: pointer; }
 .composition-chevron { display: block; width: 16px; height: 16px; flex: 0 0 16px; color: var(--muted); transform-origin: 50% 50%; }
 .composition-group button[aria-expanded="true"] > .composition-chevron,
@@ -251,44 +248,33 @@ tbody th { position: static; }
 .invoice-selection-footer span { color: var(--muted); font-size: 13px; }
 @media (max-width: 900px) { .invoice-filters { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) { .invoice-selection-footer { bottom: 78px; } .invoice-selection-footer .primary-button { width: 100%; } }
-.service-progress { display: flex; flex-wrap: wrap; align-items: flex-start; width: 100%; gap: 12px; margin: 16px 0; }
-.service-progress > section { flex: 1 1 480px; width: auto; max-width: 100%; min-width: 0; box-sizing: border-box; overflow: hidden; border: 1px solid var(--app-border); border-radius: var(--app-radius); background: var(--app-surface); box-shadow: none; }
-.service-progress h2 { margin: 0; padding: 12px; font-size: 14px; line-height: 22px; font-weight: 500; overflow-wrap: anywhere; }
-.service-progress-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
-.service-progress-table th, .service-progress-table td { height: auto; padding: 8px 12px; border: 0; border-top: 1px solid var(--app-border); white-space: normal; }
-.service-progress-table thead th { color: var(--text); background: var(--app-header); font-size: 12px; font-weight: 500; line-height: 18px; text-align: left; }
-.service-progress-table thead th:first-child { width: 28%; }
-.service-progress-table thead th:nth-child(2) { width: 24%; }
-.service-progress-table thead th:nth-child(n+3) { width: 24%; text-align: right; }
-.service-progress-table tbody th { color: var(--muted); background: transparent; font-size: 13px; line-height: 20px; font-weight: 400; text-align: left; }
-.service-progress-table tbody .service-progress-operation { color: var(--text); font-size: 14px; font-weight: 500; vertical-align: middle; }
-.service-progress-table tbody td { color: var(--text); background: transparent; text-align: right; font-size: 20px; font-weight: 600; line-height: 24px; font-variant-numeric: tabular-nums; }
-.service-progress-table tbody + tbody { border-top: 1px solid var(--line); }
-.service-progress-table tbody tr:nth-child(even), .service-progress-table tbody tr:hover { background: transparent; }
-.service-progress-missing { margin: 8px 16px 12px; padding: 6px 10px; border-left: 3px solid #f79009; border-radius: 3px; color: #92400e; background: #fffbeb; font-size: 12px; line-height: 18px; }
-@media (max-width: 640px) {
-  .service-progress h2 { padding: 12px; font-size: 14px; line-height: 21px; }
-  .service-progress-table th, .service-progress-table td { padding: 8px 6px; overflow-wrap: anywhere; }
-  .service-progress-table thead th:first-child { width: 30%; }
-  .service-progress-table thead th:nth-child(2) { width: 24%; }
-  .service-progress-table thead th:nth-child(n+3) { width: 23%; }
-  .service-progress-table tbody .service-progress-operation { font-size: 13px; }
-  .service-progress-table tbody td { font-size: 18px; }
-  .service-progress-missing { margin: 8px 12px 12px; }
-}
+/* Three transport stages share the same metric-card presentation. */
+.service-progress { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; gap: 12px; margin: 20px 0 0; }
+.service-progress > section { min-width: 0; padding: 16px; border: 1px solid #e4e7ec; border-radius: 6px; background: var(--app-surface); }
+.service-progress h2 { margin: 0; padding: 0 0 12px; border-bottom: 1px solid var(--app-border); font-size: 16px; line-height: 24px; font-weight: 500; }
+.service-progress-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 16px 0 0; }
+.service-progress-metrics > div { min-width: 0; padding: 0 8px; text-align: center; }
+.service-progress-metrics > div + div { border-left: 1px solid var(--app-border); }
+.service-progress-metrics dt { color: var(--muted); font-size: 14px; line-height: 20px; }
+.service-progress-metrics dd { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 8px; margin: 8px 0 0; font-variant-numeric: tabular-nums; }
+.service-progress-metrics strong { color: var(--blue); font-size: 28px; line-height: 34px; font-weight: 600; }
+.service-progress-metrics dd > span { color: var(--muted); font-size: 14px; line-height: 20px; }
+.service-progress-metrics dd > .service-progress-total { color: var(--blue); font-size: 16px; font-weight: 500; }
+.service-progress-missing { margin: 12px 0 0; padding: 6px 10px; border-left: 3px solid #f79009; border-radius: 3px; color: #92400e; background: #fffbeb; font-size: 12px; line-height: 18px; }
+
 
 /* Figma detail tabs: a shared header and an outline with one numbered cell per waybill. */
 .order-composition-wrap { border: 1px solid var(--app-border); border-radius: 5px; overflow-x: auto; }
 .order-waybills-table, .composition-outline { width: 100%; table-layout: fixed; border-collapse: collapse; }
 .order-waybills-table { min-width: 780px; }
 .order-waybills-table th, .order-waybills-table td,
-.composition-outline th, .composition-outline td { height: 42px; padding: 9px 16px; text-align: left; font-size: 14px; line-height: 24px; border-bottom: 1px solid var(--app-border); }
+.composition-outline th, .composition-outline td { text-align: left; border-bottom: 1px solid var(--app-border); }
 .order-waybills-table thead th, .composition-outline thead th { background: var(--app-header); font-weight: 500; }
 .order-waybills-table td, .composition-outline td { border-right: 1px solid var(--app-border); overflow-wrap: anywhere; }
 .order-waybills-table td:last-child, .composition-outline td:last-child { border-right: 0; }
 .order-waybills-table .composition-index, .composition-outline .composition-index { width: 52px; text-align: center; font-size: 14px; color: var(--text); }
 .composition-outline .composition-group-index { vertical-align: top; background: white; }
-.composition-outline .composition-group th, .composition-outline .composition-subgroup th { height: 42px; padding: 9px 16px; border-top: 0; background: white; }
+.composition-outline .composition-group th, .composition-outline .composition-subgroup th { border-top: 0; background: white; }
 .composition-outline .composition-subgroup th { padding-left: 40px; }
 .composition-outline .composition-group button, .composition-outline .composition-subgroup button { padding: 0; font-size: 14px; line-height: 24px; font-weight: 500; }
 .composition-outline .composition-item td:first-child { padding-left: 64px; }
@@ -302,8 +288,8 @@ tbody th { position: static; }
 .icon-button { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 8px; color: var(--blue); border: 1px solid var(--blue); }
 .route-information-section + .route-information-section { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--app-border); }
 .route-information-section h2 { margin: 0 0 12px; font-size: 16px; line-height: 24px; font-weight: 500; }
-.route-information-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 48px; margin: 0; }
-.route-information-grid > div { display: grid; grid-template-columns: 180px minmax(0, 1fr); align-items: start; gap: 12px; min-width: 0; }
+.route-information-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 48px; max-width: 1480px; margin: 0; }
+.route-information-grid > div { display: grid; grid-template-columns: 210px minmax(0, 1fr); align-items: start; gap: 12px; min-width: 0; }
 .route-information-grid dt, .route-information-grid dd { margin: 0; font-size: 14px; line-height: 20px; }
 .route-information-grid dt { color: #4b4b51; }
 .route-information-grid dd { color: var(--text); overflow-wrap: anywhere; white-space: pre-wrap; }
@@ -315,16 +301,15 @@ tbody th { position: static; }
 @media (max-width: 640px) { .route-information-grid > div { grid-template-columns: minmax(100px, .8fr) minmax(0, 1fr); } }
 
 /* Registry controls and row density from the Figma registry frame. */
-.page-header .primary-button, .page-header .secondary-button, .form-footer .primary-button, .form-footer .secondary-button { min-height: 40px; height: 40px; padding: 8px 16px; gap: 8px; font-size: 16px; line-height: 24px; font-weight: 400; border-radius: 3px; box-shadow: 0 1px 3px #10182826; }
+.header-actions > .primary-button, .header-actions > .secondary-button, .service-header-actions > .primary-button, .service-header-actions > .secondary-button, .primary-button.create-action-button, .page-header .primary-button, .page-header .secondary-button, .form-footer .primary-button, .form-footer .secondary-button { min-height: 40px; height: 40px; padding: 8px 16px; gap: 8px; font-size: 16px; line-height: 24px; font-weight: 400; border-radius: 3px; box-shadow: 0 1px 3px #10182826; }
 .page-header .icon-button, .view-header-actions .icon-button { width: 40px; height: 40px; padding: 8px; border: 1px solid var(--blue); color: var(--blue); border-radius: 3px; }
 .registry-page > .table-card { border-radius: 4px; }
-.registry-page > .table-card > .table-wrap > table > thead > tr > th { height: 40px; padding: 8px 16px; font-size: 14px; line-height: 24px; }
-.registry-page > .table-card > .table-wrap > table > tbody > tr > td { height: 40px; padding: 8px 16px; font-size: 14px; line-height: 24px; border-right: 1px solid var(--app-border); }
+.registry-page > .table-card > .table-wrap > table > tbody > tr > td { border-right: 1px solid var(--app-border); }
 .registry-page > .table-card > .table-wrap > table > tbody > tr { background: white; }
 .registry-page > .table-card > .table-wrap > table > tbody > tr:hover { background: #f9fafc; }
 .registry-page > .table-card > .table-wrap > table > tbody > tr:last-child > td { border-bottom: 0; }
-.registry-page > .table-card > .table-wrap > table > :is(thead, tbody) > tr > .registry-index { width: 48px; padding: 8px; text-align: center; font-weight: 400; }
-.registry-page > .table-card > .table-wrap > table > :is(thead, tbody) > tr > .registry-actions { width: 48px; padding: 4px 8px; text-align: center; border-right: 0; }
+.registry-page > .table-card > .table-wrap > table > :is(thead, tbody) > tr > .registry-index { width: 48px; text-align: center; font-weight: 400; }
+.registry-page > .table-card > .table-wrap > table > :is(thead, tbody) > tr > .registry-actions { width: 48px; text-align: center; border-right: 0; }
 .registry-page .table-wrap .order-code { color: var(--text); font-weight: 400; }
 .row-actions-button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 6px; border: 0; border-radius: 4px; background: transparent; color: #4b4b51; cursor: pointer; }
 .row-actions-button:hover, .row-actions-button[aria-expanded="true"] { color: var(--blue); background: #eef4ff; }
@@ -345,15 +330,15 @@ tbody th { position: static; }
 .receiving-container-attributes { margin-top: 20px; }
 .receiving-container-attributes table { width: 100%; min-width: 850px; border-collapse: collapse; }
 .receiving-container-attributes th { background: #eaf3fc; text-align: left; }
-.receiving-container-attributes th, .receiving-container-attributes td { padding: 10px 12px; border-bottom: 1px solid #e4e7ec; vertical-align: top; }
+.receiving-container-attributes th, .receiving-container-attributes td { border-bottom: 1px solid #e4e7ec; }
 .receiving-container-attributes td { overflow-wrap: anywhere; max-width: 300px; }
 .receiving-container-attributes .ui-input, .receiving-container-attributes .ui-select { min-width: 140px; width: 100%; }
 
 .vehicle-receiving-table .table-wrap { border: 1px solid #eef1f6; border-radius: 4px; }
 .vehicle-receiving-table table { min-width: 950px; }
-.vehicle-receiving-table :is(th, td) { height: 40px; box-sizing: border-box; padding: 8px 16px; font-size: 14px; line-height: 24px; vertical-align: middle; border-bottom: 1px solid #eef1f6; border-right: 1px solid #eef1f6; font-weight: 400; }
+.vehicle-receiving-table :is(th, td) { border-bottom: 1px solid #eef1f6; border-right: 1px solid #eef1f6; font-weight: 400; }
 .vehicle-receiving-table th { background: #eef4ff; white-space: nowrap; }
-.vehicle-receiving-table :is(th, td):first-child { width: 48px; text-align: center; padding: 8px; }
+.vehicle-receiving-table :is(th, td):first-child { width: 48px; text-align: center; }
 .vehicle-receiving-table tr:last-child td { border-bottom: 0; }
 .vehicle-receiving-table .empty-state-column { text-align: center; width: 110px; }
 .container-empty-icon { color: #00bf72; vertical-align: middle; }
@@ -361,7 +346,12 @@ tbody th { position: static; }
 .seal-pills { display: flex; flex-wrap: wrap; gap: 4px; }
 .seal-pill { display: inline-block; background: #f2f3f6; border-radius: 4px; padding: 0 8px; font-size: 13px; overflow-wrap: anywhere; }
 .cargo-container-label { display: inline-flex; padding: 8px 12px 8px 40px; font-weight: 400; }
-.vehicle-cargo-table .composition-item td { font-size: 14px; }
+/* Compact auto cargo groups, matching the registry row rhythm. */
+.composition-outline.vehicle-cargo-table .composition-group button {
+  min-height: 20px;
+  line-height: 20px;
+}
+.vehicle-cargo-table .composition-value { min-height: 20px; line-height: 20px; }
 
 .composition-outline.composition-containers { table-layout: auto; min-width: 1350px; }
 .composition-outline.composition-containers thead th, .composition-outline.composition-containers .composition-item td { white-space: nowrap; overflow-wrap: normal; }
@@ -412,3 +402,136 @@ tbody th { position: static; }
 
 .navigation-tree .nav-section-toggle:hover, .navigation-tree a:hover { background: #f3f6ff; }
 .navigation-tree a, .navigation-tree a:hover, .navigation-tree a.active, .navigation-tree .nav-label, .navigation-tree a:hover .nav-label, .navigation-tree a.active .nav-label { color: #4b4b51; }
+
+/* Shared table rhythm for auto and railway order composition tabs. */
+.view-page :is(.order-container-table, .composition-outline, .order-waybills-table) thead th {
+  background: var(--app-header);
+  font-weight: 500;
+}
+.view-page .vehicle-cargo-table .composition-index,
+.view-page .order-container-table:not(.order-container-table--grouped) .container-col-index { width: 44px; }
+.view-page .vehicle-cargo-table .composition-item td:first-child { padding-left: 48px; }
+.view-page .order-container-table:not(.order-container-table--grouped) tbody tr { background: white; }
+.view-page .order-container-table:not(.order-container-table--grouped) tbody tr:hover { background: var(--app-background); }
+.view-page .order-container-scroll,
+.view-page .order-composition-wrap { border: 1px solid var(--app-border); border-radius: 5px; }
+.view-page .vehicle-cargo-section { margin-bottom: 0; }
+.view-page .composition-outline .composition-group th { padding-left: 12px; padding-right: 12px; }
+.view-page .composition-outline .composition-group button,
+.view-page .composition-outline .composition-subgroup button { min-height: 20px; line-height: 20px; }
+.view-page .composition-outline .composition-value { min-height: 20px; line-height: 20px; }
+.view-page :is(.composition-outline, .order-waybills-table) .composition-index,
+.view-page .order-container-table--grouped .container-col-index { width: 44px; }
+.view-page .composition-section { margin-bottom: 0; }
+
+/* Compact cargo entry uses the same container hierarchy as the detail tabs. */
+.vehicle-cargo-editor { min-width: 760px; }
+.vehicle-cargo-editor .cargo-editor-actions { width: 48px; }
+.vehicle-cargo-editor .composition-index { width: 44px; }
+.vehicle-cargo-editor .cargo-editor-group { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.vehicle-cargo-editor .cargo-editor-group .cargo-editor-add { color: var(--blue); font-size: 13px; white-space: nowrap; }
+.vehicle-cargo-editor .cargo-required { color: #ef4444; }
+.vehicle-cargo-editor .ui-control { width: 100%; min-width: 0; min-height: 30px; height: 30px; padding: 4px 10px; font-size: 13px; line-height: 20px; }
+.vehicle-cargo-editor .ui-select { padding-right: 28px; }
+.vehicle-cargo-editor.composition-outline .composition-item td:first-child { padding-left: 48px; }
+.vehicle-cargo-editor .row-actions-button { width: 28px; height: 28px; }
+
+.receiving-comment { white-space: pre-wrap; overflow-wrap: anywhere; }
+.receiving-comment-input { width: 100%; min-height: 84px; resize: vertical; padding: 8px 12px; border: 1px solid #d0d5dd; border-radius: 6px; font: inherit; }
+
+/* Page navigation and form actions share the top-right layout. */
+.header-actions, .view-header-actions, .service-header-actions { flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.page-header > :is(.header-actions, .view-header-actions), .service-header > .service-header-actions { margin-left: auto; }
+.embedded-order > .header-actions { margin-bottom: 16px; }
+/* Selected navigation items keep the same fill on hover, matching the menu mockup. */
+.navigation-tree .nav-children .nav-entry a.active,
+.navigation-tree .nav-children .nav-entry a.active:hover,
+.navigation-tree .nav-section-toggle.highlighted,
+.navigation-tree .nav-section-toggle.highlighted:hover {
+  background: #eef4ff;
+  border-radius: 6px;
+  color: #4b4b51;
+  box-shadow: none;
+}
+
+/* Invoice creation follows the common vertical form and table layout. */
+.invoice-create-page .invoice-filter-panel { min-height: 0; overflow: visible; }
+.invoice-create-page .invoice-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 536px)); gap: 12px 48px; margin-top: 16px; max-width: 1172px; }
+.app-shell .invoice-create-page .invoice-filter-panel .invoice-filters .field { display: grid; grid-template-columns: 180px minmax(0, 1fr); align-items: start; gap: 8px; max-width: none; margin: 0; grid-column: 1; }
+.invoice-create-page .invoice-filters .field > span:first-child { padding-top: 11px; }
+.invoice-create-page .invoice-selection { margin-top: 28px; }
+.invoice-create-page .invoice-selection > .form-section-heading { margin-bottom: 16px; }
+.invoice-create-page .invoice-selection-footer { position: static; padding: 16px 0 0; box-shadow: none; }
+@media (max-width: 640px) {
+  .app-shell .invoice-create-page .invoice-filter-panel .invoice-filters .field { grid-template-columns: 1fr; gap: 6px; }
+  .invoice-create-page .invoice-filters .field > span:first-child { padding-top: 0; }
+}
+
+@media (max-width: 1150px) { .invoice-create-page .invoice-filters { grid-template-columns: 1fr; max-width: 650px; } }
+
+.status-badge[data-status="PAID"] { background: #e8f6ed; color: #23834d; }
+
+.bulk-return-actions { justify-content:flex-end; }
+.service-pending-containers { margin-top:16px; }
+
+.service-tabs-toolbar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-bottom:24px; }
+.service-tabs-toolbar .service-tabs { margin-bottom:0; }
+.service-tab-actions { margin-left:auto; }
+
+/* The same white workspace surrounds tabs and tables as in transport-order cards. */
+.service-table-page > .form-workspace { min-width:0; }
+.service-table-page .service-tabs-toolbar { margin-bottom:24px; }
+.service-table-page .form-workspace :is(.service-order-section, .service-main-panel) {
+  margin-top:0; padding:0; border:0; border-radius:0; box-shadow:none; background:transparent; overflow:visible;
+}
+.service-table-page .form-workspace .service-order-section + .service-order-section {
+  margin-top:24px; padding-top:24px; border-top:1px solid var(--app-border);
+}
+.service-table-page .form-workspace :is(.service-order-section, .service-main-panel) > h2 { padding:0; margin-bottom:16px; }
+.service-table-page .form-workspace .bulk-return-heading { padding:0 0 16px; }
+.service-table-page .form-workspace .billing-charges-panel { margin-top:24px; }
+
+
+
+/* Full navigation labels remain on a single line. */
+.navigation-tree .nav-children .nav-label { white-space: nowrap; overflow: visible; text-overflow: clip; max-width: none; }
+@media (min-width: 641px) { .app-shell[data-menu-expanded="true"] { --app-sidebar: 340px; } }
+
+.service-section-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+
+/* Compact pending-container card: heading and hint share the action row. */
+.service-table-page .service-pending-card .bulk-return-heading { padding: 0; margin: 0 0 12px; gap: 12px; }
+.service-pending-intro { min-width: 0; }
+.service-pending-intro h3 { line-height: 20px; }
+.service-pending-containers .service-pending-intro p { margin: 4px 0 0; line-height: 20px; }
+.service-table-page .form-workspace #service-panel-charges .billing-charges-panel { margin-top: 0; }
+#service-panel-charges .billing-charges-panel > .details-grid { margin: 0 0 16px; }
+
+/* Service charge totals stay together instead of occupying the full details grid. */
+.service-table-page .service-tabs-toolbar:has(#service-tab-charges[aria-selected="true"]) { margin-bottom: 16px; }
+.service-charge-totals { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin: 0 0 12px; padding: 0; }
+.service-charge-totals > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; }
+.service-charge-totals > div + div { padding-left: 20px; border-left: 1px solid var(--app-border); }
+.service-charge-totals dt, .service-charge-totals dd { margin: 0; padding: 0; font-size: 14px; line-height: 20px; }
+.service-charge-totals dt { color: var(--ui-field-label); }
+.service-charge-totals dd { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .service-charge-totals { align-items: flex-start; flex-direction: column; }
+  .service-charge-totals > div + div { padding: 12px 0 0; border-left: 0; border-top: 1px solid var(--app-border); }
+}
+
+.service-main-columns { display: grid; grid-template-columns: minmax(0, 728px) minmax(0, 536px); gap: 48px; max-width: 1312px; }
+.service-main-columns > .details-grid { grid-template-columns: minmax(0, 1fr); align-content: start; margin: 0; }
+@media (max-width: 1100px) {
+  .service-main-columns { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}
+
+/* Charge totals share the tab toolbar, with one aligned amount column. */
+.service-tab-charge-totals { margin-left: auto; min-width: 0; max-width: 100%; }
+.service-tab-charge-totals .service-charge-totals { display: grid; gap: 4px; margin: 0; }
+.service-tab-charge-totals .service-charge-totals > div { display: grid; grid-template-columns: 150px minmax(110px, 1fr); gap: 12px; padding: 0; border: 0; }
+.service-tab-charge-totals .service-charge-totals :is(dt,dd) { font-size: 13px; line-height: 20px; }
+@media (max-width: 640px) {
+  .service-tab-charge-totals { width: 100%; margin-left: 0; }
+  .service-tab-charge-totals .service-charge-totals > div { grid-template-columns: minmax(0, 150px) minmax(0, 1fr); }
+}

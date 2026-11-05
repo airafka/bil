@@ -4,44 +4,47 @@ import { ServiceProgressCards } from './ServiceProgressCards'
 import type { ServiceProgress } from '../comprehensiveServiceOrder'
 
 const progress: ServiceProgress = {
-  initialServiceName: 'Приём и вывоз из справочника', returnServiceName: 'Возврат из справочника',
+  serviceName: 'Выбранная услуга из справочника',
   accepted: 10, shippingCreated: 8, shippingCompleted: 6, returnCreated: 0, returnCompleted: 0,
   total: 10, shippingMissing: 2, shippingOrderCount: 4, shippingOrdersCompleted: 3,
   returnOrderCount: 0, returnOrdersCompleted: 0,
 }
 
-function table(html: string, label: string) {
-  return html.match(new RegExp(`<tbody[^>]+aria-label="${label}"[^>]*>(.*?)</tbody>`))?.[1] ?? ''
+function stage(html: string, id: string) {
+  return html.match(new RegExp(`<section aria-labelledby="${id}-progress-title">(.*?)</section>`))?.[1] ?? ''
 }
 
-describe('Карточки оказания услуг', () => {
-  it('разделяет количество КТК и заявок, не добавляя счётчик заявок к приёму', () => {
-    const html = renderToStaticMarkup(<ServiceProgressCards progress={progress} />)
-    const shipping = table(html, 'Вывоз КТК')
-    expect(shipping).toContain('КТК</th><td>8</td><td>6</td>')
-    expect(shipping).toContain('Заявки</th><td>4</td><td>3</td>')
-    expect(table(html, 'Первоначальная поставка КТК')).toContain('КТК</th><td>10</td><td>10</td>')
-    expect(table(html, 'Первоначальная поставка КТК')).not.toContain('Заявки')
-    expect(html.match(/<table /g)).toHaveLength(1)
-    expect(html).not.toContain(progress.returnServiceName)
+describe('Карточки этапов услуги', () => {
+  it('разделяет заявки и КТК во всех трёх этапах', () => {
+    const html = renderToStaticMarkup(<ServiceProgressCards progress={progress} initialOrderStatus="COMPLETED" />)
+    expect(stage(html, 'shipping')).toContain('КТК: выполнено 6 из 8')
+    expect(stage(html, 'shipping')).toContain('Заявки: выполнено 3 из 4')
+    expect(stage(html, 'initial')).toContain('КТК: выполнено 10 из 10')
+    expect(stage(html, 'initial')).toContain('Заявки: выполнено 1 из 1')
+    expect(html.match(/<section /g)).toHaveLength(3)
+    expect(html).toContain('Поставка - ЖД')
+    expect(html).toContain('Вывоз - Авто')
+    expect(html).toContain('Поставка - Авто')
     expect(html).toContain('Без заявки на вывоз: 2 КТК')
   })
-  it('показывает созданную возвратную заявку с двумя КТК до выполнения', () => {
-    const html = renderToStaticMarkup(<ServiceProgressCards progress={{ ...progress, returnCreated: 2, returnOrderCount: 1 }} />)
-    expect(html).toContain(progress.returnServiceName)
-    expect(table(html, 'Возвратная поставка КТК')).toContain('КТК</th><td>2</td><td>0</td>')
-    expect(table(html, 'Возвратная поставка КТК')).toContain('Заявки</th><td>1</td><td>0</td>')
+  it('показывает созданную поставку Авто с двумя КТК до выполнения', () => {
+    const html = renderToStaticMarkup(<ServiceProgressCards progress={{ ...progress, returnCreated: 2, returnOrderCount: 1 }} initialOrderStatus="COMPLETED" />)
+    expect(stage(html, 'return')).toContain('КТК: выполнено 0 из 2')
+    expect(stage(html, 'return')).toContain('Заявки: выполнено 0 из 1')
   })
-  it('показывает состав поставки ещё в черновике', () => {
-    const html = renderToStaticMarkup(<ServiceProgressCards progress={{ ...progress, accepted: 0, shippingCompleted: 0, shippingOrdersCompleted: 0 }} />)
-    expect(table(html, 'Первоначальная поставка КТК')).toContain('КТК</th><td>10</td><td>0</td>')
-    expect(table(html, 'Вывоз КТК')).toContain('КТК</th><td>8</td><td>0</td>')
-    expect(html).toContain('Поставка КТК')
+  it('определяет выполнение ЖД-заявки по статусу, а не по числу КТК', () => {
+    for (const status of ['DRAFT', 'CONFIRMED']) {
+      const html = renderToStaticMarkup(<ServiceProgressCards progress={{ ...progress, accepted: 0 }} initialOrderStatus={status} />)
+      expect(stage(html, 'initial')).toContain('КТК: выполнено 0 из 10')
+      expect(stage(html, 'initial')).toContain('Заявки: выполнено 0 из 1')
+    }
+    const html = renderToStaticMarkup(<ServiceProgressCards progress={{ ...progress, total: 0, accepted: 0 }} initialOrderStatus="COMPLETED" />)
+    expect(stage(html, 'initial')).toContain('Заявки: выполнено 1 из 1')
   })
   it('отображает частичное выполнение возвратов и скрывает подсказку при нуле', () => {
-    const html = renderToStaticMarkup(<ServiceProgressCards progress={{ ...progress, shippingMissing: 0, returnCreated: 4, returnCompleted: 2, returnOrderCount: 2, returnOrdersCompleted: 1 }} />)
-    expect(table(html, 'Возвратная поставка КТК')).toContain('КТК</th><td>4</td><td>2</td>')
-    expect(table(html, 'Возвратная поставка КТК')).toContain('Заявки</th><td>2</td><td>1</td>')
+    const html = renderToStaticMarkup(<ServiceProgressCards progress={{ ...progress, shippingMissing: 0, returnCreated: 4, returnCompleted: 2, returnOrderCount: 2, returnOrdersCompleted: 1 }} initialOrderStatus="COMPLETED" />)
+    expect(stage(html, 'return')).toContain('КТК: выполнено 2 из 4')
+    expect(stage(html, 'return')).toContain('Заявки: выполнено 1 из 2')
     expect(html).not.toContain('Без заявки на вывоз')
   })
 })

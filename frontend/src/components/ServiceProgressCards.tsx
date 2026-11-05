@@ -1,42 +1,35 @@
 import type { ServiceProgress } from '../comprehensiveServiceOrder'
 
-export function ServiceProgressCards({ progress }: { progress: ServiceProgress }) {
-  return <div className="service-progress">
+export function ServiceProgressCards({ progress, initialOrderStatus }: { progress: ServiceProgress; initialOrderStatus: string }) {
+  return <div className="service-progress" aria-label="Выполнение этапов услуги">
     <section aria-labelledby="initial-progress-title">
-      <h2 id="initial-progress-title">{progress.initialServiceName || 'Наименование услуги не настроено'}</h2>
-      <table className="service-progress-table" aria-labelledby="initial-progress-title">
-        <MetricHead />
-        <Operation label="Поставка КТК" accessibleLabel="Первоначальная поставка КТК" total={progress.total} completed={progress.accepted} />
-        <Operation label="Вывоз КТК" total={progress.shippingCreated} completed={progress.shippingCompleted}
-          orderCount={progress.shippingOrderCount} ordersCompleted={progress.shippingOrdersCompleted} />
-      </table>
-      {progress.shippingMissing > 0 && <div className="service-progress-missing">{`Без заявки на вывоз: ${progress.shippingMissing} КТК. Создайте заявку на вывоз.`}</div>}
+      <h2 id="initial-progress-title">Поставка - ЖД</h2>
+      <dl className="service-progress-metrics">
+        <Metric label="Заявки" completed={initialOrderStatus === 'COMPLETED' ? 1 : 0} total={1} />
+        <Metric label="КТК" completed={progress.accepted} total={progress.total} />
+      </dl>
     </section>
-    {progress.returnCreated > 0 && <section aria-labelledby="return-progress-title">
-      <h2 id="return-progress-title">{progress.returnServiceName || 'Наименование услуги не настроено'}</h2>
-      <table className="service-progress-table" aria-labelledby="return-progress-title">
-        <MetricHead />
-        <Operation label="Поставка КТК" accessibleLabel="Возвратная поставка КТК" total={progress.returnCreated} completed={progress.returnCompleted}
-          orderCount={progress.returnOrderCount} ordersCompleted={progress.returnOrdersCompleted} />
-      </table>
-    </section>}
+    <section aria-labelledby="shipping-progress-title">
+      <h2 id="shipping-progress-title">Вывоз - Авто</h2>
+      <dl className="service-progress-metrics">
+        <Metric label="Заявки" completed={progress.shippingOrdersCompleted} total={progress.shippingOrderCount} />
+        <Metric label="КТК" completed={progress.shippingCompleted} total={progress.shippingCreated} />
+      </dl>
+      {progress.shippingMissing > 0 && <p className="service-progress-missing">{`Без заявки на вывоз: ${progress.shippingMissing} КТК. Создайте заявку на вывоз.`}</p>}
+    </section>
+    <section aria-labelledby="return-progress-title">
+      <h2 id="return-progress-title">Поставка - Авто</h2>
+      <dl className="service-progress-metrics">
+        <Metric label="Заявки" completed={progress.returnOrdersCompleted} total={progress.returnOrderCount} />
+        <Metric label="КТК" completed={progress.returnCompleted} total={progress.returnCreated} />
+      </dl>
+    </section>
   </div>
 }
 
-function MetricHead() {
-  return <thead><tr><th scope="col">Операция</th><th scope="col">Показатель</th><th scope="col">Всего</th><th scope="col">Выполнено</th></tr></thead>
-}
-
-function Operation({ label, accessibleLabel = label, total, completed, orderCount, ordersCompleted }: {
-  label: string; accessibleLabel?: string; total: number; completed: number; orderCount?: number; ordersCompleted?: number
-}) {
-  return <tbody aria-label={accessibleLabel}>
-    <tr>
-      <th className="service-progress-operation" scope="rowgroup" rowSpan={orderCount === undefined ? 1 : 2}>{label}</th>
-      {orderCount !== undefined
-        ? <><th scope="row">Заявки</th><td>{orderCount}</td><td>{ordersCompleted}</td></>
-        : <><th scope="row">КТК</th><td>{total}</td><td>{completed}</td></>}
-    </tr>
-    {orderCount !== undefined && <tr><th scope="row">КТК</th><td>{total}</td><td>{completed}</td></tr>}
-  </tbody>
+function Metric({ label, completed, total }: { label: string; completed: number; total: number }) {
+  return <div aria-label={`${label}: выполнено ${completed} из ${total}`}>
+    <dt>{label}</dt>
+    <dd><strong>{completed}</strong><span>из</span><span className="service-progress-total">{total}</span></dd>
+  </div>
 }

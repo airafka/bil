@@ -13,6 +13,7 @@ public class WaybillStore {
     public WaybillStore(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     public CreatedWaybillResponse create(CreateWaybillRequest request) {
+        jdbc.execute("select pg_advisory_xact_lock(1743125938)");
         UUID id = UUID.randomUUID();
         UUID departure = reference("railway_station", "esr_code", request.departureStation().toString());
         UUID destination = reference("railway_station", "esr_code", request.destinationStation().toString());
@@ -32,13 +33,13 @@ public class WaybillStore {
                 String owner = container.owner();
                 jdbc.update("insert into waybill_container (id, waybill_railway_carriage_id, container_id, weight, net_weight, owner) values (?, ?, ?, ?, ?, ?)",
                         containerRowId, carriageId, container.containerId(), container.grossWeight(), net, owner);
-                String zpuType = container.sealTypeId() == null ? null : jdbc.queryForObject("select code from seal_type where id = ?", String.class, container.sealTypeId());
+                UUID sealTypeId = container.sealTypeId();
                 if (container.sealNumbers() != null) {
                     for (String zpu : container.sealNumbers().split("[,;\\r\\n]+")) {
                         if (!zpu.isBlank()) jdbc.update("insert into waybill_zpu(id, waybill_container_id, zpu, zpu_type) values (?, ?, ?, ?)",
-                                UUID.randomUUID(), containerRowId, zpu.trim(), zpuType);
+                                UUID.randomUUID(), containerRowId, zpu.trim(), sealTypeId);
                     }
-                } else if (zpuType != null) throw error("SEAL_NUMBERS_REQUIRED", "Укажите номер ЗПУ для выбранного типа");
+                } else if (sealTypeId != null) throw error("SEAL_NUMBERS_REQUIRED", "Укажите номер ЗПУ для выбранного типа");
             }
         }
         for (var product : request.products()) {

@@ -27,6 +27,9 @@ public class ComplexServiceCatalogController {
     @GetMapping("/{id}")
     public ComplexServiceDetails findById(@PathVariable UUID id) { return service.findById(id); }
 
+    @GetMapping("/tariffs/{tariffId}")
+    public ComplexServiceTariff tariff(@PathVariable UUID tariffId) { return service.findTariff(tariffId); }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ComplexServiceDetails create(@Valid @RequestBody ComplexServiceRequest request) {
@@ -48,9 +51,15 @@ public class ComplexServiceCatalogController {
         return service.saveTariff(id, request);
     }
 
-    @DeleteMapping("/{id}/tariffs/{contractId}")
+    @PutMapping("/{id}/tariffs/{tariffId}")
+    public ComplexServiceDetails updateTariff(@PathVariable UUID id, @PathVariable UUID tariffId,
+            @Valid @RequestBody ComplexServiceTariffRequest request) {
+        return service.updateTariff(id, tariffId, request);
+    }
+
+    @DeleteMapping("/{id}/tariffs/{tariffId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteTariff(@PathVariable UUID id, @PathVariable UUID contractId) {
-        service.deleteTariff(id, contractId);
+    public void deleteTariff(@PathVariable UUID id, @PathVariable UUID tariffId) {
+        service.deleteTariff(id, tariffId);
     }
 }

@@ -14,7 +14,7 @@ public class BillingController {
     private final JdbcTemplate jdbc;
     public BillingController(JdbcTemplate jdbc){this.jdbc=jdbc;}
     public record Charge(UUID id, OffsetDateTime performedAt, String clientName, String contractName,
-            UUID comprehensiveServiceOrderId,int comprehensiveServiceOrderCode,String containerName,String serviceName,String family,
+            UUID comprehensiveServiceOrderId,int comprehensiveServiceOrderCode,String containerName,String serviceName,
             UUID receivingOrderId,int receivingOrderCode,UUID shippingOrderId,int shippingOrderCode,
             BigDecimal amountWithoutVat,BigDecimal amountWithVat,String currency){}
     public record ChargePage(List<Charge> items,BigDecimal totalWithoutVat,BigDecimal totalWithVat,long total,int page,int size){}
@@ -29,7 +29,7 @@ public class BillingController {
         var params=new java.util.ArrayList<Object>(java.util.Arrays.asList(args));params.add(size);params.add(page*size);
         var items=jdbc.query("""
                 select b.id,b.performed_at,c.name as client_name,ct.name as contract_name,s.id as comprehensive_service_order_id,s.code as comprehensive_service_order_code,
-                    k.code as container_name,cat.name as service_name,e.family,r.id as receiving_id,r.number as receiving_code,
+                    k.code as container_name,cat.name as service_name,r.id as receiving_id,r.number as receiving_code,
                     sh.id as shipping_id,sh.number as shipping_code,b.amount_without_vat,b.amount_with_vat,b.currency
                 from billing_charge b join service_execution e on e.id=b.service_execution_id
                 join comprehensive_service_order s on s.id=e.comprehensive_service_order_id join client c on c.id=b.client_id join contract ct on ct.id=b.contract_id
@@ -37,7 +37,7 @@ public class BillingController {
                 join receiving_order r on r.id=e.receiving_order_id join shipping_order sh on sh.id=e.shipping_order_id
                 """+filter+" order by b.performed_at desc,b.id limit ? offset ?",(rs,n)->new Charge(rs.getObject("id",UUID.class),rs.getObject("performed_at",OffsetDateTime.class),
                     rs.getString("client_name"),rs.getString("contract_name"),rs.getObject("comprehensive_service_order_id",UUID.class),rs.getInt("comprehensive_service_order_code"),
-                    rs.getString("container_name"),rs.getString("service_name"),rs.getString("family"),rs.getObject("receiving_id",UUID.class),rs.getInt("receiving_code"),
+                    rs.getString("container_name"),rs.getString("service_name"),rs.getObject("receiving_id",UUID.class),rs.getInt("receiving_code"),
                     rs.getObject("shipping_id",UUID.class),rs.getInt("shipping_code"),rs.getBigDecimal("amount_without_vat"),rs.getBigDecimal("amount_with_vat"),rs.getString("currency")),params.toArray());
         return new ChargePage(items,(BigDecimal)totals.get("without_vat"),(BigDecimal)totals.get("with_vat"),((Number)totals.get("total")).longValue(),page,size);
     }

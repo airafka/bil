@@ -1,0 +1,103 @@
+/* Shared responsive table presentation. No content is clipped to hide overflow. */
+.app-shell table.responsive-table {
+  width: 100% !important; min-width: 0 !important; max-width: 100%; table-layout: fixed !important;
+}
+.app-shell table.responsive-table col { width: auto !important; min-width: 0 !important; }
+.app-shell table.responsive-table :is(th, td) {
+  min-width: 0 !important; max-width: none; width: auto; height: auto;
+  white-space: normal !important; overflow-wrap: anywhere; overflow: visible; text-overflow: clip;
+}
+.app-shell table.responsive-table :is(.container-readonly,.composition-value,.transport-order-comment,.transport-order-date,.service-metadata-party) {
+  white-space: normal; overflow-wrap: anywhere; overflow: visible; max-width: none; text-overflow: clip;
+}
+.app-shell table.responsive-table :is(input:not([type="checkbox"]),select,textarea) { width: 100%; min-width: 0 !important; max-width: 100%; box-sizing: border-box; }
+.app-shell table.responsive-table :is(button,.status-badge,.container-status-badge) { max-width: 100%; white-space: normal; overflow-wrap: anywhere; height: auto; }
+.app-shell table.responsive-table :is(.composition-group,.composition-subgroup) button { flex-wrap: wrap; text-align: left; }
+.app-shell table.responsive-table--records { display: block; }
+.app-shell table.responsive-table--records > colgroup { display: none; }
+.app-shell table.responsive-table--records > :is(thead,tbody,tfoot) { display: block; width: 100%; }
+.app-shell table.responsive-table--records > thead > tr { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Keep headings available to assistive technology; interactive header controls stay visible. */
+.app-shell table.responsive-table--records > thead > tr > :not([data-responsive-interactive="true"]) {
+  position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); border: 0;
+}
+.app-shell table.responsive-table--records > thead > tr > [data-responsive-interactive="true"] { display: flex; gap: 8px; align-items: center; }
+.app-shell table.responsive-table--records > thead > tr > [data-responsive-interactive="true"]::after { content: attr(data-responsive-label); }
+.app-shell table.responsive-table--records > :is(tbody,tfoot) > tr { display: block; width: 100%; border-bottom: 1px solid var(--app-border); }
+.app-shell table.responsive-table--records > :is(tbody,tfoot) > tr > :is(td,th) {
+  display: block; width: 100% !important; min-height: 36px; padding: 8px 12px; text-align: left;
+  border-right: 0; border-bottom: 0; box-sizing: border-box;
+}
+.app-shell table.responsive-table--records > tbody > tr > [data-responsive-label]:not([data-responsive-label=""])::before {
+  content: attr(data-responsive-label); display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; font-weight: 500;
+}
+.app-shell table.responsive-table--records > tbody > tr > [data-responsive-wide="true"] { background: var(--app-header); }
+.app-shell table.responsive-table--records > tbody > tr > td:has(table) { background: white; padding: 8px; }
+/* Grid-based cargo editors also collapse without concealing fields. */
+.app-shell :is(.ktk-table,.cargo-table,.view-data-table,.quantity-table,.shipping-railway-container-table) { min-width: 0; max-width: 100%; }
+.app-shell :is(.ktk-table-row,.cargo-row,.view-data-row,.quantity-table-row,.shipping-railway-container-row) > * { min-width: 0; overflow-wrap: anywhere; }
+.app-shell :is(.service-tabs,.stepper,.bulk-return-heading,.page-header,.service-header,.header-actions) { flex-wrap: wrap; max-width: 100%; }
+.app-shell :is(.service-tabs,.stepper) .step { white-space: normal; height: auto; min-height: 40px; }
+@media (max-width: 800px) {
+  .app-shell :is(.ktk-table-header,.ktk-table-row,.cargo-table-header,.cargo-row,.view-data-header,.view-data-row,.quantity-table-header,.quantity-table-row,.shipping-railway-container-header,.shipping-railway-container-row) {
+    grid-template-columns: minmax(0,1fr); gap: 8px;
+  }
+}
+
+.app-shell table.responsive-table:not(.responsive-table--records) :is(.composition-index,.registry-index,.registry-actions,.cargo-editor-actions) { width: 44px; }
+
+/* Keep the checkbox and container number compact; mobile still uses labelled records. */
+.app-shell table.service-pending-table:not(.responsive-table--records) th:nth-child(2) { width: 220px; }
+
+/* Reserve compact columns for dates, container numbers and amounts; give the service its text width. */
+.app-shell table.service-charge-table:not(.responsive-table--records) th:nth-child(2) { width: 120px; }
+.app-shell table.service-charge-table:not(.responsive-table--records) th:nth-child(3) { width: 140px; }
+.app-shell table.service-charge-table:not(.responsive-table--records) th:nth-last-child(-n+2) { width: 130px; }
+.app-shell table.service-charge-table:not(.responsive-table--records) :is(th,td):nth-last-child(-n+2) { text-align: left; font-variant-numeric: tabular-nums; }
+
+/* Billing registry: short values have bounded columns; service names take the remaining width. */
+.app-shell table.billing-charge-registry-table:not(.responsive-table--records) th:nth-child(1) { width: 120px; }
+.app-shell table.billing-charge-registry-table:not(.responsive-table--records) th:nth-child(2) { width: 160px; }
+.app-shell table.billing-charge-registry-table:not(.responsive-table--records) th:nth-child(3) { width: 110px; }
+.app-shell table.billing-charge-registry-table:not(.responsive-table--records) th:nth-child(4) { width: 140px; }
+.app-shell table.billing-charge-registry-table:not(.responsive-table--records) th:nth-child(5) { width: 140px; }
+.app-shell table.billing-charge-registry-table:not(.responsive-table--records) th:nth-last-child(-n+2) { width: 125px; }
+.app-shell table.billing-charge-registry-table:not(.responsive-table--records) :is(th,td):nth-last-child(-n+2) { text-align: left; font-variant-numeric: tabular-nums; }
+
+/* Shared invoice view/selection geometry, independent of optional checkbox and tariff columns. */
+.app-shell table.invoice-lines-table:not(.responsive-table--records) th.invoice-date-column { width: 120px; }
+.app-shell table.invoice-lines-table:not(.responsive-table--records) th.invoice-order-column { width: 140px; }
+.app-shell table.invoice-lines-table:not(.responsive-table--records) th.invoice-container-column { width: 140px; }
+.app-shell table.invoice-lines-table:not(.responsive-table--records) th.invoice-tariff-column { width: 80px; }
+.app-shell table.invoice-lines-table:not(.responsive-table--records) th:nth-last-child(-n+2) { width: 125px; }
+.app-shell table.invoice-lines-table :is(th,td):nth-last-child(-n+2) { text-align: left; font-variant-numeric: tabular-nums; }
+
+
+/* Share available space across data columns; index/actions keep their standard 48px. */
+.app-shell table.transport-order-registry:not(.responsive-table--records) th:nth-child(2) { width: calc((var(--responsive-table-width) - 96px) * 0.08); }
+.app-shell table.transport-order-registry:not(.responsive-table--records) th:nth-child(3) { width: calc((var(--responsive-table-width) - 96px) * 0.16); }
+.app-shell table.transport-order-registry:not(.responsive-table--records) th:nth-child(4) { width: calc((var(--responsive-table-width) - 96px) * 0.13); }
+.app-shell table.transport-order-registry:not(.responsive-table--records) th:nth-child(5) { width: calc((var(--responsive-table-width) - 96px) * 0.17); }
+.app-shell table.transport-order-registry:not(.responsive-table--records) th:nth-child(6) { width: calc((var(--responsive-table-width) - 96px) * 0.1); }
+.app-shell table.transport-order-registry:not(.responsive-table--records) th:nth-child(7) { width: calc((var(--responsive-table-width) - 96px) * 0.07); }
+.app-shell table.transport-order-registry:not(.responsive-table--records) th:nth-child(8) { width: calc((var(--responsive-table-width) - 96px) * 0.07); }
+.app-shell table.transport-order-registry:not(.responsive-table--records) th:nth-child(9) { width: calc((var(--responsive-table-width) - 96px) * 0.12); }
+.app-shell table.transport-order-registry:not(.responsive-table--records) th:nth-child(10) { width: calc((var(--responsive-table-width) - 96px) * 0.1); }
+
+/* Transport stages within a service, including inline date/party editing. */
+.app-shell table.service-metadata-table:not(.responsive-table--records) th:nth-child(2) { width: 120px; }
+.app-shell table.service-metadata-table:not(.responsive-table--records) th:nth-last-child(2) { width: 130px; }
+.app-shell table.service-metadata-table:not(.responsive-table--records) th:last-child { width: 120px; }
+.app-shell table.service-initial-metadata-table:not(.responsive-table--records) th:nth-child(3),
+.app-shell table.service-metadata-table:not(.service-initial-metadata-table):not(.responsive-table--records) th:nth-child(4) { width: 220px; }
+.app-shell table.service-metadata-table:not(.service-initial-metadata-table):not(.responsive-table--records) th:nth-child(3) { width: 140px; }
+
+/* Container controls and short values do not need the width of an owner/name column. */
+.app-shell table.order-container-table:not(.responsive-table--records) th.container-col-number { width: 140px; }
+.app-shell table.order-container-table:not(.responsive-table--records) th.container-col-empty { width: 90px; }
+.app-shell table.order-container-table:not(.responsive-table--records) th.container-col-status { width: 120px; }
+.app-shell .view-page table.order-waybills-table:not(.responsive-table--records) th:nth-child(2) { width: 150px; }
+.app-shell .view-page table.order-waybills-table:not(.responsive-table--records) th:last-child { width: 200px; }
+.app-shell .view-page table:is(.vehicle-cargo-table,.composition-cargo):not(.responsive-table--records) th:nth-child(2) { width: 120px; }
+.app-shell .view-page table:is(.vehicle-cargo-table,.composition-cargo):not(.responsive-table--records) th:nth-child(4) { width: 160px; }
+.app-shell .view-page table:is(.vehicle-cargo-table,.composition-cargo):not(.responsive-table--records) th:nth-child(5) { width: 180px; }

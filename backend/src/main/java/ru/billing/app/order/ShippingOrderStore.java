@@ -44,12 +44,14 @@ public class ShippingOrderStore {
                 request.contractId(),
                 fillingType.name(),
                 request.departureAt(),
-                ru.billing.app.reference.PartyReferences.party(jdbcTemplate, request.consignee())
+                ru.billing.app.reference.PartyReferences.clientParty(jdbcTemplate, request.consignee())
         );
 
         if (request.transportType() == TransportType.VEHICLE) request.containers().forEach(container -> insertContainer(orderId,null,container));
         else insertAllComposition(orderId,request);
 
+        jdbcTemplate.update("update shipping_order set authorized_representative=?, phone=?, email=?, comment=?, transport_waybill_number=? where id=?",
+                request.authorizedRepresentative(), request.phone(), request.email(), request.comment(), request.transportWaybillNumber(), orderId);
         return new CreatedOrderResponse(orderId, code, "DRAFT");
     }
 
@@ -60,12 +62,16 @@ public class ShippingOrderStore {
         List<OrderSummary> items = jdbcTemplate.query(
                 """
                 select o.id, o.number as code, o.client_id, c.name as client_name,
+                       o.planned_shipping_date_time as planned_at,
+                       r.number as route_number, cs.code as service_number, o.comment,
                        a.id as area_id, a.code as area_code, a.name as area_name,
                        o.transport_type, o.filling_type, o.order_status as status, o.contract_id, ct.name as contract_name, o.comprehensive_service_order_id, o.route_id,
                        o.source_receiving_order_id as source_receiving_order_id
                 from shipping_order o
                 join client c on c.id = o.client_id
                 left join contract ct on ct.id = o.contract_id
+                left join route r on r.id = o.route_id
+                left join comprehensive_service_order cs on cs.id = o.comprehensive_service_order_id
                 join terminal_area_catalog a on a.id = o.terminal_area_catalog_id
                  where (? = '' or position(lower(?) in lower(concat_ws(' ', o.number::text, c.name, ct.name))) > 0) and (? = '' or o.order_status = ?)
                 order by o.number desc
@@ -82,7 +88,12 @@ public class ShippingOrderStore {
                         resultSet.getString("status"),
                         resultSet.getObject("contract_id", UUID.class),
                         resultSet.getString("contract_name"),
-                        resultSet.getObject("comprehensive_service_order_id", UUID.class)
+                        resultSet.getObject("comprehensive_service_order_id", UUID.class),
+                        resultSet.getObject("planned_at", LocalDateTime.class),
+                        resultSet.getObject("route_id", UUID.class),
+                        resultSet.getObject("route_number", Integer.class),
+                        resultSet.getObject("service_number", Integer.class),
+                        resultSet.getString("comment")
                 ),
                 query, query, status, status, size,
                 page * size
@@ -96,7 +107,8 @@ public class ShippingOrderStore {
                 select o.id, o.number as code, o.client_id, c.name as client_name,
                        a.id as area_id, a.code as area_code, a.name as area_name,
                        o.transport_type, o.filling_type, o.order_status as status, o.contract_id, ct.name as contract_name, o.comprehensive_service_order_id, o.route_id,
-                       o.source_receiving_order_id as source_receiving_order_id, o.planned_shipping_date_time as departure_at, (select name from client_related_entity where id=o.consignee_id) as consignee
+                       o.source_receiving_order_id as source_receiving_order_id, o.planned_shipping_date_time as departure_at, (select name from client_related_entity where id=o.consignee_id) as consignee,
+                       o.authorized_representative, o.phone, o.email, o.comment, ct.contract_type, o.created_at, o.transport_waybill_number
                 from shipping_order o
                 join client c on c.id = o.client_id
                 left join contract ct on ct.id = o.contract_id
@@ -118,7 +130,7 @@ public class ShippingOrderStore {
                         resultSet.getObject("source_receiving_order_id", UUID.class),
                         resultSet.getObject("route_id", UUID.class),
                         resultSet.getObject("departure_at", LocalDateTime.class),
-                        resultSet.getString("consignee")
+                        resultSet.getString("consignee"), resultSet.getString("authorized_representative"), resultSet.getString("phone"), resultSet.getString("email"), resultSet.getString("comment"), resultSet.getString("contract_type"), resultSet.getObject("created_at", java.time.OffsetDateTime.class), resultSet.getString("transport_waybill_number")
                 ),
                 id
         );
@@ -134,19 +146,19 @@ public class ShippingOrderStore {
         List<ContainerQuantityDetails> containerQuantities=List.of();
 
         List<ReturnReceivingOrder> returns = jdbcTemplate.query("""
-                select r.id, r.number as code, r.order_status as status, array_agg(c.code order by c.code) as container_names
+                select r.id, r.number as code, r.order_status as status, r.plan_receiving_date_time, r.consignor, array_agg(c.code order by c.code) as container_names
                 from receiving_order r join receiving_order_container rc on rc.receiving_order_id = r.id
                 join container c on c.id = rc.container_id
                 where r.source_shipping_order_id = ? group by r.id order by r.number
                 """, (rs, row) -> new ReturnReceivingOrder(rs.getObject("id", UUID.class), rs.getInt("code"),
-                        rs.getString("status"), java.util.Arrays.stream((Object[]) rs.getArray("container_names").getArray()).map(Object::toString).toList()), id);
+                        rs.getString("status"), java.util.Arrays.stream((Object[]) rs.getArray("container_names").getArray()).map(Object::toString).toList(), rs.getObject("plan_receiving_date_time", java.time.LocalDateTime.class), rs.getString("consignor")), id);
         return new OrderDetails(
                 header.id(), header.code(), header.clientId(), header.clientName(),
                 header.terminalArea(), header.transportType(),
                 header.fillingType(), header.status(),
                 containers, List.of(), railwayCarriages, carriageQuantities, containerQuantities,
                 header.contractId(), header.contractName(), header.comprehensiveServiceOrderId(), header.sourceReceivingOrderId(), header.routeId(), null, returns,
-                null, null, header.departureAt(), header.consignee(), null, null
+                null, null, header.departureAt(), header.consignee(), null, null, header.authorizedRepresentative(), header.phone(), header.email(), header.comment(), header.contractType(), header.createdAt(), header.transportWaybillNumber()
         );
     }
 
@@ -156,6 +168,9 @@ public class ShippingOrderStore {
         if (headers.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", "Заявка не найдена");
         if (!"DRAFT".equals(headers.getFirst().getFirst())) {
             throw new ApiException(HttpStatus.CONFLICT, "CONTAINER_ATTRIBUTES_NOT_EDITABLE", "Реквизиты КТК можно менять только в черновике вывоза");
+        }
+        if(request.metadata()!=null) {
+            jdbcTemplate.update("update shipping_order set planned_shipping_date_time=?, consignee_id=? where id=?", request.metadata().plannedAt(), ru.billing.app.reference.PartyReferences.clientParty(jdbcTemplate, request.metadata().consignee()), id);
         }
         var seen = new java.util.HashSet<UUID>();
         for (var c : request.containers()) {
@@ -349,7 +364,7 @@ public class ShippingOrderStore {
             UUID sourceReceivingOrderId,
             UUID routeId,
             LocalDateTime departureAt,
-            String consignee
+            String consignee, String authorizedRepresentative, String phone, String email, String comment, String contractType, java.time.OffsetDateTime createdAt, String transportWaybillNumber
     ) {
     }
 

@@ -53,6 +53,11 @@ public class ReferenceDataService {
         if (hazardClassId != null) ensureExists("danger_class", hazardClassId, "HAZARD_CLASS_NOT_FOUND", "Класс опасности не найден");
     }
 
+    public List<ReferenceOption> findTariffClients() {
+        return jdbcTemplate.query("select c.id, c.name from client c where exists(select 1 from contract ct where ct.client_id = c.id and exists(select 1 from complex_service_tariff t join complex_service_catalog s on s.id=t.complex_service_id where t.client_id=ct.client_id and t.contract_id=ct.id and t.active and s.order_workflow='RAILWAY_RETURN')) order by c.name, c.id",
+                (rs, row) -> new ReferenceOption(rs.getObject("id", UUID.class), rs.getString("name")));
+    }
+
     public List<ReferenceOption> findClients(String query, Integer limit) {
         return findNamed("client", query, limit);
     }
@@ -267,8 +272,12 @@ public class ReferenceDataService {
     }
 
     public List<ContractOption> findContracts(UUID clientId) {
-        return jdbcTemplate.query("select id, client_id, name from contract where (?::uuid is null or client_id = ?) order by name, id",
-                (rs, row) -> new ContractOption(rs.getObject("id", UUID.class), rs.getObject("client_id", UUID.class), rs.getString("name")), clientId, clientId);
+        return findContracts(clientId, false);
+    }
+
+    public List<ContractOption> findContracts(UUID clientId, boolean activeTariffsOnly) {
+        return jdbcTemplate.query("select id, client_id, name, contract_type from contract c where (?::uuid is null or client_id = ?) and (not ? or exists(select 1 from complex_service_tariff t join complex_service_catalog s on s.id=t.complex_service_id where t.client_id=c.client_id and t.contract_id=c.id and t.active and s.order_workflow='RAILWAY_RETURN')) order by name, id",
+                (rs, row) -> new ContractOption(rs.getObject("id", UUID.class), rs.getObject("client_id", UUID.class), rs.getString("name"), rs.getString("contract_type")), clientId, clientId, activeTariffsOnly);
     }
 
     public void validateContract(UUID clientId, UUID contractId) {

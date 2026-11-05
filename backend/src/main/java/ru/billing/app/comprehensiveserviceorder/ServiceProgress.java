@@ -1,6 +1,6 @@
 package ru.billing.app.comprehensiveserviceorder;
 
-public record ServiceProgress(String initialServiceName, String returnServiceName,
+public record ServiceProgress(String serviceName,
         int accepted, int shippingCreated, int shippingCompleted,
         int returnCreated, int returnCompleted, int total, int shippingMissing,
         int shippingOrderCount, int shippingOrdersCompleted, int returnOrderCount, int returnOrdersCompleted) {}

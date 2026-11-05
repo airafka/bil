@@ -1,6 +1,7 @@
+import { Notification } from '../components/Notification'
 import { ActionIcon } from '../components/ActionIcon'
 import { RowActions } from '../components/RowActions'
-import { WaybillCompositionTable } from '../components/WaybillCompositionTable'
+import { WaybillHierarchyView } from '../components/WaybillHierarchyView'
 import { Fragment, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { getGroupedWaybills } from '../api'
@@ -23,7 +24,7 @@ export function WaybillRegistryPage() {
   useEffect(() => {
     let active = true
     getGroupedWaybills({}, page)
-      .then((response) => active && setData(response))
+      .then(response => { if (active) setData(response) })
       .catch((requestError: unknown) => {
         if (active) setError(requestError instanceof Error ? requestError.message : 'Не удалось загрузить накладные')
       })
@@ -54,11 +55,11 @@ export function WaybillRegistryPage() {
     <section className="registry-page">
       <div className="page-header">
         <h1>Накладные</h1>
-        <Link className="primary-button" to="/waybills/create"><ActionIcon name="plus" /> Создать</Link>
+        <div className="header-actions"><Link className="secondary-button" to="/waybills/generate">Создать автоматически</Link><Link className="primary-button create-action-button" to="/waybills/create"><ActionIcon name="plus" /> Создать</Link></div>
       </div>
 
-      {createdNumber && <div className="notice success" role="status"><span>✓</span>Накладная {createdNumber} создана</div>}
-      {error && <div className="notice error" role="alert">{error}</div>}
+      {createdNumber && <Notification kind="success">Накладная {createdNumber} создана</Notification>}
+      {error && <Notification kind="error">{error}</Notification>}
 
       <div className="table-card waybill-registry-card">
         <div className="table-wrap">
@@ -83,9 +84,9 @@ export function WaybillRegistryPage() {
                       <tr className="waybill-expanded-row">
                         <td colSpan={9}>
                           <div className="expanded-content">
-                            <div className="expanded-block"><strong>Накладные</strong><div className="waybill-chip-grid">{group.waybills.map((waybill) => <span className="waybill-chip" key={waybill.id}>{waybill.number}</span>)}</div></div>
-                            <div className="expanded-block"><strong>КТК</strong><div className="table-wrap"><table><thead><tr><th>Накладная</th><th>КТК</th><th>Брутто</th><th>Тара</th><th>Груз</th><th>Собственник КТК</th><th>Номера ЗПУ</th><th>Тип ЗПУ</th></tr></thead><tbody>{group.waybills.flatMap(waybill => (waybill.containers ?? []).map(container => <tr key={waybill.id + container.containerId}><td>{waybill.number}</td><td>{container.number}</td><td>{container.grossWeight.toLocaleString('ru-RU')}</td><td>{container.tareWeight.toLocaleString('ru-RU')}</td><td>{container.netWeight.toLocaleString('ru-RU')}</td><td>{container.ownerClientName || '—'}</td><td>{container.sealNumbers || '—'}</td><td>{container.sealTypeName || '—'}</td></tr>))}</tbody></table></div></div>
-                            <WaybillCompositionTable waybills={group.waybills.map(bill => ({ ...bill, departureStation: group.departureStation, destinationStation: group.destinationStation }))} tab="cargo" />
+                            <WaybillHierarchyView waybills={group.waybills.map(bill => ({
+                              ...bill, departureStation: group.departureStation, destinationStation: group.destinationStation,
+                            }))} />
                           </div>
                         </td>
                       </tr>

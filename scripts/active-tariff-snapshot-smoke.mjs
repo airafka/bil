@@ -1,0 +1,102 @@
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {writeFileSync} from 'node:fs';
+const base=process.env.BASE_URL;
+assert.equal(base,'http://127.0.0.1:8089','Only isolated billing_tariff_v13_all_check on port 8089');
+const docker='C:/Users/Green-0482/AppData/Local/Programs/DockerDesktop/resources/bin/docker.exe';
+const sql=q=>execFileSync(docker,['exec','billing-db-1','psql','-U','billing','-d','billing_tariff_v13_all_check','-v','ON_ERROR_STOP=1','-Atc',q],{encoding:'utf8'}).trim();
+async function raw(path,body,method='POST'){const r=await fetch(base+path,body===undefined?{}:{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return {status:r.status,data:r.status===204?null:await r.json()};}
+async function api(path,body,status=200,method='POST'){const r=await raw(path,body,method);assert.equal(r.status,status,`${method} ${path}: ${JSON.stringify(r.data)}`);return r.data;}
+const id=()=>crypto.randomUUID();
+const client=id(),other=id(),noTariffs=id(),contract=id(),otherContract=id(),emptyContract=id();
+sql(`insert into client(id,name) values('${client}','V12 Клиент с тарифами'),('${other}','V12 Второй клиент'),('${noTariffs}','V12 Без тарифов');
+insert into contract(id,client_id,name) values('${contract}','${client}','V12 Договор с тарифами'),('${emptyContract}','${client}','V12 Договор без тарифов'),('${otherContract}','${other}','V12 Второй договор');`);
+const catalog=JSON.parse(sql("select json_agg(row_to_json(t)) from (select id,purpose,price_without_vat,price_with_vat from complex_service_catalog where purpose is not null) t"));
+const initial=catalog.find(s=>s.purpose==='A_WAGON'),back=catalog.find(s=>s.purpose==='B_AUTO_RETURN');assert.ok(initial&&back);
+const train=catalog.find(s=>s.purpose==='A_TRAIN');assert.ok(train);
+const root=s=>'/api/complex-services/'+s.id;
+const create=(s,p,status=200)=>api(root(s)+'/tariffs',p,status,'PUT');
+const change=(s,t,p,status=200)=>api(root(s)+'/tariffs/'+t,p,status,'PUT');
+const payload={clientId:client,contractId:contract,coefficient:'1.25',active:true};
+const details=await create(initial,payload);
+const original=details.tariffs.find(t=>t.clientId===client);assert.equal(original.active,true);
+const conflict=await create(initial,{...payload,coefficient:'9'},409);assert.equal(conflict.code,'ACTIVE_TARIFF_EXISTS');
+await create(initial,{...payload,active:false},409);
+assert.equal((await api(root(initial))).tariffs.find(t=>t.id===original.id).coefficient,1.25);
+assert.ok(!(await api('/api/references/tariff-clients')).some(c=>c.id===client),'missing return tariff must hide client');
+const returned=(await create(back,{...payload,coefficient:'1.5'})).tariffs.find(t=>t.clientId===client);
+assert.ok(!(await api('/api/references/tariff-clients')).some(c=>c.id===client),'both initial tariff variants are required');
+await create(train,{...payload,coefficient:'1.2345'});
+assert.ok((await api('/api/references/tariff-clients')).some(c=>c.id===client));
+assert.ok(!(await api('/api/references/tariff-clients')).some(c=>c.id===noTariffs));
+const eligible=await api('/api/references/contracts?activeTariffsOnly=true');
+assert.ok(eligible.some(c=>c.id===contract));assert.ok(!eligible.some(c=>c.id===emptyContract));
+assert.ok((await api('/api/references/contracts')).some(c=>c.id===emptyContract));
+assert.ok((await api('/api/references/clients')).some(c=>c.id===noTariffs),'owners keep full catalog');
+await change(initial,original.id,{...payload,active:false});
+assert.ok(!(await api('/api/references/tariff-clients')).some(c=>c.id===client));
+const attempts=await Promise.all([1,2].map(()=>raw(root(initial)+'/tariffs',{...payload,coefficient:'2'},'PUT')));
+assert.deepEqual(attempts.map(r=>r.status).sort(),[200,409]);
+const replacement=(await api(root(initial))).tariffs.find(t=>t.clientId===client&&t.active);
+assert.notEqual(replacement.id,original.id);
+await change(initial,original.id,payload,409);
+await change(initial,original.id,{...payload,coefficient:'1.7',active:false});
+assert.equal(sql(`select count(*) from complex_service_tariff where complex_service_id='${initial.id}' and client_id='${client}' and contract_id='${contract}'`),'2');
+await change(initial,replacement.id,{...payload,clientId:other,contractId:otherContract},400);
+await change(initial,id(),payload,404);
+await create(initial,{...payload,clientId:other},400);
+await create(initial,{...payload,coefficient:'0'},400);
+const otherRow=(await create(initial,{clientId:other,contractId:otherContract,coefficient:'1'})).tariffs.find(t=>t.clientId===other);
+assert.equal(otherRow.active,true,'old clients default to active');
+// The database itself rejects a second active row, independent of API locks.
+assert.throws(()=>sql(`insert into complex_service_tariff(id,complex_service_id,client_id,contract_id,coefficient,active) values(gen_random_uuid(),'${initial.id}','${client}','${contract}',1,true)`));
+// Deleting a row must target its ID, never every historical row for a contract.
+await api(root(initial)+'/tariffs/'+original.id,{},204,'DELETE');
+assert.ok((await api(root(initial))).tariffs.some(t=>t.id===replacement.id));
+const [cars,cargo]=await Promise.all(['railway-carriages','etsng-codes'].map(k=>api('/api/references/'+k)));
+const container=id();
+sql(`insert into container(id,code,weight,container_type) values('${container}','V12-${container.slice(0,8)}',3000,'STANDARD_40')`);
+const bill=await api('/api/waybills',{number:'V12-'+id().slice(0,8),departureStation:1001,destinationStation:2001,payer:'V12',products:[{etsngCodeId:cargo[0].id,weight:1000}],railwayCarriages:[{railwayCarriageId:cars[0].id,containers:[{containerId:container,grossWeight:4000,netWeight:1000}]}]},201);
+const request={clientId:client,contractId:contract,defaultContainerOwnerId:noTariffs,waybillIds:[bill.id]};
+const trainTariff=(await api(root(train))).tariffs.find(t=>t.clientId===client&&t.active);
+await change(train,trainTariff.id,{...payload,coefficient:'1.2345',active:false});
+assert.equal((await api('/api/comprehensive-service-orders',request,409)).code,'ACTIVE_TARIFFS_REQUIRED','even one KTK requires the >=40 tariff');
+assert.equal(sql(`select receiving_order_id is null from waybill where id='${bill.id}'`),'t');
+await change(train,trainTariff.id,{...payload,coefficient:'1.2345',active:true});
+// Missing any required tariff rejects the whole creation with no linked waybill or new documents.
+await change(back,returned.id,{...payload,coefficient:'1.5',active:false});
+const before=sql('select (select count(*) from comprehensive_service_order)||\',\'||(select count(*) from receiving_order)||\',\'||(select count(*) from shipping_order)');
+const rejected=await api('/api/comprehensive-service-orders',request,409);assert.equal(rejected.code,'ACTIVE_TARIFFS_REQUIRED');
+assert.equal(sql('select (select count(*) from comprehensive_service_order)||\',\'||(select count(*) from receiving_order)||\',\'||(select count(*) from shipping_order)'),before);
+assert.equal(sql(`select receiving_order_id is null from waybill where id='${bill.id}'`),'t');
+await change(back,returned.id,{...payload,coefficient:'1.5'});
+const order=await api('/api/comprehensive-service-orders',request,201);
+const parent=order.order.id,receiving=order.receivingOrder.id,shipping=order.shippingOrders[0].id;
+assert.equal(sql(`select tariffs_fixed_at is not null from comprehensive_service_order where id='${parent}'`),'t');
+const snapshots=JSON.parse(sql(`select json_agg(row_to_json(t)) from comprehensive_service_order_tariff t where comprehensive_service_order_id='${parent}'`));
+assert.equal(snapshots.length,3);
+const a=snapshots.find(t=>t.purpose==='A_WAGON'),b=snapshots.find(t=>t.purpose==='B_AUTO_RETURN');
+assert.equal(a.tariff_id,replacement.id);assert.equal(a.coefficient,2);assert.equal(b.tariff_id,returned.id);assert.equal(b.coefficient,1.5);
+// Mutating all pricing inputs after creation must not change this order's charges.
+await change(initial,replacement.id,{...payload,coefficient:'7',active:false});
+await change(back,returned.id,{...payload,coefficient:'8',active:false});
+const newA=(await create(initial,{...payload,coefficient:'9'})).tariffs.find(t=>t.clientId===client&&t.active);
+await api(root(initial),{name:(await api(root(initial))).service.name,priceWithoutVat:'22222',priceWithVat:'26666.40'},200,'PUT');
+await api(root(back),{name:(await api(root(back))).service.name,priceWithoutVat:'33333',priceWithVat:'39999.60'},200,'PUT');
+await api(root(initial)+'/tariffs/'+replacement.id,{},409,'DELETE');
+const confirm=(kind,oid)=>api('/api/'+kind+'/'+oid+'/status',{expectedStatus:'DRAFT',status:'CONFIRMED'},200,'PATCH');
+const finish=(kind,oid,eventCode)=>api('/api/'+kind+'/'+oid+'/events',{eventCode});
+await confirm('receiving-orders',receiving);await finish('receiving-orders',receiving,'UNLOAD_FINISH');
+await confirm('shipping-orders',shipping);await finish('shipping-orders',shipping,'LOAD_FINISH');
+const returnOrder=await api('/api/shipping-orders/'+shipping+'/returns',{containerIds:[container]});
+await confirm('receiving-orders',returnOrder.id);await finish('receiving-orders',returnOrder.id,'UNLOAD_FINISH');
+const executions=JSON.parse(sql(`select json_agg(row_to_json(e)) from service_execution e where comprehensive_service_order_id='${parent}'`));
+for(const [family,snapshot] of [['A',a],['B',b]]){
+ const e=executions.find(e=>e.family===family);assert.ok(e);assert.equal(e.tariff_id,snapshot.tariff_id);assert.equal(e.coefficient,snapshot.coefficient);assert.equal(e.price_without_vat,snapshot.price_without_vat);assert.equal(e.price_with_vat,snapshot.price_with_vat);
+}
+const charges=await api('/api/billing-charges?comprehensiveServiceOrderId='+parent);assert.equal(charges.total,2);
+await finish('shipping-orders',shipping,'LOAD_FINISH');assert.equal((await api('/api/billing-charges?comprehensiveServiceOrderId='+parent)).total,2);
+// Leave the test-only client eligible for browser checks, with active/inactive tariff history.
+await create(back,{...payload,coefficient:'3'});
+writeFileSync('tariff-v12-ui-fixtures.json',JSON.stringify({serviceId:initial.id,client,contract,other,noTariffs,parent,activeTariff:newA.id,inactiveTariff:replacement.id},null,2));
+console.log('PASS: defaults, duplicate rejection, concurrency, activation guard, key immutability, validation, exact-row deletion, active client/contract filtering, owner list, required three tariffs with transaction rollback, creation snapshots, frozen A/B charges after tariff replacement and base-price changes, deletion protection, idempotency.');

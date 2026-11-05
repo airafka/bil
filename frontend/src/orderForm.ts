@@ -13,10 +13,13 @@ import type {
   WaybillCarriageSummary,
 } from './domain'
 
+export type SelectedContainerCargo = { etsngCodeId: string; weight: string }
+
 export type SelectedContainer = import('./domain').ReceivingContainerAttributes & {
   id: string
   name: string
   empty: boolean
+  cargoItems?: SelectedContainerCargo[]
   etsngCodeId: string
   weight: string
 }
@@ -35,7 +38,7 @@ export type SelectedWaybill = {
   products: WaybillProductSummary[]
 }
 
-export function toSelectedWaybill(group: GroupedWaybill, waybill: WaybillLink): SelectedWaybill {
+export function toSelectedWaybill(group: Pick<GroupedWaybill, 'groupKey' | 'departureStation' | 'destinationStation' | 'payer'>, waybill: WaybillLink): SelectedWaybill {
   return {
     id: waybill.id,
     number: waybill.number,
@@ -80,6 +83,11 @@ export type SelectedContainerQuantity = {
 export type OrderFormState = {
   defaultContainerOwnerId?: string
   arrivalAt: string
+  authorizedRepresentative: string
+  phone: string
+  email: string
+  transportWaybillNumber: string
+  comment: string
   consignor: string
   departureAt: string
   consignee: string
@@ -99,6 +107,11 @@ export type OrderFormState = {
 export type CreateOrderPayload = {
   defaultContainerOwnerId?: string
   arrivalAt?: string
+  authorizedRepresentative?: string
+  phone?: string
+  email?: string
+  transportWaybillNumber?: string
+  comment?: string
   consignor?: string
   departureAt?: string
   consignee?: string
@@ -109,6 +122,7 @@ export type CreateOrderPayload = {
   transportType: TransportType
   containers: Array<import('./domain').ReceivingContainerAttributes & {
     containerId: string
+    cargoItems?: Array<{ etsngCodeId: string; weight: number }>
     empty: boolean
     cargo: null | {
       etsngCodeId: string
@@ -141,6 +155,11 @@ export const initialOrderFormState: OrderFormState = {
   defaultContainerOwnerId: '',
   arrivalAt: '',
   consignor: '',
+  authorizedRepresentative: '',
+  phone: '',
+  email: '',
+  transportWaybillNumber: '',
+  comment: '',
   departureAt: '',
   consignee: '',
   clientId: '',
@@ -191,9 +210,23 @@ export function setContainerEmpty(
             empty,
             etsngCodeId: empty ? '' : container.etsngCodeId,
             weight: empty ? '' : container.weight,
+            ...(empty ? { cargoItems: undefined } : {}),
           }
         : container,
     ),
+  }
+}
+
+export function containerCargoItems(container: SelectedContainer): SelectedContainerCargo[] {
+  return container.cargoItems ?? [{ etsngCodeId: container.etsngCodeId, weight: container.weight }]
+}
+
+export function setContainerCargoItems(state: OrderFormState, containerId: string, items: SelectedContainerCargo[]): OrderFormState {
+  return {
+    ...state,
+    containers: state.containers.map(container => container.id === containerId
+      ? { ...container, cargoItems: items, etsngCodeId: items[0]?.etsngCodeId ?? '', weight: items[0]?.weight ?? '' }
+      : container),
   }
 }
 
@@ -206,7 +239,7 @@ export function setContainerCargo(
   return {
     ...state,
     containers: state.containers.map((container) =>
-      container.id === containerId ? { ...container, [field]: value } : container,
+      container.id === containerId ? { ...container, [field]: value, cargoItems: undefined } : container,
     ),
   }
 }
@@ -256,6 +289,11 @@ export function buildPayload(
   return {
     clientId: state.clientId,
     contractId: state.contractId,
+      ...Object.fromEntries(['authorizedRepresentative', 'phone', 'email', 'comment', 'transportWaybillNumber'].flatMap(key => {
+        const value = state[key as 'authorizedRepresentative' | 'phone' | 'email' | 'comment' | 'transportWaybillNumber'].trim()
+        return value ? [[key, value]] : []
+      })),
+
     ...(kind === 'receiving' ? {
       defaultContainerOwnerId: state.defaultContainerOwnerId,
       ...(state.arrivalAt ? { arrivalAt: state.arrivalAt } : {}),
@@ -288,6 +326,9 @@ export function containerPayload(container: SelectedContainer) {
     ...(container.sealNumbers?.trim() ? { sealNumbers: container.sealNumbers.trim() } : {}),
     ...(container.sealTypeId ? { sealTypeId: container.sealTypeId } : {}),
     ...(container.hazardClassId ? { hazardClassId: container.hazardClassId } : {}),
+    ...(container.cargoItems !== undefined ? { cargoItems: container.empty ? [] : container.cargoItems.map(item => ({
+      etsngCodeId: item.etsngCodeId, weight: Number(item.weight.replace(',', '.')),
+    })) } : {}),
     empty: container.empty,
     cargo: container.empty
       ? null
@@ -300,11 +341,15 @@ export function containerPayload(container: SelectedContainer) {
 
 export function validateContainerCargo(containers: SelectedContainer[], errors: string[]) {
   containers.filter((container) => !container.empty).forEach((container) => {
-    if (!container.etsngCodeId) errors.push(`Выберите груз для ${container.name}`)
-    const normalizedWeight = container.weight.replace(',', '.')
+    const items = containerCargoItems(container)
+    if (!items.length) errors.push(`Выберите груз для ${container.name}`)
+    items.forEach(item => {
+    if (!item.etsngCodeId) errors.push(`Выберите груз для ${container.name}`)
+    const normalizedWeight = item.weight.replace(',', '.')
     if (!/^\d+(\.\d{1,3})?$/.test(normalizedWeight) || Number(normalizedWeight) <= 0) {
       errors.push(`Укажите положительную массу до трёх знаков после запятой для ${container.name}`)
     }
+    })
   })
 }
 
