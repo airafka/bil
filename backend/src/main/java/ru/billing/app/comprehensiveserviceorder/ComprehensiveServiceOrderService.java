@@ -34,6 +34,9 @@ public class ComprehensiveServiceOrderService {
         if (request.clientId() == null || request.contractId() == null) {
             throw error(HttpStatus.BAD_REQUEST, "CLIENT_CONTRACT_REQUIRED", "Выберите клиента и договор");
         }
+        if (request.containerOwners().stream().map(CreateComprehensiveServiceOrderRequest.ContainerOwner::containerId).distinct().count() != request.containerOwners().size()) {
+            throw error(HttpStatus.BAD_REQUEST, "DUPLICATE_CONTAINER", "Собственник КТК указан несколько раз");
+        }
         validateServiceWaybills(request.complexServiceId(), request.waybillIds());
         List<UUID> areas = jdbc.query("select id from terminal_area_catalog where code = 'CONTAINER'",
                 (rs, row) -> rs.getObject("id", UUID.class));
@@ -43,6 +46,10 @@ public class ComprehensiveServiceOrderService {
         CreatedOrderResponse delivery = receiving.create(new CreateOrderRequest(
                 request.clientId(), request.contractId(), areaId, TransportType.RAILWAY,
                 List.of(), request.waybillIds(), List.of(), FillingType.ALL, List.of(), List.of()).withDefaultContainerOwner(request.defaultContainerOwnerId()));
+        if (!request.containerOwners().isEmpty()) {
+            receiving.updateContainerAttributes(delivery.id(), new UpdateOrderContainersRequest(request.containerOwners().stream()
+                    .map(owner -> new UpdateOrderContainersRequest.Attributes(owner.containerId(), owner.ownerClientId(), null, null, null)).toList()));
+        }
         UUID id = UUID.randomUUID();
         jdbc.update("insert into comprehensive_service_order(id, code, client_id, contract_id, selected_complex_service_id) values (?, ?, ?, ?, ?)",
                 id, serviceCode, request.clientId(), request.contractId(), request.complexServiceId());

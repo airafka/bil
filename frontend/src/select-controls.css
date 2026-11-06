@@ -8,9 +8,9 @@
 .app-shell select.ui-select,
 .app-shell select.ui-select::picker(select) { appearance: base-select; }
 .app-shell select.ui-select {
-  min-height: 40px; height: auto; padding: 10px 32px 10px 8px;
+  min-height: var(--ui-control-height); height: auto; padding: 9px 32px 9px 8px;
   white-space: normal; overflow-wrap: anywhere; text-overflow: clip;
-  line-height: 18px; text-align: left; cursor: pointer;
+  line-height: var(--ui-line-height); text-align: left; cursor: pointer;
 }
 .app-shell select.ui-select::picker-icon { display: none; }
 .app-shell select.ui-select:open,
@@ -33,7 +33,7 @@
 .app-shell select.ui-select option,
 .app-shell .ui-multi-option,
 .app-shell .row-actions-menu > :is(a, button) {
-  min-height: 40px; padding: 10px 8px; border-radius: 5px;
+  min-height: var(--ui-control-height); padding: 10px 8px; border-radius: 5px;
   color: var(--ui-field-text); background: #fff; font-size: 14px;
   font-weight: 400; line-height: 20px; white-space: normal;
   overflow-wrap: anywhere; cursor: pointer; outline: none;
@@ -45,9 +45,9 @@
   background: var(--ui-option-active); color: var(--ui-field-text);
 }
 .app-shell select.ui-select option:disabled { color: var(--ui-field-blocked-text); cursor: not-allowed; }
-.app-shell .ui-multi-trigger { height: auto; min-height: 40px; padding-block: 10px; white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+.app-shell .ui-multi-trigger { height: auto; min-height: var(--ui-control-height); padding-block: 10px; white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
 .app-shell :is(.ktk-table-row, .cargo-row, .quantity-table-row, .quantity-cargo-row, .shipping-railway-container-row, td) select.ui-select {
-  min-height: 32px; height: auto; padding-block: 6px;
+  min-height: var(--ui-table-control-height); height: auto; padding-block: 4px;
 }
 /* Keep service fields at the user-approved width instead of stretching across the screen. */
 .service-order-main-grid { grid-template-columns: minmax(0, 728px) minmax(0, 1fr); max-width: 1312px; column-gap: 48px; }

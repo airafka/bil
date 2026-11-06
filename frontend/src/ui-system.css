@@ -1,0 +1,28 @@
+/* Final shared geometry. Page styles may set layout/column widths, not control sizes. */
+.app-shell :is(.primary-button,.secondary-button,.outline-action-button,.close-button) {
+  box-sizing: border-box; height: var(--ui-control-height); min-height: var(--ui-control-height);
+  padding: 0 16px; gap: var(--ui-gap); border-radius: var(--ui-field-radius);
+  font-size: var(--ui-font-size); line-height: var(--ui-line-height); font-weight: 400;
+  white-space: nowrap; flex-shrink: 0;
+}
+.app-shell :is(.close-button,.icon-button) { width: var(--ui-control-height); padding: 8px; }
+.app-shell :is(.primary-button,.secondary-button,.outline-action-button,.close-button,.step):focus-visible { outline: 2px solid var(--ui-field-focus); outline-offset: 2px; }
+.app-shell .step { font-size: var(--ui-font-size); line-height: var(--ui-line-height); border-radius: var(--ui-field-radius); }
+.app-shell .ui-control { font-size: var(--ui-font-size); line-height: var(--ui-line-height); border-radius: var(--ui-field-radius); }
+.app-shell input.ui-control { height: var(--ui-control-height); min-height: var(--ui-control-height); }
+.app-shell textarea.ui-control { height: auto; min-height: 80px; }
+.app-shell :is(.status-badge,.container-status-badge,.ownership-status) {
+  display: inline-flex; align-items: center; min-height: var(--ui-badge-height);
+  padding: 3px 8px; border-radius: var(--ui-field-radius); font-size: 12px; line-height: 18px; white-space: nowrap;
+}
+.app-shell table :is(.ui-control,.primary-button,.secondary-button,.row-actions-button,.row-clear-button) {
+  height: var(--ui-table-control-height); min-height: var(--ui-table-control-height);
+  padding-top: 4px; padding-bottom: 4px; font-size: var(--ui-font-size); line-height: var(--ui-line-height);
+}
+.app-shell table select.ui-control { height: auto; }
+.app-shell table :is(.row-actions-button,.row-clear-button,.icon-button) { width: var(--ui-table-control-height); padding: 4px; }
+.app-shell table :is(th,td):has(:is(.ui-control,.primary-button,.secondary-button,.ownership-status)) { padding-top: 2px; padding-bottom: 2px; }
+.app-shell .pagination button { height: var(--ui-control-height); min-width: var(--ui-control-height); border-radius: var(--ui-field-radius); font-size: var(--ui-font-size); }
+
+/* Text close glyphs match the shared 24px action icons. */
+.app-shell .close-button { font-size: 24px; line-height: 1; }

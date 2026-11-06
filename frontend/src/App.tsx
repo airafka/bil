@@ -34,11 +34,14 @@ const ComplexServiceViewPage = lazy(() => import('./pages/ComplexServicePages').
 
 const WaybillGeneratePage = lazy(() => import('./pages/WaybillGeneratePage').then(module => ({ default: module.WaybillGeneratePage })))
 
+const UiKitPage = lazy(() => import('./pages/UiKitPage').then(module => ({ default: module.UiKitPage })))
+
 function App() {
   return (
     <BrowserRouter>
       <NotificationProvider><AppLayout>
         <Suspense fallback={<div className="view-loading" role="status">Загружаем раздел…</div>}><Routes>
+          <Route path="/ui-kit" element={<UiKitPage />} />
           <Route path="/" element={<Navigate to="/receiving-orders" replace />} />
           <Route path="/container-owners" element={<ContainerStockPage />} />
           <Route path="/container-owners/:containerId/history" element={<ContainerHistoryPage />} />

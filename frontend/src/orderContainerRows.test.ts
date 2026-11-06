@@ -13,3 +13,11 @@ it('uses the receipt default owner instead of the waybill owner string and carri
 it('does not choose one danger class when products have different classes',()=>{
   expect(receivingWaybillRows([{...bill,products:[...bill.products,{...bill.products[0],id:'other',hazardClassId:'different'}]}],'owner',[])[0].hazardClassId).toBeNull()
 })
+
+it('keeps individual owners separate from the default and from other containers',()=>{
+  const second={...bill.containers![0],containerId:'other',number:'SECOND'}
+  const clients=[{id:'default',name:'По умолчанию'},{id:'chosen',name:'Индивидуальный'},{id:'new-default',name:'Новый общий'}]
+  const bills=[{...bill,containers:[bill.containers![0],second]}]
+  expect(receivingWaybillRows(bills,'default',clients,{ktk:'chosen',removed:'chosen'}).map(row=>[row.containerId,row.ownerClientId,row.ownerClientName])).toEqual([['ktk','chosen','Индивидуальный'],['other','default','По умолчанию']])
+  expect(receivingWaybillRows(bills,'new-default',clients,{ktk:'chosen'}).map(row=>row.ownerClientId)).toEqual(['chosen','new-default'])
+})

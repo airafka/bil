@@ -27,6 +27,7 @@ type Props = {
   rows: ContainerTableRow[]
   groups?: ContainerTableGroup[]
   showPhysicalAttributes?: boolean
+  columnWidths?: number[]
   attributesReadOnly?: boolean
   ownerReadOnly?: boolean
   defaultOwnerId?: string
@@ -41,7 +42,7 @@ type Props = {
   addDisabled?: boolean
   allowEmptyEdit?: boolean
 }
-export function OrderContainerTable({ rows, attributesReadOnly = false, ownerReadOnly = false, defaultOwnerId, options = [], selectedIds, onSelect, onChange, onRemove, onAdd, allowEmptyEdit = false, selectableKeys, removableKeys, addDisabled = false, groups, showPhysicalAttributes = false }: Props) {
+export function OrderContainerTable({ rows, attributesReadOnly = false, ownerReadOnly = false, defaultOwnerId, options = [], selectedIds, onSelect, onChange, onRemove, onAdd, allowEmptyEdit = false, selectableKeys, removableKeys, addDisabled = false, groups, showPhysicalAttributes = false, columnWidths }: Props) {
   const [collapsed,setCollapsed]=useState<Set<string>>(new Set())
   const groupPrefix=useId()
   const [references, setReferences] = useState<ReferenceOption[][]>([[], [], []])
@@ -107,7 +108,7 @@ export function OrderContainerTable({ rows, attributesReadOnly = false, ownerRea
 
     {(referenceError||stockError)&&<Notification kind="error">{referenceError||stockError}</Notification>}
     <div className="order-container-scroll"><table className={'order-container-table'+(groups?' order-container-table--grouped composition-table composition-outline composition-containers':'')+(showPhysicalAttributes?' order-container-table--physical':'')} aria-label="КТК заявки">
-      <colgroup><col className="container-col-index"/><col className="container-col-number"/>{showPhysicalAttributes&&<><col className="container-col-type"/><col className="container-col-mass"/><col className="container-col-mass"/><col className="container-col-mass"/></>}<col className="container-col-owner"/><col/><col/>{showPhysicalAttributes?<><col className="container-col-empty"/><col className="container-col-danger"/></>:<><col className="container-col-danger"/><col className="container-col-empty"/></>}<col className="container-col-status"/>{showActions&&<col className="container-col-action"/>}</colgroup>
+      {columnWidths ? <colgroup>{columnWidths.map((width, index) => <col key={index} style={{ width }} />)}</colgroup> : <colgroup><col className="container-col-index"/><col className="container-col-number"/>{showPhysicalAttributes&&<><col className="container-col-type"/><col className="container-col-mass"/><col className="container-col-mass"/><col className="container-col-mass"/></>}<col className="container-col-owner"/><col/><col/>{showPhysicalAttributes?<><col className="container-col-empty"/><col className="container-col-danger"/></>:<><col className="container-col-danger"/><col className="container-col-empty"/></>}<col className="container-col-status"/>{showActions&&<col className="container-col-action"/>}</colgroup>}
       <thead><tr><th className="composition-index">№</th><th className="container-col-number">Номер КТК{selecting&&<b> *</b>}</th>{showPhysicalAttributes&&<><th>Тип КТК</th><th>Масса тары, кг</th><th>Масса брутто, кг</th><th>Грузоподъёмность, кг</th></>}<th>Собственник КТК</th><th>Номера ЗПУ</th><th>Тип ЗПУ</th>{showPhysicalAttributes?<><th className="container-col-empty">Порожний</th><th>Класс опасности груза</th></>:<><th>Класс опасности груза</th><th className="container-col-empty">Порожний</th></>}<th className="container-col-status">Статус КТК</th>{showActions&&<th className="registry-actions" aria-label="Действия"/>}</tr></thead>
       {groups?.length?groups.map((group,index)=>{
         const open=!collapsed.has(group.key),id=groupPrefix+'-'+group.key

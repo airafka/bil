@@ -1,11 +1,12 @@
 import { useEffect } from 'react'
+import { tableGeometry } from './tableGeometry'
 
-/** Enhance native tables without replacing their controls, focus or React state. */
+/** Keep native tables, hierarchy and controls intact; only their frame scrolls. */
 export function useResponsiveTables() {
   useEffect(() => {
     const root = document.querySelector('.app-shell')
     if (!root) return
-    const tracked = new Map<HTMLTableElement, Element>()
+    const tracked = new Map<HTMLTableElement, HTMLElement>()
     let frame = 0
     const update = () => {
       frame = 0
@@ -14,35 +15,32 @@ export function useResponsiveTables() {
         const parent = table.parentElement
         if (!parent) return
         if (!tracked.has(table)) { tracked.set(table, parent); resize.observe(parent) }
+        parent.classList.add('responsive-table-scroll')
         table.classList.add('responsive-table')
         const headings = [...(table.tHead?.rows ?? [])].at(-1)
-        const labels: string[] = []
-        for (const cell of headings?.cells ?? []) {
-          const text = cell.textContent?.trim() || cell.getAttribute('aria-label') || cell.querySelector('[aria-label]')?.getAttribute('aria-label') || 'Выбрать'
-          for (let i = 0; i < cell.colSpan; i++) labels.push(text)
-          cell.dataset.responsiveInteractive = String(!!cell.querySelector('input,button,select,a'))
-          cell.dataset.responsiveLabel = text
+        const columns = [...table.querySelectorAll<HTMLTableColElement>(':scope > colgroup > col')]
+        const cells = [...(headings?.cells ?? [])]
+        const geometry = cells.map((cell, index) => {
+          const declared = columns[index]?.style.width || cell.style.width
+          const hint = declared?.endsWith('px') ? Number.parseFloat(declared) : 0
+          const label = cell.textContent?.trim() || ''
+          const fixed = cell.matches('.composition-index,.registry-index,.registry-actions,.cargo-editor-actions,.route-picker-choice,.container-col-index,.container-col-action') || !!columns[index]?.matches('.route-picker-choice') || (hint > 0 && hint <= 60) || !!cell.querySelector('input[type="checkbox"]')
+          const width = fixed ? 44 : hint || (/собственник|клиент|договор|услуг|отправитель|получатель|наименование|комментарий/i.test(label) ? 220 : 140)
+          return { width, fixed }
+        })
+        const layout = tableGeometry(parent.clientWidth, geometry, Number(table.dataset.responsiveMinWidth) || 0)
+        if (cells.every(cell => cell.colSpan === 1)) cells.forEach((cell, index) => {
+          cell.style.setProperty('--responsive-column-width', layout.columns[index] + 'px')
+        })
+        table.style.setProperty('--responsive-table-width', layout.width + 'px')
+        // Keyboard users can scroll the frame without changing table semantics.
+        if (layout.width > parent.clientWidth + 1) {
+          if (!parent.hasAttribute('tabindex')) { parent.tabIndex = 0; parent.dataset.tableScrollFocus = 'true' }
+          if (!parent.hasAttribute('aria-label')) { parent.setAttribute('aria-label', 'Таблица с горизонтальной прокруткой'); parent.dataset.tableScrollLabel = 'true' }
+        } else {
+          if (parent.dataset.tableScrollFocus) { parent.removeAttribute('tabindex'); delete parent.dataset.tableScrollFocus }
+          if (parent.dataset.tableScrollLabel) { parent.removeAttribute('aria-label'); delete parent.dataset.tableScrollLabel }
         }
-        const occupied: number[] = []
-        for (const body of table.tBodies) {
-          occupied.fill(0)
-          for (const row of body.rows) {
-            let column = 0
-            for (const cell of row.cells) {
-              while ((occupied[column] ?? 0) > 0) column++
-              cell.dataset.responsiveLabel = cell.colSpan === 1 ? labels[column] || '' : ''
-              cell.dataset.responsiveWide = String(cell.colSpan > 1)
-              for (let i = 0; i < cell.colSpan; i++) occupied[column + i] = cell.rowSpan
-              column += cell.colSpan
-            }
-            for (let i = 0; i < occupied.length; i++) occupied[i] = Math.max(0, occupied[i] - 1)
-          }
-        }
-        const width = parent.getBoundingClientRect().width
-        table.style.setProperty('--responsive-table-width', `${width}px`)
-        // Allow enough room for dates and editable values before switching to labelled records.
-        const threshold = Math.max(Number(table.dataset.responsiveMinWidth) || 560, labels.length * (table.querySelector('tbody input:not([type="checkbox"]),tbody select') ? 130 : 95))
-        table.classList.toggle('responsive-table--records', width > 0 && width < threshold)
       })
     }
     const schedule = () => { if (!frame) frame = requestAnimationFrame(update) }

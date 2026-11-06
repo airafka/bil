@@ -30,6 +30,7 @@ export function BillingCharges({ comprehensiveServiceOrderId, refreshKey = '', t
     {data && <>
       {totalsTarget ? createPortal(totals, totalsTarget) : totals}
       {data.items.length ? <div className="table-wrap service-compact-table"><table className={comprehensiveServiceOrderId ? 'service-charge-table' : 'billing-charge-registry-table'} data-responsive-min-width={comprehensiveServiceOrderId ? 800 : 1100}>
+        <colgroup>{(comprehensiveServiceOrderId ? [44, 115, 145, 440, 125, 125] : [110, 170, 100, 110, 135, 400, 115, 115]).map((width, index) => <col key={index} style={{ width }} />)}</colgroup>
         <thead><tr>
           {comprehensiveServiceOrderId && <th scope="col" className="composition-index">№</th>}
           <th scope="col">Дата оказания</th>

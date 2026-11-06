@@ -26,13 +26,12 @@ type Props = {
 import { matchingRoutes } from '../routePickerOptions'
 export function RoutePicker({routes,routeType,transportType,terminalAreaId,selectedId,onSelect,onCreated,loading=false,error='',disabled=false}:Props) {
   const createFormId = useId()
-  const [search,setSearch]=useState('')
   const [creating,setCreating]=useState(false)
   const [saving,setSaving]=useState(false)
   const [createError,setCreateError]=useState('')
   const [date,setDate]=useState(''),[carrier,setCarrier]=useState(''),[driver,setDriver]=useState(''),[vehicle,setVehicle]=useState(''),[comment,setComment]=useState('')
   const saveLock=useRef(false),createButton=useRef<HTMLButtonElement>(null)
-  const rows=matchingRoutes(routes,routeType,transportType,terminalAreaId,search)
+  const rows=matchingRoutes(routes,routeType,transportType,terminalAreaId,'')
   const close=()=>{if(!saveLock.current){setCreating(false);setCreateError('');createButton.current?.focus()}}
   const keys=(event:KeyboardEvent<HTMLElement>)=>{
     if(event.key==='Escape'){event.preventDefault();close()}
@@ -53,7 +52,7 @@ export function RoutePicker({routes,routeType,transportType,terminalAreaId,selec
     finally{saveLock.current=false;setSaving(false)}
   }
   return <div className="route-picker">
-    <div className="route-picker-toolbar"><div className="route-picker-actions"><button ref={createButton} type="button" className="outline-action-button" disabled={disabled||!terminalAreaId} onClick={()=>setCreating(true)}>Создать рейс</button></div><UiInput aria-label="Поиск рейса" placeholder="Поиск" value={search} onChange={event=>setSearch(event.target.value)} /></div>
+    <div className="route-picker-toolbar"><div className="route-picker-actions"><button ref={createButton} type="button" className="outline-action-button create-route-button" disabled={disabled||!terminalAreaId} onClick={()=>setCreating(true)}>Создать рейс</button></div></div>
     {error&&<Notification kind="error">{error}</Notification>}
     <div className="route-picker-scroll"><table className="route-picker-table" aria-label="Выбор рейса">
       <colgroup><col className="route-picker-choice"/><col className="route-picker-code"/><col/><col className="route-picker-date"/><col/></colgroup>
@@ -63,7 +62,7 @@ export function RoutePicker({routes,routeType,transportType,terminalAreaId,selec
         <td><Link to={'/routes/'+route.id} target="_blank" rel="noreferrer">{route.code}</Link></td>
         <td title={route.orderNumbers?.join(', ')}>{route.orderNumbers?.length?route.orderNumbers.join(', '):route.orderCount?`${route.orderCount} заявок`:'—'}</td>
         <td>{routeDateLabel(route.departureAt)}</td><td title={route.comment??undefined}>{route.comment||'—'}</td>
-      </tr>):<tr><td colSpan={5}>{search?'Рейсы по запросу не найдены':'Подходящих черновых рейсов пока нет'}</td></tr>}</tbody>
+      </tr>):<tr><td colSpan={5}>Подходящих черновых рейсов пока нет</td></tr>}</tbody>
     </table></div>
     {creating&&<AppOverlay><div className="route-picker-backdrop" onDoubleClick={event=>event.stopPropagation()}><section role="dialog" aria-modal="true" aria-labelledby="route-picker-create-title" className="route-picker-dialog" onKeyDown={keys}>
       <div className="route-picker-dialog-heading route-dialog-heading"><h2 id="route-picker-create-title">Создать рейс</h2><div className="header-actions"><button type="submit" form={createFormId} className="primary-button create-action-button" disabled={saving}>{saving?'Создаём…':'Создать и выбрать'}</button><button type="button" className="close-button" title="Закрыть" aria-label="Закрыть создание рейса" disabled={saving} onClick={close}>×</button></div></div>

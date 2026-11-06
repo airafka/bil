@@ -1,9 +1,9 @@
 /* Shared field layout from the supplied Figma screenshot; states from Alabuga UI kit. */
 .app-shell .ui-control {
-  display: block; width: 100%; min-width: 0; height: 40px; margin: 0;
+  display: block; width: 100%; min-width: 0; height: var(--ui-control-height); margin: 0;
   padding: 0 8px; border: 1px solid var(--ui-field-border); border-radius: var(--ui-field-radius);
   background-color: var(--ui-field-fill); color: var(--ui-field-text); font-family: inherit;
-  font-size: 14px; font-weight: 400; line-height: 18px;
+  font-size: var(--ui-font-size); font-weight: 400; line-height: 18px;
   box-shadow: 0 1px 2px #f2f2f2; outline: none;
   transition: border-color .15s, box-shadow .15s, background-color .15s;
 }
@@ -22,13 +22,13 @@
 .app-shell .ui-select:disabled { background-image: url('/icons/ui-kit-chevron-disabled.svg'); }
 .app-shell .ui-choice { accent-color: var(--ui-field-focus); }
 .app-shell .ui-choice:focus-visible { outline: 2px solid var(--ui-field-focus); outline-offset: 3px; }
-.field { min-width: 0; color: var(--ui-field-label); font-size: 14px; font-weight: 400; line-height: 18px; gap: 8px; }
+.field { min-width: 0; color: var(--ui-field-label); font-size: var(--ui-font-size); font-weight: 400; line-height: 18px; gap: 8px; }
 .field b { color: var(--ui-field-error); font-weight: 400; }
 .field:has(> .ui-control:disabled) > span:first-child:not(.sr-only), .field:has(> .field-control > .ui-control:disabled) > span:first-child { color: var(--ui-field-placeholder); }
 .field-control { min-width: 0; gap: 6px; }
 .field small { font-size: 12px; line-height: 16px; color: var(--ui-field-error); }
 .horizontal-field, .field:has(> span:first-child:not(.sr-only):not(.service-sr-only)):not(.service-search) {
-  display: grid; grid-template-columns: 180px minmax(0, 1fr); align-items: start; gap: 8px;
+  display: grid; grid-template-columns: var(--ui-label-width) minmax(0, 1fr); align-items: start; gap: 8px;
 }
 .horizontal-field { margin: 8px 0 0; max-width: 536px; }
 .horizontal-field > span:first-child, .field:has(> span:first-child:not(.sr-only):not(.service-sr-only)) > span:first-child { padding-top: 11px; font-weight: 400; }
@@ -40,17 +40,17 @@
 .form-section-heading { border-bottom: 0; padding-bottom: 0; }
 .ui-section-divider { margin-top: 20px; padding-top: 20px; border-top: 1px solid #f3f3f3; }
 .ui-form-section { overflow: visible; }
-.ui-readonly-value { display: flex; align-items: center; min-width: 0; min-height: 40px; padding: 8px; border: 1px solid var(--ui-field-border); border-radius: 5px; background: var(--ui-field-blocked-fill); font-size: 14px; }
+.ui-readonly-value { display: flex; align-items: center; min-width: 0; min-height: var(--ui-control-height); padding: 8px; border: 1px solid var(--ui-field-border); border-radius: 5px; background: var(--ui-field-blocked-fill); font-size: var(--ui-font-size); }
 .ui-readonly-value .status-badge { padding: 3px 8px; }
 .status-badge[data-status="DRAFT"] { color: #191a1f; background: #f2f4f7; }
 .details-grid { max-width: 1172px; grid-template-columns: repeat(2, minmax(0, 536px)); gap: 8px clamp(24px, 5vw, 100px); margin-top: 16px; }
-.details-grid > div { display: grid; grid-template-columns: 180px minmax(0,1fr); align-items: start; gap: 8px; min-height: 40px; padding: 0; border: 0; background: transparent; }
+.details-grid > div { display: grid; grid-template-columns: var(--ui-label-width) minmax(0,1fr); align-items: start; gap: 8px; min-height: var(--ui-control-height); padding: 0; border: 0; background: transparent; }
 .details-grid .details-wide { grid-column: auto; }
-.details-grid dt { margin: 0; padding-top: 11px; font-size: 14px; line-height: 18px; color: var(--ui-field-label); }
-.details-grid dd { display: flex; align-items: center; min-width: 0; min-height: 40px; padding: 10px 8px; border: 1px solid var(--ui-field-border); border-radius: 5px; background: var(--ui-field-blocked-fill); font-size: 14px; font-weight: 400; line-height: 18px; overflow-wrap: anywhere; }
+.details-grid dt { margin: 0; padding-top: 11px; font-size: var(--ui-font-size); line-height: 18px; color: var(--ui-field-label); }
+.details-grid dd { display: flex; align-items: center; min-width: 0; min-height: var(--ui-control-height); padding: 10px 8px; border: 1px solid var(--ui-field-border); border-radius: 5px; background: var(--ui-field-blocked-fill); font-size: var(--ui-font-size); font-weight: 400; line-height: 18px; overflow-wrap: anywhere; }
 .details-grid dd a { color: var(--blue); }
 .details-grid dd a:hover { text-decoration: underline; }
-.app-shell :is(.ktk-table-row,.cargo-row,.quantity-table-row,.quantity-cargo-row,.shipping-railway-container-row,td) .ui-control { height: 32px; border-color: var(--ui-field-table-border); font-size: 14px; }
+.app-shell :is(.ktk-table-row,.cargo-row,.quantity-table-row,.quantity-cargo-row,.shipping-railway-container-row,td) .ui-control { height: var(--ui-table-control-height); border-color: var(--ui-field-table-border); font-size: var(--ui-font-size); }
 .app-shell :is(.ktk-table-row,.cargo-row,.quantity-table-row,.quantity-cargo-row,.shipping-railway-container-row,td) .ui-control:focus-visible { border-color: var(--ui-field-focus); }
 .app-shell .service-search input.ui-control { padding-left: 32px; }
 .service-search-symbol { top: 9px; }
@@ -62,7 +62,7 @@
 .waybill-mass-row .field { grid-template-columns: 150px minmax(0,1fr); }
 .waybill-mass-row > .row-clear-button { position: absolute; top: 20px; right: 10px; }
 .waybill-cargo-mass-row { grid-template-columns: 1fr; gap: 12px; max-width: 800px; }
-.waybill-cargo-mass-row .field { grid-template-columns: 180px minmax(0,1fr); }
+.waybill-cargo-mass-row .field { grid-template-columns: var(--ui-label-width) minmax(0,1fr); }
 .table-checkbox:has(input:focus-visible) > span:first-of-type { outline: 2px solid var(--ui-field-focus); outline-offset: 3px; }
 @media(max-width:1150px) {
   .form-fields-grid, .waybill-main-grid, .details-grid { grid-template-columns: 1fr; max-width: 650px; gap: 8px; }
@@ -84,7 +84,7 @@
   background: transparent; box-shadow: none; vertical-align: middle;
   justify-self: start; align-self: center;
 }
-.app-shell .field:has(> .ui-choice) { min-height: 40px; align-items: center; }
+.app-shell .field:has(> .ui-choice) { min-height: var(--ui-control-height); align-items: center; }
 .app-shell .field:has(> .ui-choice) > span:first-child { padding-top: 0; }
 
 /* A checked value stays blue in editable and disabled/read-only views. */
@@ -117,7 +117,7 @@
 .ui-multi-select { position: relative; min-width: 0; }
 .app-shell .ui-multi-trigger { text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 .ui-multi-options { position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; right: 0; max-height: 240px; overflow-y: auto; padding: 4px; border: 1px solid var(--ui-field-border); border-radius: var(--ui-field-radius); background: #fff; box-shadow: 0 4px 12px #1018281a; }
-.app-shell .ui-multi-option { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 8px; margin: 0; font-size: 14px; font-weight: 400; cursor: pointer; }
+.app-shell .ui-multi-option { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 8px; margin: 0; font-size: var(--ui-font-size); font-weight: 400; cursor: pointer; }
 .ui-multi-option > span { min-width: 0; overflow-wrap: anywhere; }
 .ui-multi-option:hover { background: #f8f9fb; }
 
@@ -126,7 +126,7 @@
 .service-order-main-grid > .form-fields-column:nth-child(2) > .horizontal-field { grid-template-columns: 120px minmax(0, 1fr); }
 @media (max-width: 1150px) {
   .service-order-main-grid { grid-template-columns: minmax(0, 1fr); }
-  .service-order-main-grid > .form-fields-column:nth-child(2) > .horizontal-field { grid-template-columns: 180px minmax(0, 1fr); }
+  .service-order-main-grid > .form-fields-column:nth-child(2) > .horizontal-field { grid-template-columns: var(--ui-label-width) minmax(0, 1fr); }
 }
 @media (max-width: 640px) {
   .service-order-main-grid > .form-fields-column:nth-child(2) > .horizontal-field { grid-template-columns: minmax(0, 1fr); }

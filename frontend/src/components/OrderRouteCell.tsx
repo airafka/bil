@@ -6,7 +6,6 @@ import { Link } from 'react-router-dom'
 import { createRoute, getOrder, getRoute } from '../api'
 import type { OrderDetails } from '../domain'
 import type { RouteType } from '../routes'
-import { transportTypeLabel } from '../domain'
 import { UiInput, UiTextarea } from './FormControls'
 
 export function OrderRouteCell({ id, kind, disabled = false }: { id: string; kind: RouteType; disabled?: boolean }) {
@@ -31,7 +30,7 @@ export function OrderRouteCell({ id, kind, disabled = false }: { id: string; kin
   if (error) return <button type="button" className="text-action-button" title={error} onClick={() => { setError(''); setAttempt(value => value + 1) }}>Повторить загрузку</button>
   if (!order || order.routeId) return <span>Загрузка…</span>
   return <>
-    <button type="button" className="secondary-button" disabled={disabled || order.status !== 'DRAFT'} title={order.status !== 'DRAFT' ? 'Добавление в рейс доступно для черновика заявки' : undefined} onClick={() => setOpen(true)}>Создать рейс</button>
+    <button type="button" className="secondary-button create-route-button" disabled={disabled || order.status !== 'DRAFT'} title={order.status !== 'DRAFT' ? 'Добавление в рейс доступно для черновика заявки' : undefined} onClick={() => setOpen(true)}>Создать рейс</button>
     {open && <RouteDrawer order={order} kind={kind} onClose={() => setOpen(false)} onCreated={value => { setRoute(value); setOpen(false) }} />}
   </>
 }
@@ -61,19 +60,14 @@ function RouteDrawer({ order, kind, onClose, onCreated }: { order: OrderDetails;
   }
   return <AppOverlay><dialog onDoubleClick={event => event.stopPropagation()} ref={dialog} className="route-side-dialog" aria-labelledby="route-drawer-title" onCancel={event => { event.preventDefault(); if (!busy) onClose() }}>
     <form onSubmit={save}>
-      <header className="route-dialog-heading"><h2 id="route-drawer-title">Создать рейс</h2><div className="header-actions"><button type="submit" className="primary-button create-action-button" disabled={busy || !order.terminalArea || !order.transportType}>{busy ? 'Создаём…' : 'Создать рейс'}</button><button type="button" className="close-button" title="Закрыть" aria-label="Закрыть форму рейса" disabled={busy} onClick={onClose}>×</button></div></header>
+      <header className="route-dialog-heading"><h2 id="route-drawer-title">Создать рейс</h2><div className="header-actions"><button type="submit" className="primary-button create-action-button create-route-button" disabled={busy || !order.terminalArea || !order.transportType}>{busy ? 'Создаём…' : 'Создать рейс'}</button><button type="button" className="close-button" title="Закрыть" aria-label="Закрыть форму рейса" disabled={busy} onClick={onClose}>×</button></div></header>
       <div className="route-drawer-body">
-        <p>{kind === 'SHIPPING' ? 'Вывоз' : 'Поставка'} {order.code} будет добавлен в рейс.</p>
-        <label>Дата и время *<UiInput autoFocus type="datetime-local" required value={date} disabled={busy} onChange={event => setDate(event.target.value)} /></label>
-        {order.transportType === 'VEHICLE' && <RouteLogisticsFields carrierId={carrier} driverId={driver} vehicleId={vehicle} onCarrier={setCarrier} onDriver={setDriver} onVehicle={setVehicle} disabled={busy} referenceInfo={<div className="route-reference-context"><label>Тип рейса<UiInput readOnly value={kind === 'SHIPPING' ? 'Вывоз' : 'Поставка'} /></label>
-        <label>Площадка<UiInput readOnly value={order.terminalArea?.name ?? ''} /></label>
-        <label>Транспорт<UiInput readOnly value={transportTypeLabel(order.transportType)} /></label></div>}>
-        <label>Комментарий<UiTextarea maxLength={200} value={comment} disabled={busy} onChange={event => setComment(event.target.value)} /></label>
+        <label className="field horizontal-field"><span>Дата и время <b>*</b></span><UiInput autoFocus type="datetime-local" required value={date} disabled={busy} onChange={event => setDate(event.target.value)} /></label>
+        {order.transportType === 'VEHICLE' && <RouteLogisticsFields carrierId={carrier} driverId={driver} vehicleId={vehicle} onCarrier={setCarrier} onDriver={setDriver} onVehicle={setVehicle} disabled={busy} showHeading={false} showReferenceInfo={false}>
+        <label className="field horizontal-field"><span>Комментарий</span><UiTextarea maxLength={200} value={comment} disabled={busy} onChange={event => setComment(event.target.value)} /></label>
         </RouteLogisticsFields>}
-        {!(order.transportType === 'VEHICLE') && <label>Комментарий<UiTextarea maxLength={200} value={comment} disabled={busy} onChange={event => setComment(event.target.value)} /></label>}
-        {order.transportType !== 'VEHICLE' && <section className="route-reference-section"><h2>Справочная информация</h2><label>Тип рейса<UiInput readOnly value={kind === 'SHIPPING' ? 'Вывоз' : 'Поставка'} /></label>
-        <label>Площадка<UiInput readOnly value={order.terminalArea?.name ?? ''} /></label>
-        <label>Транспорт<UiInput readOnly value={transportTypeLabel(order.transportType)} /></label></section>}
+        {!(order.transportType === 'VEHICLE') && <label className="field horizontal-field"><span>Комментарий</span><UiTextarea maxLength={200} value={comment} disabled={busy} onChange={event => setComment(event.target.value)} /></label>}
+
         {error && <Notification kind="error">{error}</Notification>}
       </div>
     </form>

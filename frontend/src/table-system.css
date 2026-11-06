@@ -1,11 +1,11 @@
 /* Shared table contract. Column geometry and hierarchy remain in each component. */
 :root {
-  --table-row-height: 36px;
-  --table-control-height: 30px;
+  --table-row-height: var(--ui-table-row-height);
+  --table-control-height: var(--ui-table-control-height);
   --table-cell-padding: 7px 12px;
   --table-header-font: 13px;
-  --table-body-font: 14px;
-  --table-line-height: 20px;
+  --table-body-font: var(--ui-font-size);
+  --table-line-height: var(--ui-line-height);
   --table-index-width: 44px;
   --table-action-width: 44px;
   --table-border: #eef1f6;
@@ -113,7 +113,6 @@ html { scrollbar-gutter: stable; }
 .app-shell :is(.service-table-page, .complex-service-page) table tbody tr > :last-child { border-right:0; }
 .app-shell .service-table-page .service-compact-table table { min-width:760px; }
 .app-shell .service-table-page .service-receiving-table table { min-width:940px; }
-.app-shell .service-table-page .service-compact-table :is(th, td) { white-space:nowrap; }
 .app-shell .service-table-page .service-cargo-item { display:block; margin:0; line-height:20px; white-space:normal; overflow-wrap:anywhere; }
 .app-shell .service-table-page .service-cargo-item + .service-cargo-item { margin-top:4px; }
 .app-shell .service-table-page .service-compact-table .order-code { font-weight:400; }

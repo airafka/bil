@@ -78,7 +78,7 @@ export function RouteCreatePage() {
     finally { setSaving(false) }
   }
   return <section className="form-page route-page">
-    <div className="page-header"><h1>Новый рейс</h1><div className="header-actions"><Link className="close-button" to="/routes" aria-label="Закрыть" title="Закрыть">×</Link>{tab === 'main' ? <button type="button" className="primary-button" onClick={nextTab}>Далее →</button> : <><button type="button" className="secondary-button" disabled={saving} onClick={() => setTab('main')}>← Назад</button><button className="primary-button" type="submit" form="route-create-form" disabled={saving || loading || !areaId}>{saving ? 'Создаём…' : 'Создать рейс'}</button></>}</div></div>
+    <div className="page-header"><h1>Новый рейс</h1><div className="header-actions"><Link className="close-button" to="/routes" aria-label="Закрыть" title="Закрыть">×</Link>{tab === 'main' ? <button type="button" className="primary-button" onClick={nextTab}>Далее →</button> : <><button type="button" className="secondary-button" disabled={saving} onClick={() => setTab('main')}>← Назад</button><button className="primary-button create-route-button" type="submit" form="route-create-form" disabled={saving || loading || !areaId}>{saving ? 'Создаём…' : 'Создать рейс'}</button></>}</div></div>
     <form id="route-create-form" className="form-workspace" onSubmit={submit}>
       <div className="stepper" aria-label="Этапы создания рейса"><button type="button" className={`step ${tab === 'main' ? 'current' : 'complete'}`} onClick={() => setTab('main')}>Основное</button><button type="button" className={`step ${tab === 'orders' ? 'current' : ''}`} onClick={nextTab}>Заявки</button></div>
       <div hidden={tab !== 'main'}>
