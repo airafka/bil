@@ -40,7 +40,6 @@ tbody tr:hover, .service-compact-table tbody tr:hover { background: #f2f7ff; }
 .table-wrap td a { color: var(--blue); }
 .table-wrap td a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .service-dashboard > .billing-charges-panel > .service-charge-totals { padding: 16px; margin: 0; }
-.billing-charges-panel td:nth-child(4), .billing-charges-panel td:nth-child(7), .billing-charges-panel td:nth-child(8) { white-space: nowrap; }
 .billing-charges-panel td:nth-child(7), .billing-charges-panel td:nth-child(8) { text-align: left; font-variant-numeric: tabular-nums; }
 .status-badge { align-items: center; justify-content: center; min-width: 0; min-height: 24px; padding: 3px 8px; font-size: 12px; font-weight: 400; line-height: 18px; border-radius: 5px; white-space: nowrap; }
 .status-badge[data-status="DRAFT"] { color: #191a1f; background: #f2f4f7; }

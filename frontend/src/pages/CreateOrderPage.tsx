@@ -45,6 +45,7 @@ const shippingRailwaySteps = ['Основное', 'Вагоны', 'КТК', 'Г�
 export function CreateOrderPage({ config, serviceMode = false }: { config: OrderConfig; serviceMode?: boolean }) {
   const [serviceOptions,setServiceOptions] = useState<AvailableOrderService[]>([])
   const [complexServiceId,setComplexServiceId] = useState('')
+  const [containerOwners, setContainerOwners] = useState<Record<string, string>>({})
   const [waybillFilter, setWaybillFilter] = useState<GroupedWaybillFilter>({})
   const [step, setStep] = useState(1)
   const [form, setForm] = useState<OrderFormState>(() => ({ ...initialOrderFormState, transportType: serviceMode ? 'RAILWAY' as const : '' as const }))
@@ -209,7 +210,7 @@ export function CreateOrderPage({ config, serviceMode = false }: { config: Order
     setRequestError('')
     try {
       if (serviceMode) {
-        const created = await createComprehensiveServiceOrder({ complexServiceId, clientId: form.clientId, contractId: form.contractId, waybillIds: form.waybills.map(item => item.id), defaultContainerOwnerId: form.defaultContainerOwnerId || '' })
+        const created = await createComprehensiveServiceOrder({ complexServiceId, clientId: form.clientId, contractId: form.contractId, waybillIds: form.waybills.map(item => item.id), defaultContainerOwnerId: form.defaultContainerOwnerId || '', containerOwners: receivingWaybillRows(form.waybills, form.defaultContainerOwnerId, clients, containerOwners).filter(row => containerOwners[row.containerId]).map(row => ({ containerId: row.containerId, ownerClientId: containerOwners[row.containerId] })) })
         navigate('/comprehensive-service-orders/' + created.order.id)
         return
       }
@@ -365,6 +366,7 @@ export function CreateOrderPage({ config, serviceMode = false }: { config: Order
             {isRailwayReceiving && <WaybillFilterFields value={waybillFilter} disabled={submitting} onChange={value => {
               setWaybillFilter(value)
               setForm(state => ({ ...state, waybills: [] }))
+              setContainerOwners({})
               setErrors([])
             }} />}
             {!serviceMode && <>
@@ -413,9 +415,9 @@ export function CreateOrderPage({ config, serviceMode = false }: { config: Order
 
 
         {contentStep === 2 && isRailwayReceiving && <WaybillSelectionTable filter={waybillFilter} selected={form.waybills} disabled={submitting}
-          onChange={waybills => { setForm(state => ({ ...state, waybills })); setErrors([]) }} />}
+          onChange={waybills => { setForm(state => ({ ...state, waybills })); const ids = new Set(receivingWaybillRows(waybills, form.defaultContainerOwnerId, clients).map(row => row.containerId)); setContainerOwners(current => Object.fromEntries(Object.entries(current).filter(([id]) => ids.has(id)))); setErrors([]) }} />}
 
-        {isRailwayReceiving && contentStep === 4 && <div className="form-section"><OrderContainerTable showPhysicalAttributes rows={receivingWaybillRows(form.waybills,form.defaultContainerOwnerId,clients)} groups={form.waybills.map(bill => ({ key:bill.id,label:"Накладная № "+bill.number,rows:[],children:(bill.railwayCarriages ?? []).map(wagon => ({ key:bill.id+"-"+wagon.id,label:"Вагон № "+wagon.number,rows:receivingWaybillRows([{...bill,railwayCarriages:[wagon]}],form.defaultContainerOwnerId,clients) })) }))} /></div>}
+        {isRailwayReceiving && contentStep === 4 && <div className="form-section"><OrderContainerTable showPhysicalAttributes attributesReadOnly columnWidths={serviceMode ? [44,145,125,90,90,120,210,100,130,70,145,85] : undefined} onChange={serviceMode && !submitting ? (id, change) => { if (change.ownerClientId) setContainerOwners(current => ({ ...current, [id]: change.ownerClientId! })) } : undefined} rows={receivingWaybillRows(form.waybills,form.defaultContainerOwnerId,clients,containerOwners)} groups={form.waybills.map(bill => ({ key:bill.id,label:"Накладная № "+bill.number,rows:[],children:(bill.railwayCarriages ?? []).map(wagon => ({ key:bill.id+"-"+wagon.id,label:"Вагон № "+wagon.number,rows:receivingWaybillRows([{...bill,railwayCarriages:[wagon]}],form.defaultContainerOwnerId,clients,containerOwners) })) }))} /></div>}
         {isRailwayReceiving && (contentStep === 3 || contentStep === 5) && (
           <WaybillCompositionTable key={contentStep} waybills={form.waybills} tab={contentStep === 3 ? 'wagons' : 'cargo'} wagonAttributes />
         )}

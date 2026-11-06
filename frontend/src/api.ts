@@ -136,7 +136,7 @@ export function getTariffClients() { return request<ReferenceOption[]>('/api/ref
 export function getComprehensiveServiceOrders(page = 0, query = '', status = '') { return request<PagedResponse<ComprehensiveServiceOrderSummary>>('/api/comprehensive-service-orders?page=' + page + '&size=20&query=' + encodeURIComponent(query) + '&status=' + encodeURIComponent(status)) }
 export function getComprehensiveServiceOrder(id: string) { return request<ComprehensiveServiceOrderDetails>('/api/comprehensive-service-orders/' + id) }
 export function getAvailableOrderServices() { return request<import('./serviceWaybillValidation').AvailableOrderService[]>('/api/comprehensive-service-orders/available-services') }
-export function createComprehensiveServiceOrder(payload: { complexServiceId: string; clientId: string; contractId: string; waybillIds: string[]; defaultContainerOwnerId?: string }) {
+export function createComprehensiveServiceOrder(payload: { complexServiceId: string; clientId: string; contractId: string; waybillIds: string[]; defaultContainerOwnerId?: string; containerOwners?: Array<{ containerId: string; ownerClientId: string }> }) {
   return request<ComprehensiveServiceOrderDetails>('/api/comprehensive-service-orders', { method: 'POST', body: JSON.stringify(payload) })
 }
 export function createServiceShippingOrder(serviceId: string, containerIds: string[]) {

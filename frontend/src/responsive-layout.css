@@ -27,22 +27,6 @@
   .content .service-tab-charge-totals { width: 100%; margin-left: 0; }
   .content .service-tab-charge-totals .service-charge-totals > div { grid-template-columns: minmax(0, 150px) minmax(0, 1fr); }
 }
-/* Tablet records use two labelled columns; wide/grouped content retains the whole row. */
-@container workspace (min-width: 640px) {
-  .app-shell table.responsive-table--records > tbody > tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .app-shell table.responsive-table--records > tbody > tr > :is([data-responsive-wide="true"], .composition-index, .registry-index, .registry-actions, .cargo-editor-actions) { grid-column: 1 / -1; }
-}
-
-/* Compact labelled registry rows on narrow workspaces: label beside its value. */
-@container workspace (max-width: 639px) {
-  .app-shell .registry-page table.responsive-table--records > tbody > tr > td:not([data-responsive-wide="true"]) {
-    display: grid; grid-template-columns: minmax(90px, .85fr) minmax(0, 1.15fr); gap: 4px 12px;
-    align-items: center; text-align: left;
-  }
-  .app-shell .registry-page table.responsive-table--records > tbody > tr > td[data-responsive-label]::before { margin: 0; }
-  .app-shell .registry-page table.responsive-table--records > tbody > tr > td > :is(a, button, .status-badge, .container-status-badge) { justify-self: start; }
-}
-
 @container workspace (max-width: 900px) {
   .content .service-progress { grid-template-columns: minmax(0, 1fr); }
 }

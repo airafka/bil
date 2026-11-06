@@ -14,6 +14,7 @@ import './table-system.css'
 import './responsive-tables.css'
 import './select-controls.css'
 import './responsive-layout.css'
+import './ui-system.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

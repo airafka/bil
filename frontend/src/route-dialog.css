@@ -37,3 +37,17 @@
 }
 
 #app-overlay-root .route-reference-context { display: grid; gap: 16px; margin-top: 16px; }
+
+/* The transport-order drawer uses label/value rows, like the return form. */
+#app-overlay-root .route-side-dialog:not(.return-dialog) { width: min(640px, 100vw); }
+#app-overlay-root .route-side-dialog:not(.return-dialog) .field {
+  grid-template-columns: 220px minmax(0, 1fr); gap: 12px; align-items: center;
+}
+#app-overlay-root .route-side-dialog:not(.return-dialog) .field > span:first-child {
+  padding-top: 0; color: var(--ui-field-label); font-size: 14px; line-height: 20px;
+}
+#app-overlay-root .route-side-dialog .route-logistics-fields--plain { border: 0; margin: 0; }
+#app-overlay-root .route-side-dialog .route-logistics-fields--plain .form-fields-grid { margin-top: 0; }
+@media (max-width: 480px) {
+  #app-overlay-root .route-side-dialog:not(.return-dialog) .field { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+}

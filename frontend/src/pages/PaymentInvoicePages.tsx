@@ -10,8 +10,8 @@ import { updatePaymentInvoice, markPaymentInvoicePaid, getInvoiceTariff, createP
 import type { PagedResponse, ReferenceOption } from '../domain'
 import type { ContractOption } from '../comprehensiveServiceOrder'
 import type { AppliedInvoiceTariff, InvoiceCandidates, InvoiceDetails, InvoiceFilters, InvoiceLine, PaymentInvoice } from '../invoices'
-import { invoiceDate, invoiceMoney, invoicePeriod, selectedInvoiceTotals, filterInvoiceContainers } from '../invoices'
-import { UiInput, UiSelect, UiMultiSelect } from '../components/FormControls'
+import { invoiceDate, invoiceMoney, invoicePeriod, selectedInvoiceTotals } from '../invoices'
+import { UiInput, UiSelect } from '../components/FormControls'
 
 const message = (cause: unknown) => cause instanceof Error ? cause.message : 'Не удалось выполнить запрос'
 const PAGE_SIZE = 25
@@ -31,7 +31,8 @@ function LinesTable({ items, timeZone, selected, onToggle, onToggleAll, allSelec
   const allCheckbox = useRef<HTMLInputElement>(null)
   useEffect(() => { if (allCheckbox.current) allCheckbox.current.indeterminate = partiallySelected && !allSelected }, [partiallySelected, allSelected])
   return <div className="table-wrap service-compact-table"><table className="invoice-lines-table" data-responsive-min-width={960}>
-    <thead><tr>{onToggle && <th scope="col" className="registry-index" aria-label="Выбор услуг">{onToggleAll && <UiInput ref={allCheckbox} type="checkbox" checked={allSelected} disabled={disabled || !items.length} onChange={onToggleAll} aria-label="Выбрать все услуги по текущим фильтрам" title="Выбрать или снять выбор всех услуг по текущим фильтрам, на всех страницах" />}</th>}<th scope="col" className="invoice-date-column">Дата оказания</th><th scope="col" className="invoice-order-column">Заявка на услугу</th><th scope="col" className="invoice-container-column">КТК</th><th scope="col">Услуга</th>{invoiceId && <th scope="col" className="invoice-tariff-column">Тариф</th>}<th scope="col">Без НДС, ₽</th><th scope="col">С НДС, ₽</th></tr></thead>
+    <colgroup>{[...(onToggle ? [44] : []), 110, 110, 135, 400, ...(invoiceId ? [80] : []), 115, 115].map((width, index) => <col key={index} style={{ width }} />)}</colgroup>
+    <thead><tr>{onToggle && <th scope="col" className="registry-index" aria-label="Выбор услуг">{onToggleAll && <UiInput ref={allCheckbox} type="checkbox" checked={allSelected} disabled={disabled || !items.length} onChange={onToggleAll} aria-label="Выбрать все услуги" title="Выбрать или снять выбор всех услуг, на всех страницах" />}</th>}<th scope="col" className="invoice-date-column">Дата оказания</th><th scope="col" className="invoice-order-column">Заявка на услугу</th><th scope="col" className="invoice-container-column">КТК</th><th scope="col">Услуга</th>{invoiceId && <th scope="col" className="invoice-tariff-column">Тариф</th>}<th scope="col">Без НДС, ₽</th><th scope="col">С НДС, ₽</th></tr></thead>
     <tbody>{items.map(item => <tr key={item.id}>
       {onToggle && <td className="registry-index"><UiInput type="checkbox" checked={selected?.has(item.id) ?? false} disabled={disabled} onChange={() => onToggle(item.id)} aria-label={`Выбрать ${item.serviceName}, КТК ${item.containerName}, заявка ${item.comprehensiveServiceOrderCode}, ${invoiceDate(item.performedAt, timeZone)}`} /></td>}
       <td>{invoiceDate(item.performedAt, timeZone)}</td>
@@ -98,7 +99,6 @@ function InvoiceForm({ initial, onSaved, onCancel }: { initial?: InvoiceDetails;
   const [applied, setApplied] = useState<{ filters: InvoiceFilters; candidates: InvoiceCandidates; key: string } | null>(null)
   const [candidates, setCandidates] = useState<InvoiceCandidates | null>(null)
   const [candidateError, setCandidateError] = useState('')
-  const [containerNames, setContainerNames] = useState<string[]>([])
   const initialApplied = useRef(false)
   const editingId = initial?.invoice.id
   useEffect(() => {
@@ -112,7 +112,6 @@ function InvoiceForm({ initial, onSaved, onCancel }: { initial?: InvoiceDetails;
     }).catch(cause => { if (active) setCandidateError(message(cause)) })
     return () => { active = false }
   }, [filters, attempt, editingId])
-  const containerOptions = [...new Set(candidates?.items.map(item => item.containerName) ?? [])].sort((a, b) => a.localeCompare(b, 'ru'))
   useEffect(() => {
     let active = true
     Promise.all([getReferenceOptions('clients'), getContracts()]).then(([clientRows, contractRows]) => {
@@ -120,14 +119,14 @@ function InvoiceForm({ initial, onSaved, onCancel }: { initial?: InvoiceDetails;
     }).catch(cause => { if (active) setReferenceError(message(cause)) })
     return () => { active = false }
   }, [attempt])
-  function change(next: InvoiceFilters) { setFilters(next); setApplied(null); setCandidates(null); setContainerNames([]); setCandidateError('') }
+  function change(next: InvoiceFilters) { setFilters(next); setApplied(null); setCandidates(null); setCandidateError('') }
   async function applyFilters() {
     if (busy) return
     setBusy(true); setApplied(null); setCandidateError('')
     try {
       const current = await getInvoiceCandidates(filters, editingId)
       setCandidates(current)
-      setApplied({ filters: { ...filters }, candidates: { ...current, items: filterInvoiceContainers(current.items, containerNames) }, key: crypto.randomUUID() })
+      setApplied({ filters: { ...filters }, candidates: current, key: crypto.randomUUID() })
     } catch (cause) { setCandidateError(message(cause)) }
     finally { setBusy(false) }
   }
@@ -142,7 +141,6 @@ function InvoiceForm({ initial, onSaved, onCancel }: { initial?: InvoiceDetails;
         <label className="field horizontal-field"><span>Клиент <b>*</b></span><UiSelect required disabled={busy || !referencesReady} value={filters.clientId} onChange={event => change({ ...filters, clientId: event.target.value, contractId: '' })}><option value="" hidden disabled />{clients.map(item => <option value={item.id} key={item.id}>{item.name}</option>)}</UiSelect></label>
         <label className="field horizontal-field"><span>Договор <b>*</b></span><UiSelect required disabled={busy || !referencesReady || !filters.clientId} value={filters.contractId} onChange={event => change({ ...filters, contractId: event.target.value })}><option value="" hidden disabled />{contracts.filter(item => item.clientId === filters.clientId).map(item => <option value={item.id} key={item.id}>{item.name}</option>)}</UiSelect></label>
         <label className="field horizontal-field"><span>Период оказания <b>*</b></span><UiInput required type="month" min="0001-01" max="9998-12" disabled={busy} value={filters.period} onChange={event => change({ ...filters, period: event.target.value })} /></label>
-        <div className="field horizontal-field"><span id="invoice-containers-label">КТК</span><UiMultiSelect aria-labelledby="invoice-containers-label" disabled={busy || !candidates} options={containerOptions.map(name => ({ value: name, label: name }))} value={containerNames} onChange={values => { setContainerNames(values); setApplied(null) }} /></div>
       </div>
     </form>
     {applied && <InvoiceSelection key={applied.key} filters={applied.filters} data={applied.candidates} onBusy={setBusy} actionHost={actionHost} initial={initial} onSaved={onSaved} />}
@@ -164,7 +162,7 @@ function InvoiceSelection({ filters, data, onBusy, actionHost, initial, onSaved 
   function toggleAll() {
     if (saving) return
     if (!allSelected && data.items.length > 10000) {
-      setError('В один счёт можно включить не более 10 000 услуг. Уточните фильтр КТК или выберите услуги по отдельности.')
+      setError('В один счёт можно включить не более 10 000 услуг. Выберите услуги по отдельности.')
       return
     }
     setError('')

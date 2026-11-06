@@ -64,6 +64,9 @@ export function OrderListPage({ config }: { config: OrderConfig }) {
       <div className="table-card" aria-busy={loading}>
         <div className="table-wrap">
           <table className="transport-order-registry" data-responsive-min-width={1180}>
+            <colgroup>
+              {[44, 105, 200, 165, 205, 120, 80, 80, 130, 120, 44].map((width, index) => <col key={index} style={{ width }} />)}
+            </colgroup>
             <thead>
               <tr>
                 <th className="registry-index" scope="col">№</th>

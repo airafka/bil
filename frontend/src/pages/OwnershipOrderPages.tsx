@@ -31,10 +31,10 @@ function Pagination({ data, change }: { data: PagedResponse<unknown>; change: (p
 
 export function OwnershipOrderRegistryPage() {
   const [data, setData] = useState<PagedResponse<OwnershipHeader> | null>(null)
-  const [page, setPage] = useState(0), [query, setQuery] = useState(''), [error, setError] = useState('')
+  const [page, setPage] = useState(0), [error, setError] = useState('')
   const [deleting, setDeleting] = useState<OwnershipHeader | null>(null), [busy, setBusy] = useState(false), [revision, setRevision] = useState(0)
   const [message, setMessage] = useState('')
-  useEffect(() => { let active = true; getOwnershipOrders(query, page).then(v => { if (active) setData(v) }).catch(e => { if (active) setError(errorText(e)) }); return () => { active = false } }, [query, page, revision])
+  useEffect(() => { let active = true; getOwnershipOrders('', page).then(v => { if (active) setData(v) }).catch(e => { if (active) setError(errorText(e)) }); return () => { active = false } }, [page, revision])
   async function remove() {
     if (!deleting || busy) return
     setBusy(true); setError('')
@@ -44,7 +44,7 @@ export function OwnershipOrderRegistryPage() {
   return <section className="registry-page ownership-page">
     <div className="page-header"><h1>Смена собственника КТК</h1><Link className="primary-button create-action-button" to="/service-orders/new"><ActionIcon name="plus" /> Создать</Link></div>
     {error && <Notification kind="error">{error}</Notification>}{message && <Notification kind="success">{message}</Notification>}
-    <div className="table-card"><div className="ownership-toolbar"><UiInput aria-label="Поиск заявки на смену собственника" placeholder="Поиск" value={query} onChange={e => { setQuery(e.target.value); setPage(0); setData(null) }} /></div>
+    <div className="table-card">
       <div className="table-wrap"><table className="ownership-registry-table"><thead><tr><th className="registry-index">№</th><th>Номер заявки</th><th>Новый собственник</th><th>Количество КТК</th><th>Статус</th><th>Дата выполнения</th><th>Комментарий</th><th className="registry-actions" aria-label="Действия" /></tr></thead><tbody>
         {!data && !error && <tr><td colSpan={8}>Загружаем заявки…</td></tr>}{data?.items.length === 0 && <tr><td colSpan={8}>Заявок пока нет</td></tr>}
         {data?.items.map((row, index) => <RecordRow to={'/service-orders/' + row.id} key={row.id}><td className="registry-index">{data.page * data.size + index + 1}</td><td><Link className="order-code" to={'/service-orders/' + row.id}>{row.number}</Link></td><td>{row.clientName}</td><td>{row.containerQuantity}</td><td><OwnershipStatus status={row.status} /></td><td>{completedAt(row.completionAt)}</td><td>{row.comment || '—'}</td><td className="registry-actions"><RowActions label={'Действия с заявкой ' + row.number} disabled={busy} actions={[{ label: 'Открыть', to: '/service-orders/' + row.id }, ...(row.status === 'DRAFT' ? [{ label: 'Изменить', to: '/service-orders/' + row.id + '?edit=1' }, { label: 'Удалить', onClick: () => setDeleting(row) }] : [])]} /></td></RecordRow>)}
@@ -57,10 +57,10 @@ export function OwnershipOrderRegistryPage() {
 export function OwnershipOrderCreatePage() {
   const [clients, setClients] = useState<ReferenceOption[]>([]), [client, setClient] = useState(''), [comment, setComment] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false)
   const [tab, setTab] = useState<'main' | 'containers'>('main')
-  const [query, setQuery] = useState(''), [page, setPage] = useState(0)
+  const [page, setPage] = useState(0)
   const [available, setAvailable] = useState<PagedResponse<OwnershipContainer> | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  useEffect(() => { if (!client) return; let active = true; getOwnershipAvailableForCreate(client, query, page).then(value => { if (active) setAvailable(value) }).catch(e => { if (active) setError(errorText(e)) }); return () => { active = false } }, [client, query, page])
+  useEffect(() => { if (!client) return; let active = true; getOwnershipAvailableForCreate(client, '', page).then(value => { if (active) setAvailable(value) }).catch(e => { if (active) setError(errorText(e)) }); return () => { active = false } }, [client, page])
   function changeTab(value: 'main' | 'containers') { if (value === 'containers' && !client) { setError('Выберите нового собственника КТК'); return }; setTab(value) }
   const lock = useRef(false), navigate = useNavigate()
   useEffect(() => { let active = true; getReferenceOptions('clients').then(v => { if (active) setClients(v) }).catch(e => { if (active) setError(errorText(e)) }); return () => { active = false } }, [])
@@ -74,13 +74,13 @@ export function OwnershipOrderCreatePage() {
   }
   return <section className="form-page ownership-page"><div className="page-header"><h1>Новая смена собственника КТК</h1><div className="header-actions"><CloseLink /><button className={tab === 'main' ? 'primary-button' : 'secondary-button'} disabled={busy} onClick={() => changeTab(tab === 'main' ? 'containers' : 'main')}>{tab === 'main' ? 'Далее →' : '← Назад'}</button>{tab === 'containers' && <button className="primary-button" disabled={busy} onClick={create}>{busy ? 'Сохраняем…' : 'Создать'}</button>}</div></div>
     {error && <Notification kind="error">{error}</Notification>}
-    <div className="form-workspace"><div className="ownership-tabs-toolbar"><OwnershipTabs tab={tab} change={changeTab} disabled={busy} />{tab === 'containers' && <UiInput aria-label="Поиск доступных КТК" placeholder="Поиск" value={query} onChange={e => { setQuery(e.target.value); setPage(0); setAvailable(null) }} />}</div>
+    <div className="form-workspace"><div className="ownership-tabs-toolbar"><OwnershipTabs tab={tab} change={changeTab} disabled={busy} /></div>
       {tab === 'main' && <>
       <section className="form-section ui-form-section"><div className="form-section-heading"><h2>Основная информация</h2></div>
         <div className="form-fields-grid"><div className="form-fields-column">
           <label className="field horizontal-field"><span>Номер заявки</span><UiInput value="" readOnly /></label>
           <label className="field horizontal-field"><span>Количество КТК</span><UiInput value={selected.size} readOnly /></label>
-          <label className="field horizontal-field"><span>Новый собственник <b>*</b></span><UiSelect disabled={busy} value={client} onChange={e => { setClient(e.target.value); setSelected(new Set()); setAvailable(null); setQuery(''); setPage(0); setError('') }}><option value="" hidden disabled />{clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</UiSelect></label>
+          <label className="field horizontal-field"><span>Новый собственник <b>*</b></span><UiSelect disabled={busy} value={client} onChange={e => { setClient(e.target.value); setSelected(new Set()); setAvailable(null); setPage(0); setError('') }}><option value="" hidden disabled />{clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</UiSelect></label>
           <label className="field horizontal-field"><span>Услуга</span><UiInput value="Смена собственника КТК" readOnly /></label>
         </div><div className="form-fields-column"><div className="field horizontal-field"><span>Статус</span><div className="ownership-status-field"><OwnershipStatus status="DRAFT" /></div></div></div></div>
       </section>
@@ -96,16 +96,16 @@ export function OwnershipOrderViewPage() {
   const [params, setParams] = useSearchParams()
   const editingRequested = params.get('edit') === '1'
   const tab = params.get('tab') === 'containers' ? 'containers' : 'main'
-  const [data, setData] = useState<OwnershipDetails | null>(null), [comment, setComment] = useState(''), [query, setQuery] = useState(''), [page, setPage] = useState(0)
+  const [data, setData] = useState<OwnershipDetails | null>(null), [comment, setComment] = useState(''), [page, setPage] = useState(0)
   const [available, setAvailable] = useState<PagedResponse<OwnershipContainer> | null>(null), [selected, setSelected] = useState<Set<string>>(new Set())
   const [error, setError] = useState(''), [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [revision, setRevision] = useState(0)
   const lock = useRef(false)
   function apply(value: OwnershipDetails) { setData(value); setComment(value.order.comment || ''); setSelected(new Set(value.containers.map(c => c.containerOwnerId))) }
   useEffect(() => { let active = true; getOwnershipOrder(ownershipOrderId).then(v => { if (active) apply(v) }).catch(e => { if (active) setError(errorText(e)) }); return () => { active = false } }, [ownershipOrderId])
   const draft = data?.order.status === 'DRAFT', editing = draft && editingRequested
-  useEffect(() => { if (!editing) return; let active = true; getOwnershipAvailable(ownershipOrderId, query, page).then(v => { if (active) setAvailable(v) }).catch(e => { if (active) setError(errorText(e)) }); return () => { active = false } }, [ownershipOrderId, editing, query, page, revision])
+  useEffect(() => { if (!editing) return; let active = true; getOwnershipAvailable(ownershipOrderId, '', page).then(v => { if (active) setAvailable(v) }).catch(e => { if (active) setError(errorText(e)) }); return () => { active = false } }, [ownershipOrderId, editing, page, revision])
   function changeTab(value: 'main' | 'containers') { setParams({ ...(editing ? { edit: '1' } : {}), ...(value === 'containers' ? { tab: value } : {}) }, { replace: true }) }
-  function finishEditing() { setParams(tab === 'containers' ? { tab } : {}, { replace: true }); setAvailable(null); setQuery(''); setPage(0) }
+  function finishEditing() { setParams(tab === 'containers' ? { tab } : {}, { replace: true }); setAvailable(null); setPage(0) }
   async function save(accept: boolean) {
     if (lock.current) return
     if (editing && !selected.size) { setError('Выберите хотя бы один КТК'); return }
@@ -124,7 +124,7 @@ export function OwnershipOrderViewPage() {
     <CloseLink />
   </div></div>
     {error && <Notification kind="error">{error}</Notification>}{message && <Notification kind="success">{message}</Notification>}
-    <div className="form-workspace"><div className="ownership-tabs-toolbar"><OwnershipTabs tab={tab} change={changeTab} disabled={busy} />{tab === 'containers' && editing && <UiInput aria-label="Поиск доступных КТК" placeholder="Поиск" value={query} disabled={busy} onChange={e => { setQuery(e.target.value); setPage(0); setAvailable(null) }} />}</div>
+    <div className="form-workspace"><div className="ownership-tabs-toolbar"><OwnershipTabs tab={tab} change={changeTab} disabled={busy} /></div>
       {tab === 'main' && <><section className="form-section ui-form-section"><div className="form-section-heading"><h2>Основная информация</h2></div><dl className="details-grid">
         <div><dt>Номер заявки</dt><dd>{data.order.number}</dd></div><div><dt>Статус</dt><dd><OwnershipStatus status={data.order.status} /></dd></div>
         <div><dt>Количество КТК</dt><dd>{editing ? selected.size : data.order.containerQuantity}</dd></div><div><dt>Дата выполнения</dt><dd>{completedAt(data.order.completionAt)}</dd></div>
