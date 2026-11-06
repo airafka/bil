@@ -1,11 +1,12 @@
+import type { GroupedWaybillFilter } from '../domain'
 import { Notification } from './Notification'
 import { useEffect, useRef, useState } from 'react'
 import { getAvailableWaybills, type AvailableWaybillPage, type AvailableWaybillRow } from '../api'
 import { canAddWaybill, toSelectedWaybill, type SelectedWaybill } from '../orderForm'
 import { UiInput } from './FormControls'
 
-export function WaybillSelectionTable({ selected, onChange, disabled = false }: {
-  selected: SelectedWaybill[]; onChange: (rows: SelectedWaybill[]) => void; disabled?: boolean
+export function WaybillSelectionTable({ selected, onChange, filter, disabled = false }: {
+  filter: GroupedWaybillFilter; selected: SelectedWaybill[]; onChange: (rows: SelectedWaybill[]) => void; disabled?: boolean
 }) {
   const [page, setPage] = useState(0)
   const [attempt, setAttempt] = useState(0)
@@ -15,11 +16,11 @@ export function WaybillSelectionTable({ selected, onChange, disabled = false }: 
   const allCheckbox = useRef<HTMLInputElement>(null)
   useEffect(() => {
     let active = true
-    getAvailableWaybills(page).then(value => { if (active) setData(value) })
+    getAvailableWaybills(page, filter).then(value => { if (active) setData(value) })
       .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Не удалось загрузить накладные') })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [page, attempt])
+  }, [page, attempt, filter])
   const rows = data?.content ?? []
   const ids = new Set(selected.map(row => row.id))
   const group = selected[0]?.groupKey ?? rows[0]?.groupKey
@@ -52,7 +53,7 @@ export function WaybillSelectionTable({ selected, onChange, disabled = false }: 
           <td>{bill.shipmentType === 'CONTAINER' ? 'Контейнерная' : bill.shipmentType || 'Не указан'}</td>
           <td><span className="status-badge waybill-transit-status">{bill.status === 'IN_TRANSIT' ? 'В пути' : bill.status || 'Не указан'}</span></td>
         </tr>
-      }) : <tr><td colSpan={5}>Свободных накладных нет</td></tr>}</tbody>
+      }) : <tr><td colSpan={5}>По выбранным станциям и плательщику свободных накладных нет</td></tr>}</tbody>
     </table></div>
     <div className="waybill-selection-footer">
       {(data?.totalPages ?? 0) > 1 && <div className="pagination compact-pagination"><button type="button" disabled={busy || page === 0} onClick={() => changePage(page - 1)}>Назад</button><span>Страница {page + 1} из {data?.totalPages}</span><button type="button" disabled={busy || page + 1 >= (data?.totalPages ?? 0)} onClick={() => changePage(page + 1)}>Далее</button></div>}

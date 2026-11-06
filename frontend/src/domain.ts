@@ -257,7 +257,7 @@ export type OrderDetails = {
   departureAt: string | null
   consignee: string | null
   sourceShippingOrderId?: string | null
-  returnOrders?: Array<{ id: string; code: number; status: string; containerNames: string[] }>
+  returnOrders?: ReturnReceivingOrder[]
   routeId?: string | null
   contractId: string | null
   contractName: string | null
@@ -323,3 +323,10 @@ export function transportTypeLabel(transportType: TransportType | null) {
 }
 
 export type DangerProductOption = { id: string; identifier: number; name: string; dangerClassId: string; dangerClassName: string; dangerClassCode: string | null }
+
+export type ReturnReceivingOrder = {
+  id: string; code: number; status: string; containerNames: string[]; containerIds: string[]
+  plannedAt?: string | null; consignor?: string | null
+  comprehensiveServiceOrderId: string; comprehensiveServiceOrderCode: number
+  clientName: string; contractName: string
+}

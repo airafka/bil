@@ -48,3 +48,16 @@ describe('Карточки этапов услуги', () => {
     expect(html).not.toContain('Без заявки на вывоз')
   })
 })
+
+it('показывает только поставку Авто в отдельной автоуслуге', () => {
+  const html = renderToStaticMarkup(<ServiceProgressCards progress={{ ...progress, total: 2, returnCreated: 2, returnCompleted: 1, returnOrderCount: 1 }} initialOrderStatus="CONFIRMED" autoReturn />)
+  expect(html.match(/<section /g)).toHaveLength(1)
+  expect(html).not.toContain('Поставка - ЖД')
+  expect(html).not.toContain('Вывоз - Авто')
+  expect(html).toContain('КТК: выполнено 1 из 2')
+  expect(html).not.toContain('Без заявки на возврат')
+})
+it('показывает КТК, для которых возврат ещё не создан вручную', () => {
+  const html = renderToStaticMarkup(<ServiceProgressCards progress={progress} initialOrderStatus="COMPLETED" />)
+  expect(html).toContain('Без заявки на возврат: 10 КТК.')
+})

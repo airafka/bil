@@ -63,7 +63,14 @@ public class BillingService {
             throw error("SOURCE_SHIPPING_NOT_COMPLETED", "Сначала выполните исходный вывоз");
         var containers = jdbc.query("select container_id from receiving_order_container where receiving_order_id=? order by container_id",
                 (rs, n) -> rs.getObject(1, UUID.class), orderId);
-        for (UUID container : containers) charge(receiving, container, orderId);
+        var original = jdbc.queryForObject("""
+            select s.id,s.selected_complex_service_id from shipping_order sh
+            join comprehensive_service_order s on s.id=sh.comprehensive_service_order_id where sh.id=?
+            """,(rs,n)->new Receiving(rs.getObject(1,UUID.class),"RETURN_RECEIVING",receiving.shippingId(),rs.getObject(2,UUID.class)),receiving.shippingId());
+        for (UUID container : containers) {
+            charge(original, container, orderId);
+            if(!original.serviceId().equals(receiving.serviceId())) charge(receiving, container, orderId);
+        }
     }
 
     private void charge(Receiving receiving, UUID container, UUID orderId) {

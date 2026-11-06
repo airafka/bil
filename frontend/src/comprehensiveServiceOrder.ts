@@ -1,14 +1,14 @@
-import type { CreatedOrder, OrderDetails } from './domain'
+import type { CreatedOrder, OrderDetails, ReturnReceivingOrder } from './domain'
 
 export type ContractOption = { id: string; clientId: string; name: string; contractType?: string }
 export type ComprehensiveServiceOrderSummary = {
   id: string; code: number; clientId: string; clientName: string
-  contractId: string; contractName: string; status: string; shippingOrderCount: number; createdAt: string | null
+  contractId: string; contractName: string; status: string; shippingOrderCount: number; createdAt: string | null; workflow: 'RAILWAY_RETURN' | 'AUTO_RETURN'; sourceServiceOrderId: string | null
 }
 export type ComprehensiveServiceOrderDetails = {
   totalWithoutVat: number; totalWithVat: number
   progress: ServiceProgress
-  order: ComprehensiveServiceOrderSummary; receivingOrder: OrderDetails; shippingOrders: Array<CreatedOrder & { containerNames: string[]; plannedAt?: string | null; consignee?: string | null }>; selectableContainers: Array<{ containerId: string; containerName: string; type: string }>; returnOrders: Array<{ id: string; code: number; status: string; containerNames: string[]; plannedAt?: string | null; consignor?: string | null }>
+  order: ComprehensiveServiceOrderSummary; receivingOrder: OrderDetails; shippingOrders: Array<CreatedOrder & { containerNames: string[]; plannedAt?: string | null; consignee?: string | null }>; selectableContainers: Array<{ containerId: string; containerName: string; type: string }>; returnOrders: ReturnReceivingOrder[]
 }
 
 export type ServiceProgress = {

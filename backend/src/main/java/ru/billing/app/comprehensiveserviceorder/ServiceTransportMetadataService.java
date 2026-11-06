@@ -17,6 +17,7 @@ public class ServiceTransportMetadataService {
  private record Current(int number,String status,LocalDateTime plannedAt,String partyName) {}
  @Transactional
  public ComprehensiveServiceOrderDetails update(UUID serviceId,UpdateServiceTransportMetadataRequest request){
+  ServiceOrderLock.lock(jdbc,serviceId);
   if(jdbc.queryForList("select id from comprehensive_service_order where id=? for update",serviceId).isEmpty())
    throw new ApiException(HttpStatus.NOT_FOUND,"COMPREHENSIVE_SERVICE_ORDER_NOT_FOUND","Заявка на услугу не найдена");
   var seen=new HashSet<String>();

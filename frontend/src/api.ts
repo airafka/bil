@@ -227,8 +227,15 @@ export function lookupContainerStock(containerIds: string[]) {
 
 export type AvailableWaybillRow = Pick<import('./domain').GroupedWaybill, 'groupKey' | 'departureStation' | 'destinationStation' | 'payer'> & { waybill: import('./domain').WaybillLink }
 export type AvailableWaybillPage = { content: AvailableWaybillRow[]; totalElements: number; totalPages: number; number: number; size: number }
-export function getAvailableWaybills(page: number) {
-  return request<AvailableWaybillPage>('/api/waybills/available?' + new URLSearchParams({ page: String(page), size: '20' }))
+export function getAvailableWaybills(page: number, filter: GroupedWaybillFilter = {}) {
+  const params = new URLSearchParams({ page: String(page), size: '20' })
+  if (filter.departureStation !== undefined) params.set('departureStation', String(filter.departureStation))
+  if (filter.destinationStation !== undefined) params.set('destinationStation', String(filter.destinationStation))
+  if (filter.payer) params.set('payer', filter.payer)
+  return request<AvailableWaybillPage>('/api/waybills/available?' + params)
+}
+export function getWaybillSelectionOptions() {
+  return request<import('./waybillSelection').WaybillSelectionOption[]>('/api/waybills/available/options')
 }
 
 export function getOwnershipAvailableForCreate(clientId: string, query = '', page = 0) { return request<PagedResponse<import('./containerStock').OwnershipContainer>>('/api/service-orders/containers/available?' + new URLSearchParams({ clientId, query, page: String(page) })) }
@@ -276,4 +283,18 @@ export function prepareServiceTransport(id: string, section: 'INITIAL_RECEIVING'
 
 export function completeServiceSection(id: string, section: 'INITIAL_RECEIVING' | 'SHIPPING' | 'RETURN_RECEIVING', action: 'CONFIRM_ROUTES' | 'COMPLETE_ORDERS') {
   return request<ComprehensiveServiceOrderDetails>('/api/comprehensive-service-orders/' + id + '/complete-section', { method: 'POST', body: JSON.stringify({ section, action }) })
+}
+
+export type ReturnTariffContract = { clientId: string; clientName: string; contractId: string; contractName: string }
+export type CreatedReturn = { receivingOrderId: string; receivingOrderCode: number; serviceOrderId: string; serviceOrderCode: number; createdService: boolean }
+export function getReturnContracts() { return request<ReturnTariffContract[]>('/api/shipping-orders/return-contracts') }
+export function createShippingReturn(id: string, payload: { containerIds: string[]; useCurrentClient: boolean; clientId?: string; contractId?: string }) {
+  return request<CreatedReturn>(`/api/shipping-orders/${id}/returns`, { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export type ReturnCandidate = { containerId: string; containerName: string; shippingOrderId: string; shippingOrderCode: number }
+export type CreatedReturns = { serviceOrderId: string; serviceOrderCode: number; createdService: boolean; returns: CreatedReturn[] }
+export function getServiceReturnCandidates(id: string) { return request<ReturnCandidate[]>(`/api/comprehensive-service-orders/${id}/returns/available-containers`) }
+export function createServiceReturns(id: string, payload: { containerIds: string[]; useCurrentClient: boolean; clientId?: string; contractId?: string }) {
+  return request<CreatedReturns>(`/api/comprehensive-service-orders/${id}/returns`, { method: 'POST', body: JSON.stringify(payload) })
 }

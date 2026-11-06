@@ -29,8 +29,16 @@ public class WaybillController {
     public AvailableWaybillPage available(
             @org.springframework.web.bind.annotation.RequestParam(defaultValue = "") String search,
             @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int page,
-            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "20") int size) {
-        return service.findAvailablePage(search, page, size);
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "20") int size,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer departureStation,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer destinationStation,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String payer) {
+        return service.findAvailablePage(search, page, size, new WaybillFilter(departureStation, destinationStation, payer));
+    }
+
+    @org.springframework.web.bind.annotation.GetMapping("/available/options")
+    public java.util.List<WaybillSelectionOption> availableOptions() {
+        return service.findAvailableOptions();
     }
 
     @PostMapping("/grouped/page")

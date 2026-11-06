@@ -25,6 +25,7 @@ public class ServiceSectionCompletion {
 
     @Transactional
     public ComprehensiveServiceOrderDetails complete(UUID id,ServiceTransportPreparation.Section section,Action action) {
+        ServiceOrderLock.lock(jdbc,id);
         if(jdbc.queryForList("select id from comprehensive_service_order where id=? for update",id).isEmpty())
             throw new ApiException(HttpStatus.NOT_FOUND,"COMPREHENSIVE_SERVICE_ORDER_NOT_FOUND","Заявка на услугу не найдена");
         boolean shipping=section==ServiceTransportPreparation.Section.SHIPPING;

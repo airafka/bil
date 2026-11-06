@@ -27,13 +27,18 @@ public class GroupedWaybillStore {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public AvailableWaybillPage findAvailablePage(String search, int requestedPage, int requestedSize) {
+    public AvailableWaybillPage findAvailablePage(String search, int requestedPage, int requestedSize, WaybillFilter selection) {
         int page = Math.max(0, requestedPage), size = Math.max(1, Math.min(100, requestedSize));
         String query = search == null ? "" : search.strip();
-        String condition = "w.receiving_order_id is null and position(lower(?) in lower(w.number)) > 0";
-        long total = jdbcTemplate.queryForObject("select count(*) from waybill w where " + condition, Long.class, query);
-        List<UUID> ids = jdbcTemplate.query("select w.id from waybill w where " + condition + " order by w.number, w.id limit ? offset ?",
-                (rs, row) -> rs.getObject("id", UUID.class), query, size, (long) page * size);
+        SqlFilter selectionFilter = filter(selection, true);
+        String condition = selectionFilter.sql() + " and position(lower(?) in lower(w.number)) > 0";
+        List<Object> parameters = new ArrayList<>(selectionFilter.parameters());
+        parameters.add(query);
+        long total = jdbcTemplate.queryForObject("select count(*) from waybill_details w " + condition, Long.class, parameters.toArray());
+        parameters.add(size);
+        parameters.add((long) page * size);
+        List<UUID> ids = jdbcTemplate.query("select w.id from waybill_details w " + condition + " order by w.number, w.id limit ? offset ?",
+                (rs, row) -> rs.getObject("id", UUID.class), parameters.toArray());
         if (ids.isEmpty()) return new AvailableWaybillPage(List.of(), total, (int) Math.ceil((double) total / size), page, size);
         BatchFilter filter = new BatchFilter("w.receiving_order_id is null and w.id in (" + String.join(",", java.util.Collections.nCopies(ids.size(), "?")) + ")", new ArrayList<Object>(ids));
         var products = loadProducts(filter);
@@ -42,6 +47,15 @@ public class GroupedWaybillStore {
         groups.forEach((key, bills) -> bills.forEach(bill -> rows.put(bill.id(), new AvailableWaybillPage.Row(
                 key.departureStation() + "|" + key.destinationStation() + "|" + key.payer(), key.departureStation(), key.destinationStation(), key.payer(), bill))));
         return new AvailableWaybillPage(ids.stream().map(rows::get).filter(java.util.Objects::nonNull).toList(), total, (int) Math.ceil((double) total / size), page, size);
+    }
+
+    public List<WaybillSelectionOption> findAvailableOptions() {
+        return jdbcTemplate.query("""
+                select distinct departure_station, destination_station, payer
+                  from waybill_details where receiving_order_id is null
+                 order by departure_station, destination_station, payer
+                """, (rs, row) -> new WaybillSelectionOption(rs.getInt("departure_station"),
+                rs.getInt("destination_station"), rs.getString("payer")));
     }
 
     public GroupedWaybillPage findPage(GroupedWaybillRequest request) {

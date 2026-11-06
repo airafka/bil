@@ -20,13 +20,13 @@ public class ComprehensiveServiceOrderService {
     private final JdbcTemplate jdbc;
     private final ReceivingOrderService receiving;
     private final ShippingOrderService shipping;
-    private final ReturnReceivingService returns;
+    private final ServiceTariffSnapshot tariffs;
 
-    public ComprehensiveServiceOrderService(JdbcTemplate jdbc, ReceivingOrderService receiving, ShippingOrderService shipping, ReturnReceivingService returns) {
+    public ComprehensiveServiceOrderService(JdbcTemplate jdbc, ReceivingOrderService receiving, ShippingOrderService shipping, ServiceTariffSnapshot tariffs) {
         this.jdbc = jdbc;
         this.receiving = receiving;
         this.shipping = shipping;
-        this.returns = returns;
+        this.tariffs = tariffs;
     }
 
     @Transactional
@@ -53,7 +53,7 @@ public class ComprehensiveServiceOrderService {
                 sources.stream().map(SourceRow::cargo).toList());
         if (containers.isEmpty()) throw error(HttpStatus.BAD_REQUEST, "COMPREHENSIVE_SERVICE_ORDER_CONTAINERS_REQUIRED",
                 "В выбранных накладных нет КТК для вывоза");
-        fixTariffs(id, request.clientId(), request.contractId(), request.complexServiceId());
+        tariffs.fix(id, request.clientId(), request.contractId(), request.complexServiceId());
         Map<UUID, String> types = typesByContainer(sources);
         for (OrderContainerRequest container : containers) {
             String type = requireType(types, container.containerId());
@@ -103,23 +103,6 @@ public class ComprehensiveServiceOrderService {
                                 + "Количество КТК не соответствует выбранной услуге. " + recommendation);
             }
         }
-    }
-
-    private void fixTariffs(UUID orderId, UUID clientId, UUID contractId, UUID serviceId) {
-        var tariffs = jdbc.query("""
-                select t.id from complex_service_tariff t join complex_service_catalog c on c.id=t.complex_service_id
-                where t.client_id=? and t.contract_id=? and t.complex_service_id=? and t.active for share of c,t
-                """, (rs,n)->rs.getObject(1,UUID.class),clientId,contractId,serviceId);
-        if(tariffs.size()!=1) throw error(HttpStatus.CONFLICT,"ACTIVE_TARIFFS_REQUIRED","Для выбранной услуги нужен активный тариф по клиенту и договору");
-        jdbc.update("""
-                insert into comprehensive_service_order_tariff
-                (comprehensive_service_order_id,complex_service_id,tariff_id,coefficient,
-                 base_price_without_vat,base_price_with_vat,price_without_vat,price_with_vat)
-                select ?,c.id,t.id,t.coefficient,c.price_without_vat,c.price_with_vat,
-                       round(c.price_without_vat*t.coefficient,2),round(c.price_with_vat*t.coefficient,2)
-                from complex_service_tariff t join complex_service_catalog c on c.id=t.complex_service_id where t.id=?
-                """,orderId,tariffs.getFirst());
-        jdbc.update("update comprehensive_service_order set tariffs_fixed_at=current_timestamp where id=?",orderId);
     }
 
     @Transactional
@@ -172,7 +155,6 @@ public class ComprehensiveServiceOrderService {
             jdbc.update("insert into shipping_order_source_container(shipping_order_id, comprehensive_service_order_id, container_id) "
                     + "values (?, ?, ?)", created.id(), serviceId, container.containerId());
         }
-        returns.create(created.id(), containers.stream().map(OrderContainerRequest::containerId).toList());
     }
 
     private OrderContainerRequest withWaybillCargo(UUID deliveryId, OrderContainerRequest container) {
@@ -249,7 +231,7 @@ public class ComprehensiveServiceOrderService {
 
     private static final String SUMMARY_SQL = """
             select s.id, s.code, s.client_id, c.name as client_name, s.contract_id,
-                   ct.name as contract_name, s.status, s.created_at,
+                   ct.name as contract_name, s.status, s.created_at, s.workflow, s.source_service_order_id,
                    (select count(*) from shipping_order sh where sh.comprehensive_service_order_id = s.id) as shipping_count
               from comprehensive_service_order s join client c on c.id = s.client_id
               join contract ct on ct.id = s.contract_id
@@ -274,7 +256,7 @@ public class ComprehensiveServiceOrderService {
     public ComprehensiveServiceOrderDetails findById(UUID id) {
         List<ComprehensiveServiceOrderSummary> rows = jdbc.query(SUMMARY_SQL + " where s.id = ?", (rs, row) -> summary(rs), id);
         if (rows.isEmpty()) throw error(HttpStatus.NOT_FOUND, "COMPREHENSIVE_SERVICE_ORDER_NOT_FOUND", "Заявка на услугу не найдена");
-        UUID deliveryId = jdbc.queryForObject("select id from receiving_order where comprehensive_service_order_id = ? and service_role = 'INITIAL_RECEIVING'",
+        UUID deliveryId = jdbc.queryForObject("select id from receiving_order where comprehensive_service_order_id = ? order by case when service_role='INITIAL_RECEIVING' then 0 else 1 end, number limit 1",
                 UUID.class, id);
         List<ServiceShippingOrder> removals = jdbc.query("""
                 select sh.id, sh.number as code, sh.order_status as status, sh.planned_shipping_date_time, (select name from client_related_entity where id=sh.consignee_id) as consignee, array_agg(c.code order by c.code) as container_names
@@ -298,20 +280,15 @@ public class ComprehensiveServiceOrderService {
                 order by c.code
                 """, (rs, row) -> new ServiceSelectableContainer(rs.getObject("id", UUID.class),
                         rs.getString("code"), rs.getString("type")), id, deliveryId);
-        List<ReturnReceivingOrder> returns = jdbc.query("""
-                select r.id, r.number as code, r.order_status as status, r.plan_receiving_date_time, r.consignor, array_agg(c.code order by c.code) as container_names
-                from receiving_order r join receiving_order_container rc on rc.receiving_order_id = r.id
-                join container c on c.id = rc.container_id
-                where r.comprehensive_service_order_id = ? and r.service_role = 'RETURN_RECEIVING' group by r.id order by r.number
-                """, (rs, row) -> new ReturnReceivingOrder(rs.getObject("id", UUID.class), rs.getInt("code"),
-                        rs.getString("status"), java.util.Arrays.stream((Object[]) rs.getArray("container_names").getArray()).map(Object::toString).toList(), rs.getObject("plan_receiving_date_time", java.time.LocalDateTime.class), rs.getString("consignor")), id);
+        List<ReturnReceivingOrder> returns = ReturnReceivingOrder.find(jdbc,
+                "r.comprehensive_service_order_id=? or sh.comprehensive_service_order_id=?", id, id);
         var totals = jdbc.queryForMap("""
                 select coalesce(sum(b.amount_without_vat),0) as without_vat,
                        coalesce(sum(b.amount_with_vat),0) as with_vat
                 from billing_charge b join service_execution e on e.id=b.service_execution_id
                 where e.comprehensive_service_order_id=?
                 """, id);
-        return new ComprehensiveServiceOrderDetails(rows.getFirst(), receiving.findById(deliveryId), removals, selectable, returns, progress(id, deliveryId),
+        return new ComprehensiveServiceOrderDetails(rows.getFirst(), receiving.findById(deliveryId), removals, selectable, returns, "AUTO_RETURN".equals(rows.getFirst().workflow()) ? autoProgress(id) : progress(id, deliveryId),
                 (java.math.BigDecimal) totals.get("without_vat"), (java.math.BigDecimal) totals.get("with_vat"));
     }
 
@@ -331,7 +308,7 @@ public class ComprehensiveServiceOrderService {
                     select rc.container_id, r.order_status as status, r.id from receiving_order r
                     join receiving_order_container rc on rc.receiving_order_id = r.id
                     join shipping sh on sh.id = r.source_shipping_order_id and sh.container_id = rc.container_id
-                    where r.comprehensive_service_order_id = ? and r.service_role = 'RETURN_RECEIVING'
+                    where r.service_role = 'RETURN_RECEIVING'
                 )
                 select selected.name as service_name,
                     case when initial.order_status = 'COMPLETED'
@@ -358,14 +335,28 @@ public class ComprehensiveServiceOrderService {
                         rs.getInt("total"), rs.getInt("shipping_missing"),
                         rs.getInt("shipping_order_count"), rs.getInt("shipping_orders_completed"),
                         rs.getInt("return_order_count"), rs.getInt("return_orders_completed")),
-                deliveryId, serviceId, serviceId, deliveryId);
+                deliveryId, serviceId, deliveryId);
+    }
+
+    private ServiceProgress autoProgress(UUID id) {
+        return jdbc.queryForObject("""
+            select c.name, count(rc.id) as total,
+                   count(rc.id) filter(where r.order_status='COMPLETED') as completed,
+                   count(distinct r.id) as orders,
+                   count(distinct r.id) filter(where r.order_status='COMPLETED') as done
+            from comprehensive_service_order s join complex_service_catalog c on c.id=s.selected_complex_service_id
+            join receiving_order r on r.comprehensive_service_order_id=s.id
+            join receiving_order_container rc on rc.receiving_order_id=r.id
+            where s.id=? group by c.name
+            """,(rs,n)->new ServiceProgress(rs.getString("name"),0,0,0,rs.getInt("total"),rs.getInt("completed"),
+            rs.getInt("total"),0,0,0,rs.getInt("orders"),rs.getInt("done")),id);
     }
 
     private static ComprehensiveServiceOrderSummary summary(java.sql.ResultSet rs) throws java.sql.SQLException {
         return new ComprehensiveServiceOrderSummary(rs.getObject("id", UUID.class), rs.getInt("code"),
                 rs.getObject("client_id", UUID.class), rs.getString("client_name"),
                 rs.getObject("contract_id", UUID.class), rs.getString("contract_name"),
-                rs.getString("status"), rs.getInt("shipping_count"), rs.getObject("created_at", java.time.OffsetDateTime.class));
+                rs.getString("status"), rs.getInt("shipping_count"), rs.getObject("created_at", java.time.OffsetDateTime.class), rs.getString("workflow"), rs.getObject("source_service_order_id", UUID.class));
     }
 
     private static ApiException error(HttpStatus status, String code, String message) {

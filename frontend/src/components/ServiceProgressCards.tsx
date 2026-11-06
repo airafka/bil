@@ -1,8 +1,8 @@
 import type { ServiceProgress } from '../comprehensiveServiceOrder'
 
-export function ServiceProgressCards({ progress, initialOrderStatus }: { progress: ServiceProgress; initialOrderStatus: string }) {
+export function ServiceProgressCards({ progress, initialOrderStatus, autoReturn = false }: { progress: ServiceProgress; initialOrderStatus: string; autoReturn?: boolean }) {
   return <div className="service-progress" aria-label="Выполнение этапов услуги">
-    <section aria-labelledby="initial-progress-title">
+    {!autoReturn && <><section aria-labelledby="initial-progress-title">
       <h2 id="initial-progress-title">Поставка - ЖД</h2>
       <dl className="service-progress-metrics">
         <Metric label="Заявки" completed={initialOrderStatus === 'COMPLETED' ? 1 : 0} total={1} />
@@ -17,12 +17,13 @@ export function ServiceProgressCards({ progress, initialOrderStatus }: { progres
       </dl>
       {progress.shippingMissing > 0 && <p className="service-progress-missing">{`Без заявки на вывоз: ${progress.shippingMissing} КТК. Создайте заявку на вывоз.`}</p>}
     </section>
-    <section aria-labelledby="return-progress-title">
+    </>}<section aria-labelledby="return-progress-title">
       <h2 id="return-progress-title">Поставка - Авто</h2>
       <dl className="service-progress-metrics">
         <Metric label="Заявки" completed={progress.returnOrdersCompleted} total={progress.returnOrderCount} />
         <Metric label="КТК" completed={progress.returnCompleted} total={progress.returnCreated} />
       </dl>
+      {progress.total > progress.returnCreated && <p className="service-progress-missing">Без заявки на возврат: {progress.total - progress.returnCreated} КТК.</p>}
     </section>
   </div>
 }

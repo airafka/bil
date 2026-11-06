@@ -41,7 +41,7 @@ export function useResponsiveTables() {
         const width = parent.getBoundingClientRect().width
         table.style.setProperty('--responsive-table-width', `${width}px`)
         // Allow enough room for dates and editable values before switching to labelled records.
-        const threshold = Math.max(Number(table.dataset.responsiveMinWidth) || 0, 560, labels.length * (table.querySelector('tbody input:not([type="checkbox"]),tbody select') ? 130 : 95))
+        const threshold = Math.max(Number(table.dataset.responsiveMinWidth) || 560, labels.length * (table.querySelector('tbody input:not([type="checkbox"]),tbody select') ? 130 : 95))
         table.classList.toggle('responsive-table--records', width > 0 && width < threshold)
       })
     }

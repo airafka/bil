@@ -1,3 +1,5 @@
+import { WaybillFilterFields } from '../components/WaybillFilterFields'
+import { validateWaybillSelection } from '../waybillSelection'
 import { validateServiceWaybills, type AvailableOrderService } from '../serviceWaybillValidation'
 import { WrappingSelect } from '../components/WrappingSelect'
 import { Notification } from '../components/Notification'
@@ -13,6 +15,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { getAvailableOrderServices, createOrder, createComprehensiveServiceOrder, getContracts, getTariffClients, getRoutes, getReferenceOptions, getTerminalAreas, getTransportTypes } from '../api'
 import { WaybillSelectionTable } from '../components/WaybillSelectionTable'
 import type {
+  GroupedWaybillFilter,
   OrderConfig,
   ReferenceOption,
   TerminalAreaOption,
@@ -42,6 +45,7 @@ const shippingRailwaySteps = ['Основное', 'Вагоны', 'КТК', 'Г�
 export function CreateOrderPage({ config, serviceMode = false }: { config: OrderConfig; serviceMode?: boolean }) {
   const [serviceOptions,setServiceOptions] = useState<AvailableOrderService[]>([])
   const [complexServiceId,setComplexServiceId] = useState('')
+  const [waybillFilter, setWaybillFilter] = useState<GroupedWaybillFilter>({})
   const [step, setStep] = useState(1)
   const [form, setForm] = useState<OrderFormState>(() => ({ ...initialOrderFormState, transportType: serviceMode ? 'RAILWAY' as const : '' as const }))
   const [routes, setRoutes] = useState<RouteSummary[]>([])
@@ -140,6 +144,7 @@ export function CreateOrderPage({ config, serviceMode = false }: { config: Order
 
   const mainStepInvalid = loadingReferences
     || (serviceMode && !complexServiceId)
+    || (isRailwayReceiving && validateWaybillSelection(waybillFilter).length > 0)
     || !form.clientId
     || !form.contractId
     || !form.terminalAreaId
@@ -149,6 +154,7 @@ export function CreateOrderPage({ config, serviceMode = false }: { config: Order
   const goNext = () => {
     const validationErrors = [
       ...validateStep(form, contentStep, config.kind),
+      ...(isRailwayReceiving && contentStep === 1 ? validateWaybillSelection(waybillFilter) : []),
       ...(serviceMode && contentStep === 2 ? validateServiceWaybills(serviceOptions, complexServiceId, form.waybills) : []),
     ]
     setErrors(validationErrors)
@@ -356,6 +362,11 @@ export function CreateOrderPage({ config, serviceMode = false }: { config: Order
 
               </div>
             </div>
+            {isRailwayReceiving && <WaybillFilterFields value={waybillFilter} disabled={submitting} onChange={value => {
+              setWaybillFilter(value)
+              setForm(state => ({ ...state, waybills: [] }))
+              setErrors([])
+            }} />}
             {!serviceMode && <>
               <div className="form-section-heading ui-section-divider"><h2>Параметры заявки</h2></div>
               <div className="form-fields-grid">
@@ -401,7 +412,7 @@ export function CreateOrderPage({ config, serviceMode = false }: { config: Order
 
 
 
-        {contentStep === 2 && isRailwayReceiving && <WaybillSelectionTable selected={form.waybills} disabled={submitting}
+        {contentStep === 2 && isRailwayReceiving && <WaybillSelectionTable filter={waybillFilter} selected={form.waybills} disabled={submitting}
           onChange={waybills => { setForm(state => ({ ...state, waybills })); setErrors([]) }} />}
 
         {isRailwayReceiving && contentStep === 4 && <div className="form-section"><OrderContainerTable showPhysicalAttributes rows={receivingWaybillRows(form.waybills,form.defaultContainerOwnerId,clients)} groups={form.waybills.map(bill => ({ key:bill.id,label:"Накладная № "+bill.number,rows:[],children:(bill.railwayCarriages ?? []).map(wagon => ({ key:bill.id+"-"+wagon.id,label:"Вагон № "+wagon.number,rows:receivingWaybillRows([{...bill,railwayCarriages:[wagon]}],form.defaultContainerOwnerId,clients) })) }))} /></div>}

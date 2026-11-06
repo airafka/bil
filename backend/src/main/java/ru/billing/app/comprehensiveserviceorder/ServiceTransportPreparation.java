@@ -35,6 +35,7 @@ public class ServiceTransportPreparation {
 
     @Transactional
     public ComprehensiveServiceOrderDetails prepare(UUID id, Section section) {
+        ServiceOrderLock.lock(jdbc,id);
         var parents=jdbc.query("select c.name from comprehensive_service_order s join client c on c.id=s.client_id where s.id=? for update of s",
                 (rs,n)->rs.getString(1),id);
         if(parents.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND,"COMPREHENSIVE_SERVICE_ORDER_NOT_FOUND","Заявка на услугу не найдена");

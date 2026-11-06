@@ -68,7 +68,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </section>
         })}
       </nav>
+      <div className="sidebar-bottom"><div id="sidebar-actions" />
       <div className="sidebar-footer" title="Локальная система"><span className="online-dot" /><span className="nav-label">Локальная система</span></div>
+      </div>
     </aside>
     <div className="workspace">
       <header className="topbar">

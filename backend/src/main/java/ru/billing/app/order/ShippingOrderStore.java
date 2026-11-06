@@ -145,13 +145,7 @@ public class ShippingOrderStore {
         List<RailwayCarriageQuantityDetails> carriageQuantities=List.of();
         List<ContainerQuantityDetails> containerQuantities=List.of();
 
-        List<ReturnReceivingOrder> returns = jdbcTemplate.query("""
-                select r.id, r.number as code, r.order_status as status, r.plan_receiving_date_time, r.consignor, array_agg(c.code order by c.code) as container_names
-                from receiving_order r join receiving_order_container rc on rc.receiving_order_id = r.id
-                join container c on c.id = rc.container_id
-                where r.source_shipping_order_id = ? group by r.id order by r.number
-                """, (rs, row) -> new ReturnReceivingOrder(rs.getObject("id", UUID.class), rs.getInt("code"),
-                        rs.getString("status"), java.util.Arrays.stream((Object[]) rs.getArray("container_names").getArray()).map(Object::toString).toList(), rs.getObject("plan_receiving_date_time", java.time.LocalDateTime.class), rs.getString("consignor")), id);
+        List<ReturnReceivingOrder> returns = ReturnReceivingOrder.find(jdbcTemplate, "r.source_shipping_order_id=?", id);
         return new OrderDetails(
                 header.id(), header.code(), header.clientId(), header.clientName(),
                 header.terminalArea(), header.transportType(),

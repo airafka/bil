@@ -61,7 +61,7 @@ public class OrderStatusService {
                 || request.expectedStatus() == Status.CONFIRMED && request.status() == Status.COMPLETED;
         if (!allowed) throw new ApiException(HttpStatus.CONFLICT, "INVALID_STATUS_TRANSITION",
                 "Допустимы только переходы: Черновик → Подтверждено → Выполнено");
-        if ("receiving-orders".equals(resource) && request.status() == Status.COMPLETED) {
+        if ("receiving-orders".equals(resource)) {
             var sourceCompleted = jdbc.query("""
                     select sh.order_status = 'COMPLETED' from receiving_order r
                     join shipping_order sh on sh.id = r.source_shipping_order_id
@@ -106,10 +106,10 @@ public class OrderStatusService {
         if (!resource.equals("comprehensive-service-orders") && request.status() == Status.COMPLETED) {
             jdbc.update("""
                 update comprehensive_service_order s set status='COMPLETED'
-                where s.id=(select comprehensive_service_order_id from %s where id=?) and s.status<>'COMPLETED'
+                where s.id in (select comprehensive_service_order_id from %s where id=? union select source_service_order_id from comprehensive_service_order where id=(select comprehensive_service_order_id from %s where id=?)) and s.status<>'COMPLETED'
                   and not exists(select 1 from receiving_order where comprehensive_service_order_id=s.id and order_status<>'COMPLETED')
                   and not exists(select 1 from shipping_order where comprehensive_service_order_id=s.id and order_status<>'COMPLETED')
-                  and exists(select 1 from receiving_order where comprehensive_service_order_id=s.id and service_role='RETURN_RECEIVING')
+                  and (exists(select 1 from receiving_order where comprehensive_service_order_id=s.id and service_role='RETURN_RECEIVING') or exists(select 1 from receiving_order r join shipping_order sh on sh.id=r.source_shipping_order_id where sh.comprehensive_service_order_id=s.id and r.service_role='RETURN_RECEIVING'))
                     and not exists(select 1 from shipping_order_source_container link where link.comprehensive_service_order_id=s.id
                       and not exists(select 1 from receiving_order r join receiving_order_container rc on rc.receiving_order_id=r.id
                         where r.source_shipping_order_id=link.shipping_order_id and r.service_role='RETURN_RECEIVING'
@@ -119,7 +119,7 @@ public class OrderStatusService {
                       join waybill_container_details wc on wc.waybill_railway_carriage_id=rc.id
                       where r.comprehensive_service_order_id=s.id and not exists(select 1 from shipping_order_source_container link
                           where link.comprehensive_service_order_id=s.id and link.container_id=wc.container_id))
-                """.formatted(table),id);
+                """.formatted(table,table),id,id);
         }
         return new CreatedOrderResponse(id, current.code(), request.status().name());
     }
@@ -130,7 +130,7 @@ public class OrderStatusService {
             case "shipping-orders" -> "shipping_order";
             default -> null;
         };
-        if(table != null) jdbc.query("select s.id from comprehensive_service_order s join " + table + " o on o.comprehensive_service_order_id=s.id where o.id=? for update of s", (rs,n)->rs.getObject(1,UUID.class),id);
+        if(table != null) jdbc.query("select comprehensive_service_order_id from " + table + " where id=?", (rs,n)->rs.getObject(1,UUID.class),id).stream().filter(java.util.Objects::nonNull).forEach(parent -> ru.billing.app.comprehensiveserviceorder.ServiceOrderLock.lock(jdbc,parent));
         if (table != null) jdbc.query("select r.id from route r join " + table + " o on o.route_id=r.id where o.id=? for update of r", (rs,n)->rs.getObject(1, UUID.class), id);
     }
 

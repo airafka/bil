@@ -46,3 +46,13 @@
 @container workspace (max-width: 900px) {
   .content .service-progress { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Section actions stay above the local-system status in the desktop sidebar. */
+.sidebar-bottom { margin-top:auto; flex-shrink:0; }
+.sidebar-bottom .sidebar-footer { margin-top:0; }
+.service-bulk-actions { display:flex; align-items:center; gap:8px; }
+#sidebar-actions:not(:empty) { padding:12px 0; }
+.app-shell[data-menu-expanded="false"] #sidebar-actions .service-bulk-actions { flex-direction:column; }
+@media(max-width:640px) {
+  .sidebar-bottom { display:none; }
+}
